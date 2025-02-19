@@ -1,0 +1,1853 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+================================================================
+File Summary
+================================================================
+
+Purpose:
+--------
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+File Format:
+------------
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Multiple file entries, each consisting of:
+  a. A separator line (================)
+  b. The file path (File: path/to/file)
+  c. Another separator line
+  d. The full contents of the file
+  e. A blank line
+
+Usage Guidelines:
+-----------------
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+Notes:
+------
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+
+Additional Info:
+----------------
+
+================================================================
+Directory Structure
+================================================================
+App.css
+App.jsx
+assets/react.svg
+components/CommandBar.jsx
+components/EmptyState.jsx
+components/WindowManager.jsx
+components/windows/EditorWindow.jsx
+components/windows/ExplorerWindow.jsx
+components/windows/index.js
+components/windows/PreviewWindow.jsx
+components/windows/TerminalWindow.jsx
+hocs/withCommandHandling.jsx
+hooks/useKeyboardShortcuts.js
+hooks/useWindowManager.js
+index.html
+main.jsx
+models/Node.js
+styles.css
+styles/main.css
+utils/treeUtils.js
+utils/windowTypes.js
+utils/windowUtils.js
+
+================================================================
+Files
+================================================================
+
+================
+File: App.css
+================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+================
+File: App.jsx
+================
+import React from 'react';
+import { WindowManager } from './components/WindowManager';
+import { CommandBar } from './components/CommandBar';
+import { EmptyState } from './components/EmptyState';
+import { useWindowManager } from './hooks/useWindowManager';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { WINDOW_CONTENT } from './utils/windowTypes';
+
+/**
+ * Main application component that composes our window management system.
+ * This component is intentionally kept simple, delegating most functionality
+ * to specialized components and hooks.
+ */
+function App() {
+  // Initialize window management system
+  const {
+    rootNode,
+    activeNodeId,
+    setActiveNodeId,
+    createNewWindow,
+    splitWindow,
+    closeWindow,
+    transformWindow,
+    handleCommand,
+    handleResizeStart,
+    handleResizeMove,
+    handleResizeEnd,
+    hasActiveWindow,
+    hasRootNode
+  } = useWindowManager();
+
+  // Set up keyboard shortcuts
+  useKeyboardShortcuts({
+    onSplitVertical: () => splitWindow(activeNodeId, 'vertical'),
+    onSplitHorizontal: () => splitWindow(activeNodeId, 'horizontal'),
+    onClose: () => closeWindow(activeNodeId),
+    createNewWindow,
+    hasActiveWindow,
+    hasRootNode
+  });
+
+  // Define component to render based on whether we have a root node
+  const renderContent = () => {
+    if (!rootNode) {
+      return <EmptyState />;
+    }
+
+    // Render the window tree with all necessary props
+    return (
+      <WindowTreeRenderer
+        node={rootNode}
+        activeNodeId={activeNodeId}
+        setActiveNodeId={setActiveNodeId}
+        transformWindow={transformWindow}
+        onResizeStart={handleResizeStart}
+        onResizeMove={handleResizeMove}
+        onResizeEnd={handleResizeEnd}
+      />
+    );
+  };
+
+  return (
+    <div className="w-full h-screen flex flex-col">
+      {/* Global command bar */}
+      <CommandBar onCommand={handleCommand} />
+      
+      {/* Main content area */}
+      <div className="flex-1 relative">
+        {renderContent()}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renders the window tree recursively. This component is kept within App.jsx
+ * since it's tightly coupled with the WindowManager's functionality.
+ */
+const WindowTreeRenderer = ({
+  node,
+  depth = 0,
+  available = { x: 0, y: 0, width: 100, height: 100 },
+  activeNodeId,
+  setActiveNodeId,
+  transformWindow,
+  onResizeStart,
+  onResizeMove,
+  onResizeEnd
+}) => {
+  // Handle window nodes
+  if (node.type === 'window') {
+    const windowContent = WINDOW_CONTENT[node.windowType];
+    const Component = windowContent.component;
+    const isActive = node.id === activeNodeId;
+
+    return (
+      <div
+        className={`absolute overflow-hidden border-2 ${
+          isActive ? 'border-teal-500' : 'border-stone-600'
+        }`}
+        style={{
+          left: `${available.x}%`,
+          top: `${available.y}%`,
+          width: `${available.width}%`,
+          height: `${available.height}%`,
+        }}
+        onClick={() => setActiveNodeId(node.id)}
+      >
+        <Component
+          key={`window-${node.id}-${node.windowType}`}
+          isActive={isActive}
+          nodeId={node.id}
+          transformWindow={transformWindow}
+        />
+      </div>
+    );
+  }
+
+  // Handle split nodes
+  let firstDimensions, secondDimensions;
+  if (node.direction === 'horizontal') {
+    firstDimensions = {
+      x: available.x,
+      y: available.y,
+      width: available.width * node.splitRatio,
+      height: available.height
+    };
+    secondDimensions = {
+      x: available.x + (available.width * node.splitRatio),
+      y: available.y,
+      width: available.width * (1 - node.splitRatio),
+      height: available.height
+    };
+  } else {
+    firstDimensions = {
+      x: available.x,
+      y: available.y,
+      width: available.width,
+      height: available.height * node.splitRatio
+    };
+    secondDimensions = {
+      x: available.x,
+      y: available.y + (available.height * node.splitRatio),
+      width: available.width,
+      height: available.height * (1 - node.splitRatio)
+    };
+  }
+
+  // Render split container with resize handle
+  return (
+    <>
+      <WindowTreeRenderer
+        node={node.first}
+        depth={depth + 1}
+        available={firstDimensions}
+        activeNodeId={activeNodeId}
+        setActiveNodeId={setActiveNodeId}
+        transformWindow={transformWindow}
+        onResizeStart={onResizeStart}
+        onResizeMove={onResizeMove}
+        onResizeEnd={onResizeEnd}
+      />
+      
+      {/* Resize handle */}
+      <div
+        className={`absolute z-10 ${
+          node.direction === 'horizontal' 
+            ? 'w-1 cursor-col-resize hover:bg-teal-500' 
+            : 'h-1 cursor-row-resize hover:bg-teal-500'
+        }`}
+        style={{
+          left: node.direction === 'horizontal' ? `${available.x + (available.width * node.splitRatio)}%` : `${available.x}%`,
+          top: node.direction === 'horizontal' ? `${available.y}%` : `${available.y + (available.height * node.splitRatio)}%`,
+          height: node.direction === 'horizontal' ? `${available.height}%` : '2px',
+          width: node.direction === 'horizontal' ? '2px' : `${available.width}%`,
+        }}
+        onMouseDown={(e) => onResizeStart(e, node)}
+      />
+      
+      <WindowTreeRenderer
+        node={node.second}
+        depth={depth + 1}
+        available={secondDimensions}
+        activeNodeId={activeNodeId}
+        setActiveNodeId={setActiveNodeId}
+        transformWindow={transformWindow}
+        onResizeStart={onResizeStart}
+        onResizeMove={onResizeMove}
+        onResizeEnd={onResizeEnd}
+      />
+    </>
+  );
+};
+
+export default App;
+
+================
+File: assets/react.svg
+================
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+
+================
+File: components/CommandBar.jsx
+================
+import React, { useState, useEffect, useRef } from 'react';
+
+export const CommandBar = ({ 
+  onCommand, 
+  currentWorkspaceIndex = 0
+}) => {
+  const [command, setCommand] = useState('');
+  const inputRef = useRef(null);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && command.trim()) {
+      onCommand(command.trim());
+      setCommand('');
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.key === '/' && document.activeElement !== inputRef.current) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
+  return (
+    <div className="w-full bg-stone-800 p-2 flex items-center gap-2">
+      <div className="flex gap-2 items-center pr-2 border-r border-stone-600">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div
+            key={i}
+            className={`rounded-full transition-all duration-200 ${
+              i === currentWorkspaceIndex 
+                ? 'w-3 h-3 bg-teal-400' 
+                : 'w-2 h-2 bg-stone-600'
+            }`}
+          />
+        ))}
+      </div>
+      <span className="text-gray-400 text-sm font-mono">$</span>
+      <input
+        ref={inputRef}
+        type="text"
+        value={command}
+        onChange={(e) => setCommand(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Type 'help' for available commands or press '/' to focus"
+        className="flex-1 bg-stone-700 text-white px-4 py-1 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  );
+};
+
+export default CommandBar;
+
+================
+File: components/EmptyState.jsx
+================
+import React from 'react';
+
+export const EmptyState = () => (
+  <div className="absolute inset-0 flex items-center justify-center bg-stone-950">
+    <div className="text-center">
+      <h2 className="text-xl font-semibold text-teal-400 mb-4">SLUMNET</h2>
+      <p className="text-teal-400 mb-4">Bub boils the seed!</p>
+      <div className="text-teal-50 bg-stone-950 p-2 font-mono text-sm">
+        <p>Keyboard shortcuts:</p>
+        <p>Ctrl+Enter - Create/Split Vertical</p>
+        <p>Ctrl+Shift+Enter - Split Horizontal</p>
+        <p>Ctrl+Backspace - Close Window</p>
+      </div>
+    </div>
+  </div>
+);
+
+export default EmptyState;
+
+================
+File: components/WindowManager.jsx
+================
+import React, { useState, useCallback, useEffect } from 'react';
+import { WINDOW_CONTENT } from '../utils/windowTypes';
+import { getWindowBounds } from '../utils/windowUtils';
+import { useWindowManager } from '../hooks/useWindowManager';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { CommandBar } from './CommandBar';
+import EmptyState from './EmptyState';
+
+export const WindowManager = ({ defaultLayout = null }) => {
+  // Get all state from useWindowManager
+  const windowManager = useWindowManager({ defaultLayout });
+  const {
+    rootNode,
+    activeNodeId,
+    setActiveNodeId,
+    terminalStates,
+    updateTerminalState,
+    splitWindow,
+    createNewWindow,
+    closeWindow,
+    transformWindow,
+    currentWorkspaceIndex,
+    workspaceCount,
+    switchWorkspace
+  } = windowManager;
+
+  const [dragState, setDragState] = useState(null);
+
+  // Add keyboard shortcuts
+  useKeyboardShortcuts({
+    activeNodeId,
+    rootNode,
+    splitWindow,
+    closeWindow,
+    createNewWindow
+  });
+
+  // Command handling for terminal
+  const handleCommand = useCallback((command) => {
+    const parts = command.split(' ');
+    const cmd = parts[0].toLowerCase();
+
+    switch (cmd) {
+      case 'split':
+        if (activeNodeId) {
+          const direction = parts[1] === 'vertical' ? 'vertical' : 'horizontal';
+          splitWindow(activeNodeId, direction);
+        }
+        break;
+      case 'close':
+        if (activeNodeId) {
+          closeWindow(activeNodeId);
+        }
+        break;
+    }
+  }, [activeNodeId, splitWindow, closeWindow]);
+
+  // Resize handling
+  const handleResizeStart = useCallback((e, split) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragState({
+      split,
+      initialPos: {
+        x: e.clientX,
+        y: e.clientY
+      },
+      initialRatio: split.splitRatio
+    });
+  }, []);
+
+  const handleResizeMove = useCallback((e) => {
+    if (!dragState) return;
+
+    const { split, initialPos, initialRatio } = dragState;
+    const delta = split.direction === 'horizontal' 
+      ? (e.clientX - initialPos.x) / window.innerWidth 
+      : (e.clientY - initialPos.y) / window.innerHeight;
+
+    const newRatio = Math.max(0.1, Math.min(0.9, initialRatio + delta));
+    split.splitRatio = newRatio;
+
+    // Force a re-render
+    setDragState(prev => ({ ...prev }));
+  }, [dragState]);
+
+  const handleResizeEnd = useCallback(() => {
+    setDragState(null);
+  }, []);
+
+  useEffect(() => {
+    if (dragState) {
+      window.addEventListener('mousemove', handleResizeMove);
+      window.addEventListener('mouseup', handleResizeEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleResizeMove);
+        window.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  }, [dragState, handleResizeMove, handleResizeEnd]);
+
+  // Window tree renderer
+  const WindowTreeRenderer = ({ node, depth = 0, available = { x: 0, y: 0, width: 100, height: 100 } }) => {
+    if (!node) return null;
+
+    if (node.type === 'window') {
+      const windowContent = WINDOW_CONTENT[node.windowType];
+      if (!windowContent) {
+        console.error('No window content found for type:', node.windowType);
+        return null;
+      }
+      const Component = windowContent.component;
+      const isActive = node.id === activeNodeId;
+  
+      return (
+        <div
+          className={`absolute overflow-hidden border-2 ${
+            isActive ? 'border-teal-500' : 'border-stone-600'
+          }`}
+          style={{
+            left: `${available.x}%`,
+            top: `${available.y}%`,
+            width: `${available.width}%`,
+            height: `${available.height}%`,
+          }}
+          onClick={() => setActiveNodeId(node.id)}
+        >
+          <Component 
+            key={`window-${node.id}-${node.windowType}`}
+            onCommand={handleCommand} 
+            isActive={isActive}
+            nodeState={node.state}
+            nodeId={node.id}
+            transformWindow={transformWindow}
+            onStateChange={(newState) => {
+              updateTerminalState(node.id, newState);
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Calculate split dimensions
+    let firstDimensions, secondDimensions;
+    if (node.direction === 'horizontal') {
+      firstDimensions = {
+        x: available.x,
+        y: available.y,
+        width: available.width * node.splitRatio,
+        height: available.height
+      };
+      secondDimensions = {
+        x: available.x + (available.width * node.splitRatio),
+        y: available.y,
+        width: available.width * (1 - node.splitRatio),
+        height: available.height
+      };
+    } else {
+      firstDimensions = {
+        x: available.x,
+        y: available.y,
+        width: available.width,
+        height: available.height * node.splitRatio
+      };
+      secondDimensions = {
+        x: available.x,
+        y: available.y + (available.height * node.splitRatio),
+        width: available.width,
+        height: available.height * (1 - node.splitRatio)
+      };
+    }
+
+    return (
+      <div className="absolute inset-0" style={{ pointerEvents: 'none' }}>
+        <WindowTreeRenderer 
+          node={node.first} 
+          depth={depth + 1} 
+          available={firstDimensions} 
+        />
+        <div
+          className="absolute bg-stone-700 hover:bg-stone-500 transition-colors"
+          style={{
+            left: node.direction === 'horizontal' ? `${firstDimensions.width}%` : 0,
+            top: node.direction === 'vertical' ? `${firstDimensions.height}%` : 0,
+            width: node.direction === 'horizontal' ? '4px' : '100%',
+            height: node.direction === 'vertical' ? '4px' : '100%',
+            cursor: node.direction === 'horizontal' ? 'col-resize' : 'row-resize',
+            pointerEvents: 'auto',
+            zIndex: 10
+          }}
+          onMouseDown={(e) => handleResizeStart(e, node)}
+        />
+        <WindowTreeRenderer 
+          node={node.second} 
+          depth={depth + 1} 
+          available={secondDimensions}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full h-screen flex flex-col">
+      <CommandBar 
+        onCommand={handleCommand}
+        currentWorkspaceIndex={Number(currentWorkspaceIndex)}
+        workspaceCount={Number(workspaceCount)}
+      />
+      <div className="flex-1 relative bg-stone-900">
+        {rootNode ? (
+          <WindowTreeRenderer 
+            node={rootNode}
+            terminalStates={terminalStates}
+            updateTerminalState={updateTerminalState}
+          />
+        ) : (
+          <EmptyState />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default WindowManager;
+
+================
+File: components/windows/EditorWindow.jsx
+================
+import React, { useState } from 'react';
+
+const EditorWindow = ({ nodeId, onCommand }) => {
+  const [command, setCommand] = useState('');
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && command.trim()) {
+      onCommand(command.trim());
+      setCommand('');
+    }
+  };
+
+  return (
+    <div className="p-4 font-mono text-sm h-full flex flex-col bg-white">
+      <div className="flex-1">
+        <pre className="text-gray-800">
+          {`function hello() {
+  console.log("Hello, World!");
+}
+
+// Call the function
+hello();`}
+        </pre>
+      </div>
+
+      {/* Command input */}
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-gray-400">$</span>
+        <input
+          type="text"
+          value={command}
+          onChange={(e) => setCommand(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 bg-gray-100 px-2 py-1 rounded text-sm focus:outline-none"
+          placeholder="Type a command..."
+        />
+      </div>
+    </div>
+  );
+};
+
+export default EditorWindow;
+
+================
+File: components/windows/ExplorerWindow.jsx
+================
+import React, { useState } from 'react';
+import { FolderOpen, Code } from 'lucide-react';
+
+const ExplorerWindow = ({ nodeId, onCommand }) => {
+  const [command, setCommand] = useState('');
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && command.trim()) {
+      onCommand(command.trim());
+      setCommand('');
+    }
+  };
+
+  return (
+    <div className="p-4 flex flex-col h-full bg-white">
+      <div className="flex-1">
+        {/* File tree structure */}
+        <div className="flex items-center gap-2 text-gray-700 hover:bg-gray-100 p-2 rounded cursor-pointer">
+          <FolderOpen size={16} />
+          <span>src/</span>
+        </div>
+        <div className="flex items-center gap-2 text-gray-700 hover:bg-gray-100 p-2 rounded cursor-pointer ml-4">
+          <Code size={16} />
+          <span>main.js</span>
+        </div>
+      </div>
+
+      {/* Command input */}
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-gray-400">$</span>
+        <input
+          type="text"
+          value={command}
+          onChange={(e) => setCommand(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 bg-gray-100 px-2 py-1 rounded text-sm focus:outline-none"
+          placeholder="Type a command..."
+        />
+      </div>
+    </div>
+  );
+};
+
+export default ExplorerWindow;
+
+================
+File: components/windows/index.js
+================
+import TerminalWindow from './TerminalWindow';
+import ExplorerWindow from './ExplorerWindow';
+import EditorWindow from './EditorWindow';
+import PreviewWindow from './PreviewWindow';
+import withCommandHandling from '../../hocs/withCommandHandling';
+
+// Create enhanced versions of each window component by wrapping them with the HOC
+export const EnhancedTerminalWindow = withCommandHandling(TerminalWindow);
+export const EnhancedExplorerWindow = withCommandHandling(ExplorerWindow);
+export const EnhancedEditorWindow = withCommandHandling(EditorWindow);
+export const EnhancedPreviewWindow = withCommandHandling(PreviewWindow);
+
+// Also export the base components in case they're needed
+export { TerminalWindow, ExplorerWindow, EditorWindow, PreviewWindow };
+
+================
+File: components/windows/PreviewWindow.jsx
+================
+import React, { useState } from 'react';
+
+const PreviewWindow = ({ nodeId, onCommand }) => {
+  const [command, setCommand] = useState('');
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && command.trim()) {
+      onCommand(command.trim());
+      setCommand('');
+    }
+  };
+
+  return (
+    <div className="p-4 h-full flex flex-col bg-white">
+      <div className="flex-1">
+        <h1 className="text-2xl font-bold">Preview Window</h1>
+        <p className="mt-2 text-gray-600">
+          Live preview of your content will appear here.
+        </p>
+      </div>
+
+      {/* Command input */}
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-gray-400">$</span>
+        <input
+          type="text"
+          value={command}
+          onChange={(e) => setCommand(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 bg-gray-100 px-2 py-1 rounded text-sm focus:outline-none"
+          placeholder="Type a command..."
+        />
+      </div>
+    </div>
+  );
+};
+
+export default PreviewWindow;
+
+================
+File: components/windows/TerminalWindow.jsx
+================
+import React, { useState, useEffect, useRef } from 'react';
+import { WINDOW_TYPES } from '../../utils/windowTypes';
+
+const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow }) => {
+  // Refs for managing focus and scrolling
+  const terminalRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Terminal state
+  const [history, setHistory] = useState([
+    'Welcome to the Terminal! Type "help" for available commands.'
+  ]);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [currentInput, setCurrentInput] = useState('');
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Auto-focus when terminal becomes active
+  useEffect(() => {
+    if (isActive) {
+      inputRef.current?.focus();
+    }
+  }, [isActive]);
+
+  // Auto-scroll to bottom when new output is added
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [history]);
+
+  const handleTerminalClick = () => {
+    inputRef.current?.focus();
+  };
+
+  const executeCommand = (command) => {
+    setHistory(prev => [...prev, `$ ${command}`]);
+    setCommandHistory(prev => [...prev, command]);
+  
+    const cmd = command.toLowerCase();
+  
+    if (Object.keys(WINDOW_TYPES).some(type => type.toLowerCase() === cmd)) {
+      const requestedType = WINDOW_TYPES[cmd.toUpperCase()];
+      transformWindow(nodeId, requestedType);
+      return;
+    }
+  
+    let response;
+    switch (cmd) {
+      case 'help':
+        response = [
+          'Available commands:',
+          '  explorer     - Transform into file explorer',
+          '  editor       - Transform into code editor',
+          '  terminal     - Transform into terminal',
+          '  preview      - Transform into preview window',
+          '  help         - Show this help message',
+          '  clear        - Clear terminal output',
+          '',
+          'Keyboard shortcuts:',
+          '  Ctrl + Enter       - Split vertically',
+          '  Ctrl + Shift + Enter - Split horizontally',
+          '  Ctrl + Backspace   - Close window',
+          '  /                  - Focus command bar'
+        ].join('\n');
+        break;
+  
+      case 'clear':
+        setHistory(['Terminal cleared']);
+        return;
+  
+      case 'version':
+        response = 'SLUMNET Terminal v1.0.0';
+        break;
+  
+      default:
+        response = `Unknown command: ${command}`;
+    }
+  
+    setHistory(prev => [...prev, response]);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && currentInput.trim()) {
+      executeCommand(currentInput.trim());
+      setCurrentInput('');
+      setHistoryIndex(-1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (historyIndex < commandHistory.length - 1) {
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setCurrentInput(commandHistory[commandHistory.length - 1 - newIndex] || '');
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > -1) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setCurrentInput(newIndex === -1 ? '' : commandHistory[commandHistory.length - 1 - newIndex] || '');
+      }
+    }
+  };
+
+  return (
+    <div 
+      className="p-4 bg-stone-900 text-teal-400 font-mono text-sm h-full flex flex-col"
+      onClick={handleTerminalClick}
+    >
+      <div ref={terminalRef} className="flex-1 overflow-auto whitespace-pre-wrap">
+        {history.map((line, i) => (
+          <div key={i}>{line}</div>
+        ))}
+      </div>
+
+      <div className="flex items-center mt-2">
+        <span className="mr-2">$</span>
+        <input
+          ref={inputRef}
+          type="text"
+          value={currentInput}
+          onChange={(e) => setCurrentInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 bg-transparent outline-none text-teal-400"
+          autoFocus
+        />
+      </div>
+    </div>
+  );
+};
+
+export default TerminalWindow;
+
+================
+File: hocs/withCommandHandling.jsx
+================
+import React from 'react';
+import { WINDOW_TYPES } from '../utils/windowTypes';
+
+/**
+ * Higher-Order Component that adds command handling capabilities to window components.
+ * This HOC provides a standardized way to handle commands across different window types,
+ * particularly focusing on window transformation commands.
+ *
+ * @param {React.Component} WrappedComponent - The window component to enhance with command handling
+ * @returns {React.Component} - A new component with command handling capabilities
+ */
+const withCommandHandling = (WrappedComponent) => {
+  // Return a new component that includes the command handling functionality
+  return function WithCommandHandling({ 
+    transformWindow, // Function to change window type
+    nodeId,         // Unique identifier for the window
+    ...props        // All other props passed to the window
+  }) {
+    /**
+     * Handles commands entered in the window.
+     * Currently supports window transformation commands (e.g., 'terminal', 'editor', etc.)
+     * Can be extended to handle other command types in the future.
+     *
+     * @param {string} command - The command string to process
+     * @returns {boolean} - Whether the command was handled
+     */
+    const handleCommand = (command) => {
+      // Convert command to lowercase for case-insensitive comparison
+      const cmd = command.toLowerCase();
+      
+      // Check if the command matches any window type
+      // This allows commands like 'terminal', 'editor', 'explorer', 'preview'
+      const isWindowTypeCommand = Object.keys(WINDOW_TYPES).some(
+        type => type.toLowerCase() === cmd
+      );
+
+      if (isWindowTypeCommand) {
+        // Get the actual window type constant from our types enum
+        const requestedType = WINDOW_TYPES[cmd.toUpperCase()];
+        
+        // Log the transformation request for debugging
+        console.log(`Transforming window ${nodeId} to ${requestedType}`);
+        
+        // Execute the transformation
+        transformWindow(nodeId, requestedType);
+        
+        // Return true to indicate the command was handled
+        return true;
+      }
+      
+      // Return false if the command wasn't handled by this HOC
+      // This allows the wrapped component to handle other commands if needed
+      return false;
+    };
+    
+    // Render the wrapped component with both the original props
+    // and our new command handler
+    return (
+      <WrappedComponent 
+        {...props} 
+        transformWindow={transformWindow}
+        nodeId={nodeId}
+        onCommand={handleCommand}
+      />
+    );
+  };
+};
+
+export default withCommandHandling;
+
+================
+File: hooks/useKeyboardShortcuts.js
+================
+import { useEffect } from 'react';
+import { WINDOW_TYPES } from '../utils/windowTypes';
+
+/**
+ * A custom hook that manages keyboard shortcuts for window operations.
+ * This hook centralizes all keyboard-related logic for the window manager.
+ * 
+ * @param {Object} handlers - Object containing callback functions for various window operations
+ * @param {Function} handlers.onSplitVertical - Handler for vertical split command
+ * @param {Function} handlers.onSplitHorizontal - Handler for horizontal split command
+ * @param {Function} handlers.onClose - Handler for window close command
+ * @param {Function} handlers.createNewWindow - Handler for creating new windows
+ * @param {boolean} hasActiveWindow - Whether there is currently an active window
+ * @param {boolean} hasRootNode - Whether there is a root node in the tree
+ */
+export const useKeyboardShortcuts = ({
+  onSplitVertical,
+  onSplitHorizontal,
+  onClose,
+  createNewWindow,
+  hasActiveWindow,
+  hasRootNode
+}) => {
+  useEffect(() => {
+    // Handler for keyboard events
+    const handleKeyDown = (e) => {
+      // Only handle ctrl/cmd key combinations
+      if (!e.ctrlKey && !e.metaKey) return;
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        
+        if (e.shiftKey) {
+          // Ctrl+Shift+Enter: Horizontal split
+          if (hasActiveWindow) {
+            onSplitHorizontal();
+          } else {
+            createNewWindow(WINDOW_TYPES.TERMINAL);
+          }
+        } else {
+          // Ctrl+Enter: Vertical split
+          if (hasActiveWindow) {
+            onSplitVertical();
+          } else {
+            createNewWindow(WINDOW_TYPES.TERMINAL);
+          }
+        }
+      } else if (e.key === 'Backspace') {
+        // Only allow closing if we have an active window and root node
+        if (hasActiveWindow && hasRootNode) {
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+
+    // Add event listener for keyboard shortcuts
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // Clean up event listener on unmount
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    onSplitVertical,
+    onSplitHorizontal,
+    onClose,
+    createNewWindow,
+    hasActiveWindow,
+    hasRootNode
+  ]);
+};
+
+================
+File: hooks/useWindowManager.js
+================
+import { useState, useCallback, useEffect, useReducer } from 'react';
+import { Node } from '../models/Node';
+import { WINDOW_TYPES } from '../utils/windowTypes';
+import { 
+  splitNodeById, 
+  removeNodeById, 
+  findNodeById, 
+  findAllWindowIds,
+  updateSplitRatio,
+} from '../utils/treeUtils';
+import { getWindowBounds } from '../utils/windowUtils';
+
+export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
+  
+  // Workspace state
+  const [workspaces, setWorkspaces] = useState([
+    { id: 1, name: 'Main', root: defaultLayout, activeNodeId: null, terminalStates: {} },
+    { id: 2, name: 'Code', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 3, name: 'Terminal', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 4, name: 'Preview', root: null, activeNodeId: null, terminalStates: {} }
+  ]);
+  const [currentWorkspaceIndex, setCurrentWorkspaceIndex] = useState(0);
+
+  // Get current workspace data directly from workspaces array
+  const currentWorkspace = workspaces[currentWorkspaceIndex];
+  const rootNode = currentWorkspace.root;
+  const activeNodeId = currentWorkspace.activeNodeId;
+  const terminalStates = currentWorkspace.terminalStates;
+
+  // Add logging to track workspace values
+  console.log('useWindowManager state:', {
+    workspaces,
+    currentWorkspaceIndex,
+    workspaceCount: workspaces.length
+  });
+
+  // Create setActiveNodeId function that updates the workspace
+  const setActiveNodeId = useCallback((nodeId) => {
+    setWorkspaces(prev => {
+      const updated = [...prev];
+      updated[currentWorkspaceIndex] = {
+        ...updated[currentWorkspaceIndex],
+        activeNodeId: nodeId
+      };
+      return updated;
+    });
+  }, [currentWorkspaceIndex]);
+
+  // Update workspace state
+  const updateWorkspace = useCallback((updater) => {
+    setWorkspaces(prev => {
+      const updated = [...prev];
+      if (typeof updater === 'function') {
+        updated[currentWorkspaceIndex] = {
+          ...updated[currentWorkspaceIndex],
+          ...updater(updated[currentWorkspaceIndex])
+        };
+      } else {
+        updated[currentWorkspaceIndex] = {
+          ...updated[currentWorkspaceIndex],
+          ...updater
+        };
+      }
+      return updated;
+    });
+  }, [currentWorkspaceIndex]);
+
+  const switchWorkspace = useCallback((direction) => {
+    setCurrentWorkspaceIndex(prev => {
+      let newIndex;
+      if (direction === 'right') {
+        newIndex = (prev + 1) % workspaces.length;
+      } else {
+        newIndex = prev - 1;
+        if (newIndex < 0) newIndex = workspaces.length - 1;
+      }
+      return newIndex;
+    });
+  }, [workspaces.length]);
+
+  useEffect(() => {
+    const handleWorkspaceKeys = (e) => {
+      if (e.ctrlKey && e.altKey) {
+        switch (e.key) {
+          case 'ArrowRight':
+            e.preventDefault();
+            switchWorkspace('right');
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            switchWorkspace('left');
+            break;
+          // Removed 'n' key handler for creating new workspaces
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleWorkspaceKeys);
+    return () => window.removeEventListener('keydown', handleWorkspaceKeys);
+  }, [switchWorkspace]);
+
+  const workspaceCount = workspaces.length;
+
+
+  // Your existing window navigation functions
+  const navigateToWindow = useCallback((direction) => {
+    if (!activeNodeId || !rootNode) return;
+  
+    const allWindows = getWindowBounds(rootNode);
+    const activeWindow = allWindows.find(w => w.id === activeNodeId);
+    if (!activeWindow) return;
+  
+    const adjacentWindows = allWindows.filter(w => {
+      if (w.id === activeNodeId) return false;
+  
+      const bounds = w.bounds;
+      const activeBounds = activeWindow.bounds;
+  
+      const hasVerticalOverlap = () => 
+        !(bounds.bottom < activeBounds.top || bounds.top > activeBounds.bottom);
+  
+      const horizontalOverlap = () => 
+        !(bounds.right < activeBounds.left || bounds.left > activeBounds.right);
+  
+      const tolerance = 0.01;
+  
+      switch (direction) {
+        case 'up':
+          return hasVerticalOverlap() &&
+                 Math.abs(bounds.bottom - activeBounds.top) < tolerance;
+        case 'down':
+          return hasVerticalOverlap() &&
+                 Math.abs(bounds.top - activeBounds.bottom) < tolerance;
+        case 'left':
+          return horizontalOverlap() &&
+                 Math.abs(bounds.right - activeBounds.left) < tolerance;
+        case 'right':
+          return horizontalOverlap() &&
+                 Math.abs(bounds.left - activeBounds.right) < tolerance;
+        default:
+          return false;
+      }
+    });
+  
+    if (adjacentWindows.length === 0) return;
+  
+    let nextWindow;
+    switch (direction) {
+      case 'left':
+        nextWindow = adjacentWindows.sort((a, b) => 
+          a.bounds.centerX !== b.bounds.centerX
+            ? b.bounds.centerX - a.bounds.centerX
+            : a.bounds.centerY - b.bounds.centerY
+        )[0];
+        break;
+      
+      case 'right':
+        nextWindow = adjacentWindows.sort((a, b) => 
+          a.bounds.centerX !== b.bounds.centerX
+            ? a.bounds.centerX - b.bounds.centerX
+            : a.bounds.centerY - b.bounds.centerY
+        )[0];
+        break;
+      
+      case 'up':
+        nextWindow = adjacentWindows.sort((a, b) => 
+          a.bounds.centerY !== b.bounds.centerY
+            ? b.bounds.centerY - a.bounds.centerY
+            : a.bounds.centerX - b.bounds.centerX
+        )[0];
+        break;
+      
+      case 'down':
+        nextWindow = adjacentWindows.sort((a, b) => 
+          a.bounds.centerY !== b.bounds.centerY
+            ? a.bounds.centerY - b.bounds.centerY
+            : a.bounds.centerX - b.bounds.centerX
+        )[0];
+        break;
+    }
+  
+    if (nextWindow) {
+      setActiveNodeId(nextWindow.id);
+    }
+  }, [activeNodeId, rootNode, setActiveNodeId]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!e.ctrlKey) return;
+  
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          navigateToWindow('left');
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          navigateToWindow('right');
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          navigateToWindow('up');
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          navigateToWindow('down');
+          break;
+      }
+    };
+  
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigateToWindow]);
+
+  const createNewWindow = useCallback((windowType) => {
+    const newNode = Node.createWindow(Date.now(), windowType || WINDOW_TYPES.TERMINAL);
+    
+    if (windowType === WINDOW_TYPES.TERMINAL) {
+      updateWorkspace(workspace => ({
+        ...workspace,
+        terminalStates: {
+          ...workspace.terminalStates,
+          [newNode.id]: {
+            history: ['Welcome to the Terminal! Type "help" for available commands.'],
+            commandHistory: []
+          }
+        }
+      }));
+    }
+    
+    if (!rootNode) {
+      updateWorkspace({
+        root: newNode,
+        activeNodeId: newNode.id
+      });
+      return;
+    }
+    
+    if (!activeNodeId) {
+      updateWorkspace({
+        root: newNode,
+        activeNodeId: newNode.id
+      });
+      return;
+    }
+    
+    splitWindow(activeNodeId, 'vertical', newNode);
+    setActiveNodeId(newNode.id);
+  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId]);
+
+  const splitWindow = useCallback((nodeId, direction, newWindow = null) => {
+    if (!newWindow) {
+      newWindow = Node.createWindow(Date.now(), WINDOW_TYPES.TERMINAL);
+    }
+  
+    updateWorkspace(workspace => ({
+      ...workspace,
+      root: splitNodeById(workspace.root, nodeId, direction, newWindow)
+    }));
+  }, [updateWorkspace]);
+
+  const closeWindow = useCallback((nodeId) => {
+    if (rootNode.type === 'window' && rootNode.id === nodeId) {
+      updateWorkspace({
+        root: null,
+        activeNodeId: null
+      });
+      return;
+    }
+
+    const newRoot = JSON.parse(JSON.stringify(rootNode));
+    const result = removeNodeById(newRoot, nodeId);
+    
+    if (activeNodeId === nodeId && result) {
+      const nextWindowId = findAllWindowIds(result)[0] || null;
+      updateWorkspace({
+        root: result,
+        activeNodeId: nextWindowId
+      });
+    } else {
+      updateWorkspace({
+        root: result
+      });
+    }
+  }, [rootNode, activeNodeId, updateWorkspace]);
+
+  const transformWindow = useCallback((nodeId, newType) => {
+    const newRoot = JSON.parse(JSON.stringify(rootNode));
+    
+    const updateNodeInTree = (node) => {
+      if (!node) return null;
+      
+      if (node.type === 'window' && node.id === nodeId) {
+        node.windowType = newType;
+        return true;
+      }
+      
+      if (node.type === 'split') {
+        return updateNodeInTree(node.first) || updateNodeInTree(node.second);
+      }
+      
+      return false;
+    };
+    
+    const updated = updateNodeInTree(newRoot);
+    if (updated) {
+      updateWorkspace({
+        root: newRoot
+      });
+    }
+  }, [rootNode, updateWorkspace]);
+
+  const handleCommand = useCallback((command) => {
+    const parts = command.split(' ');
+    const cmd = parts[0].toLowerCase();
+
+    switch (cmd) {
+      case 'split':
+        if (activeNodeId) {
+          const direction = parts[1] === 'vertical' ? 'vertical' : 'horizontal';
+          splitWindow(activeNodeId, direction);
+        }
+        break;
+      case 'close':
+        if (activeNodeId) {
+          closeWindow(activeNodeId);
+        }
+        break;
+    }
+  }, [activeNodeId, splitWindow, closeWindow]);
+
+  const wsCount = Number(workspaces.length);
+  const wsIndex = Number(currentWorkspaceIndex);
+
+  return {
+    rootNode,
+    activeNodeId,
+    setActiveNodeId,
+    terminalStates,
+    createNewWindow,
+    splitWindow,
+    closeWindow,
+    transformWindow,
+    handleCommand,
+    navigateToWindow,
+    hasActiveWindow: Boolean(activeNodeId),
+    hasRootNode: Boolean(rootNode),
+    currentWorkspaceIndex: wsIndex,
+    workspaceCount: wsCount,
+    switchWorkspace
+  };
+};
+
+================
+File: index.html
+================
+// index.html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Window Manager</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+================
+File: main.jsx
+================
+// src/main.jsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './styles.css'
+import './app.css'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+
+================
+File: models/Node.js
+================
+/**
+ * Node class representing a window or split in the window management system.
+ * Forms the foundation of our tree-based window layout structure.
+ */
+export class Node {
+  constructor(id, type) {
+    this.id = id;
+    this.type = type;
+    this.windowType = null;
+    this.direction = null;
+    this.first = null;
+    this.second = null;
+    this.splitRatio = 0.5;
+    this.minimumSize = 20;
+    this.state = null;
+  }
+
+  static createWindow(id, windowType, state = null) {
+    const node = new Node(id, 'window');
+    node.windowType = windowType;
+    node.state = state;
+    return node;
+  }
+
+  static createSplit(direction, first, second, ratio = 0.5) {
+    const node = new Node(Date.now(), 'split');
+    node.direction = direction;
+    node.first = first;
+    node.second = second;
+    node.splitRatio = ratio;
+    return node;
+  }
+}
+
+================
+File: styles.css
+================
+@import "tailwindcss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.window-container {
+  position: absolute;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.window-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+  background-color: transparent;
+  transition: background-color 0.2s;
+}
+
+.resize-handle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.resize-handle.horizontal {
+  cursor: col-resize;
+  width: 4px;
+  height: 100%;
+}
+
+.resize-handle.vertical {
+  cursor: row-resize;
+  width: 100%;
+  height: 4px;
+}
+
+================
+File: styles/main.css
+================
+/* This imports all of Tailwind's utility classes */
+@import "tailwindcss";
+
+/* You can add any custom CSS below this line */
+
+================
+File: utils/treeUtils.js
+================
+import { Node } from '../models/Node';
+
+/**
+ * Splits a window by ID, ensuring only the target window is affected
+ * @param {Node} node - Current node in the tree
+ * @param {string} targetId - ID of the window to split
+ * @param {string} direction - Split direction ('vertical' or 'horizontal')
+ * @param {Node} newWindow - New window to insert
+ * @returns {Node} Updated tree structure
+ */
+export const findFirstWindowId = (node) => {
+  if (!node) return null;
+  if (node.type === 'window') return node.id;
+  return findFirstWindowId(node.first) || findFirstWindowId(node.second);
+};
+
+/**
+ * Creates a new split by ID, inserting a new window at the specified location
+ */
+export const splitNodeById = (node, targetId, direction, newWindow) => {
+    if (!node) return null;
+  
+    // If this is the node we want to split
+    if (node.id === targetId && node.type === 'window') {
+      // Create a new split with the current window and new window
+      return Node.createSplit(direction, node, newWindow);
+    }
+  
+    // If this is a split node, recursively check its children
+    if (node.type === 'split') {
+      // Check if target is in first child
+      if (findNodeById(node.first, targetId)) {
+        return {
+          ...node,
+          first: splitNodeById(node.first, targetId, direction, newWindow)
+        };
+      }
+      
+      // Check if target is in second child
+      if (findNodeById(node.second, targetId)) {
+        return {
+          ...node,
+          second: splitNodeById(node.second, targetId, direction, newWindow)
+        };
+      }
+    }
+  
+    // If we haven't found the target node, return the original node unchanged
+    return node;
+  };
+
+export const removeNodeById = (node, targetId) => {
+  if (!node) return null;
+
+  if (node.type === 'split') {
+    if (node.first.id === targetId) {
+      return node.second;
+    }
+    if (node.second.id === targetId) {
+      return node.first;
+    }
+
+    const firstResult = removeNodeById(node.first, targetId);
+    if (firstResult !== node.first) {
+      node.first = firstResult;
+      return node;
+    }
+
+    const secondResult = removeNodeById(node.second, targetId);
+    if (secondResult !== node.second) {
+      node.second = secondResult;
+      return node;
+    }
+  }
+
+  return node;
+};
+
+export const findNodeById = (node, targetId) => {
+  if (!node) return null;
+  
+  if (node.id === targetId && node.type === 'window') return node;
+  
+  if (node.type === 'split') {
+    const firstResult = findNodeById(node.first, targetId);
+    if (firstResult) return firstResult;
+    
+    const secondResult = findNodeById(node.second, targetId);
+    if (secondResult) return secondResult;
+  }
+  
+  return null;
+};
+
+export const findAllWindowIds = (node) => {
+  if (!node) return [];
+  if (node.type === 'window') return [node.id];
+  return [...findAllWindowIds(node.first), ...findAllWindowIds(node.second)];
+};
+
+export const updateSplitRatio = (node, splitId, newRatio) => {
+  if (!node) return;
+
+  if (node.type === 'split' && node.id === splitId) {
+    node.splitRatio = Math.max(0.2, Math.min(0.8, newRatio));
+    return;
+  }
+
+  if (node.type === 'split') {
+    updateSplitRatio(node.first, splitId, newRatio);
+    updateSplitRatio(node.second, splitId, newRatio);
+  }
+};
+
+================
+File: utils/windowTypes.js
+================
+import { FolderOpen, Code, Terminal as TerminalIcon, Eye } from 'lucide-react';
+import { 
+  EnhancedExplorerWindow,
+  EnhancedEditorWindow,
+  EnhancedTerminalWindow,
+  EnhancedPreviewWindow
+} from '../components/windows';
+
+export const WINDOW_TYPES = {
+  EXPLORER: 'explorer',
+  EDITOR: 'editor',
+  TERMINAL: 'terminal',
+  PREVIEW: 'preview'
+};
+
+export const WINDOW_CONTENT = {
+  [WINDOW_TYPES.EXPLORER]: {
+    title: 'File Explorer',
+    icon: FolderOpen,
+    component: EnhancedExplorerWindow
+  },
+  [WINDOW_TYPES.EDITOR]: {
+    title: 'Code Editor',
+    icon: Code,
+    component: EnhancedEditorWindow
+  },
+  [WINDOW_TYPES.TERMINAL]: {
+    title: 'Terminal',
+    icon: TerminalIcon,
+    component: EnhancedTerminalWindow
+  },
+  [WINDOW_TYPES.PREVIEW]: {
+    title: 'Preview',
+    icon: Eye,
+    component: EnhancedPreviewWindow
+  }
+};
+
+================
+File: utils/windowUtils.js
+================
+/**
+ * Contains utility functions for window-specific calculations and operations.
+ * These functions focus on spatial relationships and window bounds rather than
+ * tree structure manipulation.
+ */
+
+/**
+ * Calculates the bounds of windows in the tree. Each window gets its position
+ * and size as percentages of the available space.
+ * 
+ * @param {Node} node - The node to calculate bounds for
+ * @param {Object} available - The available space in percentages
+ * @returns {Array} Array of objects containing window IDs and their bounds
+ */
+export const getWindowBounds = (node, available = { x: 0, y: 0, width: 100, height: 100 }) => {
+    if (node.type === 'window') {
+      return [{
+        id: node.id,
+        bounds: {
+          left: available.x,
+          top: available.y,
+          right: available.x + available.width,
+          bottom: available.y + available.height,
+          width: available.width,
+          height: available.height,
+          centerX: available.x + (available.width / 2),
+          centerY: available.y + (available.height / 2)
+        }
+      }];
+    }
+  
+    // For split nodes, recursively get bounds of children
+    const bounds = [];
+    
+    if (node.direction === 'horizontal') {
+      const firstHalf = {
+        x: available.x,
+        y: available.y,
+        width: available.width * node.splitRatio,
+        height: available.height
+      };
+      const secondHalf = {
+        x: available.x + (available.width * node.splitRatio),
+        y: available.y,
+        width: available.width * (1 - node.splitRatio),
+        height: available.height
+      };
+      bounds.push(...getWindowBounds(node.first, firstHalf));
+      bounds.push(...getWindowBounds(node.second, secondHalf));
+    } else {
+      const firstHalf = {
+        x: available.x,
+        y: available.y,
+        width: available.width,
+        height: available.height * node.splitRatio
+      };
+      const secondHalf = {
+        x: available.x,
+        y: available.y + (available.height * node.splitRatio),
+        width: available.width,
+        height: available.height * (1 - node.splitRatio)
+      };
+      bounds.push(...getWindowBounds(node.first, firstHalf));
+      bounds.push(...getWindowBounds(node.second, secondHalf));
+    }
+  
+    return bounds;
+  };
+  
+  /**
+   * Determines if two windows are adjacent in a specific direction.
+   * Uses a small tolerance value to account for floating-point calculations.
+   * 
+   * @param {Object} window1 - First window with bounds
+   * @param {Object} window2 - Second window with bounds
+   * @param {string} direction - Direction to check ('left', 'right', 'up', 'down')
+   * @returns {boolean} Whether the windows are adjacent
+   */
+  export const areWindowsAdjacent = (window1, window2, direction) => {
+    const tolerance = 0.01; // 1% tolerance for floating point comparisons
+    
+    switch (direction) {
+      case 'left':
+        return Math.abs(window1.bounds.left - window2.bounds.right) < tolerance &&
+               !(window1.bounds.bottom < window2.bounds.top || window1.bounds.top > window2.bounds.bottom);
+      case 'right':
+        return Math.abs(window1.bounds.right - window2.bounds.left) < tolerance &&
+               !(window1.bounds.bottom < window2.bounds.top || window1.bounds.top > window2.bounds.bottom);
+      case 'up':
+        return Math.abs(window1.bounds.top - window2.bounds.bottom) < tolerance &&
+               !(window1.bounds.right < window2.bounds.left || window1.bounds.left > window2.bounds.right);
+      case 'down':
+        return Math.abs(window1.bounds.bottom - window2.bounds.top) < tolerance &&
+               !(window1.bounds.right < window2.bounds.left || window1.bounds.left > window2.bounds.right);
+      default:
+        return false;
+    }
+  };
+  
+  /**
+   * Finds the next window in a specified direction from the active window.
+   * 
+   * @param {Node} rootNode - The root node of the window tree
+   * @param {string} activeNodeId - ID of the currently active window
+   * @param {string} direction - Direction to look for the next window
+   * @returns {string|null} ID of the next window, or null if none found
+   */
+  export const findNextWindow = (rootNode, activeNodeId, direction) => {
+    const allWindows = getWindowBounds(rootNode);
+    const activeWindow = allWindows.find(w => w.id === activeNodeId);
+    if (!activeWindow) return null;
+  
+    const adjacentWindows = allWindows.filter(w => 
+      w.id !== activeNodeId && areWindowsAdjacent(activeWindow, w, direction)
+    );
+  
+    if (adjacentWindows.length === 0) return null;
+  
+    // Sort adjacent windows based on position and direction
+    let nextWindow;
+    switch (direction) {
+      case 'left':
+        nextWindow = adjacentWindows.sort((a, b) => 
+          a.bounds.centerX !== b.bounds.centerX
+            ? b.bounds.centerX - a.bounds.centerX
+            : a.bounds.centerY - b.bounds.centerY
+        )[0];
+        break;
+      case 'right':
+        nextWindow = adjacentWindows.sort((a, b) => 
+          a.bounds.centerX !== b.bounds.centerX
+            ? a.bounds.centerX - b.bounds.centerX
+            : a.bounds.centerY - b.bounds.centerY
+        )[0];
+        break;
+      case 'up':
+        nextWindow = adjacentWindows.sort((a, b) => 
+          a.bounds.centerY !== b.bounds.centerY
+            ? b.bounds.centerY - a.bounds.centerY
+            : a.bounds.centerX - b.bounds.centerX
+        )[0];
+        break;
+      case 'down':
+        nextWindow = adjacentWindows.sort((a, b) => 
+          a.bounds.centerY !== b.bounds.centerY
+            ? a.bounds.centerY - b.bounds.centerY
+            : a.bounds.centerX - b.bounds.centerX
+        )[0];
+        break;
+    }
+  
+    return nextWindow?.id || null;
+  };
+
+
+
+================================================================
+End of Codebase
+================================================================
