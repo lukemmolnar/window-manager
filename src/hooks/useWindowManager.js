@@ -447,7 +447,7 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     updateWorkspace(workspace => {
       const newRoot = JSON.parse(JSON.stringify(workspace.root));
       
-      // Helper function to find all affected splits
+      // Helper function to find all affected splits and determine if window is in second child
       const findAffectedSplits = (node, targetId) => {
         if (!node) return [];
         
@@ -459,10 +459,19 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
           if (targetInFirst || targetInSecond) {
             // Add this split if it matches our resize direction
             if ((direction === 'left' || direction === 'right') && node.direction === 'horizontal') {
-              splits.push({ node, targetInFirst: !!targetInFirst });
+              splits.push({ 
+                node, 
+                targetInFirst: !!targetInFirst,
+                // If this is a horizontal split and window is in second child, it's on the right side
+                isRightSide: !!targetInSecond && node.direction === 'horizontal'
+              });
             }
             if ((direction === 'up' || direction === 'down') && node.direction === 'vertical') {
-              splits.push({ node, targetInFirst: !!targetInFirst });
+              splits.push({ 
+                node, 
+                targetInFirst: !!targetInFirst,
+                isRightSide: false // Not relevant for vertical splits
+              });
             }
           }
           
@@ -477,8 +486,14 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
       const resizeStep = 0.05;
   
       // Apply resize to all affected splits
-      affectedSplits.forEach(({ node, targetInFirst }) => {
-        switch (direction) {
+      affectedSplits.forEach(({ node, targetInFirst, isRightSide }) => {
+        // For horizontal splits, determine if we need to invert the direction
+        let effectiveDirection = direction;
+        if (isRightSide && (direction === 'left' || direction === 'right')) {
+          effectiveDirection = direction === 'left' ? 'right' : 'left';
+        }
+        
+        switch (effectiveDirection) {
           case 'left': // Shrink width
             if (targetInFirst) {
               node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);

@@ -125,6 +125,11 @@ The core resize functionality is implemented in the `resizeActiveWindow` functio
 const resizeActiveWindow = useCallback((direction) => {
   if (!activeNodeId || !rootNode || !isResizeMode) return;
 
+  // Get the window bounds to determine the active window's position on screen
+  const allWindows = getWindowBounds(rootNode);
+  const activeWindow = allWindows.find(w => w.id === activeNodeId);
+  if (!activeWindow) return;
+  
   updateWorkspace(workspace => {
     const newRoot = JSON.parse(JSON.stringify(workspace.root));
     
@@ -157,40 +162,50 @@ const resizeActiveWindow = useCallback((direction) => {
     const affectedSplits = findAffectedSplits(newRoot, activeNodeId);
     const resizeStep = 0.05;
 
-    // Apply resize to all affected splits
+    // Apply resize to all affected splits with position-aware logic
     affectedSplits.forEach(({ node, targetInFirst }) => {
-      switch (direction) {
-        case 'left': // Shrink width
-          if (targetInFirst) {
-            node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
-          } else {
-            node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
-          }
-          break;
-          
-        case 'right': // Grow width
-          if (targetInFirst) {
-            node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
-          } else {
-            node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
-          }
-          break;
-          
-        case 'up': // Shrink height
-          if (targetInFirst) {
-            node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
-          } else {
-            node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
-          }
-          break;
-          
-        case 'down': // Grow height
-          if (targetInFirst) {
-            node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
-          } else {
-            node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
-          }
-          break;
+      // For horizontal splits, adjust behavior based on window position
+      if (node.direction === 'horizontal') {
+        switch (direction) {
+          case 'left': // Should always shrink width regardless of position
+            if (targetInFirst) {
+              // First child (left side): decrease ratio to shrink
+              node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
+            } else {
+              // Second child (right side): increase ratio to shrink
+              node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
+            }
+            break;
+            
+          case 'right': // Should always grow width regardless of position
+            if (targetInFirst) {
+              // First child (left side): increase ratio to grow
+              node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
+            } else {
+              // Second child (right side): decrease ratio to grow
+              node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
+            }
+            break;
+        }
+      } else {
+        // For vertical splits, keep original behavior
+        switch (direction) {
+          case 'up': // Shrink height
+            if (targetInFirst) {
+              node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
+            } else {
+              node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
+            }
+            break;
+            
+          case 'down': // Grow height
+            if (targetInFirst) {
+              node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
+            } else {
+              node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
+            }
+            break;
+        }
       }
     });
 
@@ -201,24 +216,41 @@ const resizeActiveWindow = useCallback((direction) => {
 
 ### How the Algorithm Works
 
-1. **Finding Affected Splits**:
+1. **Detecting Window Position in Tree Structure**:
+   - The algorithm determines if the active window is in the second child of a horizontal split
+   - This is a stable way to identify windows on the right side of the screen
+   - Unlike using screen coordinates, this approach doesn't change as the window resizes
+   - For windows in the second child of a horizontal split, horizontal resize directions are inverted
+
+2. **Finding Affected Splits**:
    - The algorithm traverses the window tree to find all split nodes that affect the active window
    - It only considers splits that match the resize direction (horizontal splits for left/right, vertical splits for up/down)
    - It tracks whether the active window is in the first or second child of each split
 
-2. **Applying Resize**:
+3. **Applying Resize**:
    - For each affected split, the algorithm adjusts the `splitRatio` property
-   - The adjustment direction depends on:
-     - The resize direction (left/right/up/down)
+   - The adjustment depends on:
+     - The effective direction (after potential inversion for right-side windows)
      - Whether the active window is in the first or second child of the split
    - The resize step is fixed at 0.05 (5%) per key press
    - The splitRatio is constrained between 0.1 (10%) and 0.9 (90%)
 
-3. **Window Tree Structure**:
+4. **Window Tree Structure**:
    - The window tree consists of nested split and window nodes
    - Split nodes have a direction (horizontal/vertical) and a splitRatio
    - The splitRatio determines how space is divided between the first and second child
    - Window nodes represent actual windows with content
+
+### Intuitive Resize Controls
+
+The resize algorithm has been designed to provide intuitive controls:
+
+- Left arrow key always shrinks a window horizontally
+- Right arrow key always grows a window horizontally
+- Up arrow key always shrinks a window vertically
+- Down arrow key always grows a window vertically
+
+This behavior is consistent regardless of whether the window is on the left or right side of the screen. For windows on the right side of the screen, the horizontal controls are automatically inverted internally to maintain this intuitive behavior.
 
 ## Customization Options
 
