@@ -470,7 +470,8 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
               splits.push({ 
                 node, 
                 targetInFirst: !!targetInFirst,
-                isRightSide: false // Not relevant for vertical splits
+                isRightSide: !!targetInSecond && node.direction === 'horizontal',
+                isBottomSide: !!targetInSecond && node.direction === 'vertical'
               });
             }
           }
@@ -486,11 +487,14 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
       const resizeStep = 0.05;
   
       // Apply resize to all affected splits
-      affectedSplits.forEach(({ node, targetInFirst, isRightSide }) => {
-        // For horizontal splits, determine if we need to invert the direction
+      affectedSplits.forEach(({ node, targetInFirst, isRightSide, isBottomSide }) => {
+        // Determine if we need to invert the direction based on window position
         let effectiveDirection = direction;
         if (isRightSide && (direction === 'left' || direction === 'right')) {
           effectiveDirection = direction === 'left' ? 'right' : 'left';
+        }
+        if (isBottomSide && (direction === 'up' || direction === 'down')) {
+          effectiveDirection = direction === 'up' ? 'down' : 'up';
         }
         
         switch (effectiveDirection) {

@@ -217,10 +217,12 @@ const resizeActiveWindow = useCallback((direction) => {
 ### How the Algorithm Works
 
 1. **Detecting Window Position in Tree Structure**:
-   - The algorithm determines if the active window is in the second child of a horizontal split
-   - This is a stable way to identify windows on the right side of the screen
-   - Unlike using screen coordinates, this approach doesn't change as the window resizes
-   - For windows in the second child of a horizontal split, horizontal resize directions are inverted
+   - The algorithm determines if the active window is in the second child of a split
+   - For horizontal splits, it identifies windows on the right side of the screen
+   - For vertical splits, it identifies windows on the bottom side of the screen
+   - This is a stable way to identify window positions that doesn't change as windows resize
+   - For windows on the right side, horizontal resize directions are inverted
+   - For windows on the bottom side, vertical resize directions are inverted
 
 2. **Finding Affected Splits**:
    - The algorithm traverses the window tree to find all split nodes that affect the active window
