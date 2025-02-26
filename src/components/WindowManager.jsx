@@ -27,20 +27,48 @@ export const WindowManager = ({ defaultLayout = null }) => {
 
   const [dragState, setDragState] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [flashingWindowIds, setFlashingWindowIds] = useState(new Set());
+  
+  // Function to flash a window's border red
+  const flashWindowBorder = useCallback((windowId) => {
+    setFlashingWindowIds(prev => {
+      const newSet = new Set(prev);
+      newSet.add(windowId);
+      return newSet;
+    });
+    
+    // Remove the window from flashing state after 500ms
+    setTimeout(() => {
+      setFlashingWindowIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(windowId);
+        return newSet;
+      });
+    }, 500);
+  }, []);
   
   // Override window.alert to use our notification system
   useEffect(() => {
     const originalAlert = window.alert;
     window.alert = (message) => {
       console.log('Alert:', message);
-      setNotification(message);
-      setTimeout(() => setNotification(null), 3000); // Hide after 3 seconds
+      
+      // If the message is about splitting or creating windows, flash the active window border
+      if (message.includes('split') || message.includes('create')) {
+        if (activeNodeId) {
+          flashWindowBorder(activeNodeId);
+        }
+      } else {
+        // For other alerts, show the notification
+        setNotification(message);
+        setTimeout(() => setNotification(null), 3000); // Hide after 3 seconds
+      }
     };
     
     return () => {
       window.alert = originalAlert;
     };
-  }, []);
+  }, [activeNodeId, flashWindowBorder]);
 
   // Add keyboard shortcuts
   useKeyboardShortcuts({
@@ -140,21 +168,18 @@ export const WindowManager = ({ defaultLayout = null }) => {
     // Store the original ratio
     const originalRatio = split.splitRatio;
     
-    // Apply the new ratio temporarily
+    // Apply the new ratio
     split.splitRatio = newRatio;
     
-    // Check if this would result in windows that are too small
+    // Check if this would result in windows that are too small, but don't block the resize
     if (hasWindowsBelowMinSize(rootNode)) {
-      console.log('Mouse resize blocked: would result in windows smaller than minimum size');
-      // Restore the original ratio
-      split.splitRatio = originalRatio;
-      return;
+      console.log('Windows are below minimum size, but resize is allowed');
     }
     
     // If we get here, the resize is allowed
     // Force a re-render
     setDragState(prev => ({ ...prev }));
-  }, [dragState, rootNode, hasWindowsBelowMinSize]);
+  }, [dragState, rootNode, hasWindowsBelowMinSize, activeNodeId, flashWindowBorder]);
 
   const handleResizeEnd = useCallback(() => {
     setDragState(null);
@@ -184,16 +209,21 @@ export const WindowManager = ({ defaultLayout = null }) => {
       const Component = windowContent.component;
       const isActive = node.id === activeNodeId;
   
+      // Check if this window is currently flashing
+      const isFlashing = flashingWindowIds.has(node.id);
+      
       return (
         <div
           className={`absolute overflow-hidden border-2 ${
+            isFlashing ? 'border-red-600' : 
             isActive ? (isResizeMode ? 'border-yellow-500' : 'border-teal-500') : 'border-stone-600'
-          }`}
+          } ${isFlashing ? 'animate-pulse' : ''}`}
           style={{
             left: `${available.x}%`,
             top: `${available.y}%`,
             width: `${available.width}%`,
             height: `${available.height}%`,
+            transition: 'border-color 0.2s ease-in-out'
           }}
           onClick={() => setActiveNodeId(node.id)}
         >

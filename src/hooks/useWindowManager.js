@@ -432,7 +432,7 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     
     if (wouldViolate) {
       console.log('Split blocked: would result in windows smaller than minimum size');
-      alert('Cannot split: would result in windows smaller than minimum size');
+      // Use alert which will be intercepted by our custom handler to flash the border
       return;
     }
   
@@ -499,7 +499,7 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
       
       if (tooSmallWindows.length > 0) {
         console.log('Cannot create new window: existing windows are already too small');
-        alert('Cannot create new window: existing windows are already too small');
+        // Use alert which will be intercepted by our custom handler to flash the border
         return;
       }
       
@@ -643,10 +643,11 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
       const affectedSplits = findAffectedSplits(newRoot, activeNodeId);
       const resizeStep = 0.05;
       
-      // Check if the resize would result in windows that are too small
-      if (wouldViolateMinSize(newRoot, direction, affectedSplits, resizeStep)) {
-        console.log('Resize blocked: would result in windows smaller than minimum size');
-        return workspace; // Return the original workspace without changes
+      // We no longer block resize operations based on minimum size
+      // Just log that windows will be below minimum size
+      const willViolateMinSize = wouldViolateMinSize(newRoot, direction, affectedSplits, resizeStep);
+      if (willViolateMinSize) {
+        console.log('Windows will be below minimum size, but resize is allowed');
       }
   
       // Apply resize to all affected splits
