@@ -10,6 +10,11 @@ import {
 } from '../utils/treeUtils';
 import { getWindowBounds } from '../utils/windowUtils';
 import { useWindowState } from '../context/WindowStateContext';
+import { 
+  MIN_WINDOW_WIDTH_PX, 
+  MIN_WINDOW_HEIGHT_PX 
+} from '../utils/windowSizeConstants';
+
 export const useWindowManager = ({ defaultLayout = null } = {}) => {
   // Workspace state
   const [workspaces, setWorkspaces] = useState([
@@ -284,6 +289,159 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
   // Get window state management functions
   const { getWindowState, setWindowState, removeWindowState } = useWindowState();
 
+  // Helper function to convert percentage-based bounds to pixel dimensions
+  const calculatePixelDimensions = useCallback((bounds) => {
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    const pixelDimensions = {
+      width: (bounds.width / 100) * windowWidth,
+      height: (bounds.height / 100) * windowHeight
+    };
+    
+    console.log('Window dimensions (percentage):', bounds);
+    console.log('Window dimensions (pixels):', pixelDimensions);
+    console.log('Minimum required:', MIN_WINDOW_WIDTH_PX, 'x', MIN_WINDOW_HEIGHT_PX);
+    console.log('Is too small:', 
+      pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+      pixelDimensions.height < MIN_WINDOW_HEIGHT_PX
+    );
+    
+    return pixelDimensions;
+  }, []);
+
+  // Helper function to check if a resize operation would result in windows that are too small
+  const wouldViolateMinSize = useCallback((root, direction, affectedSplits, resizeStep) => {
+    console.log('Checking if resize would violate minimum size...');
+    console.log('Direction:', direction);
+    console.log('Affected splits:', affectedSplits.length);
+    console.log('Browser window size:', window.innerWidth, 'x', window.innerHeight);
+    
+    // Create a deep copy of the root to simulate the resize
+    const simulatedRoot = JSON.parse(JSON.stringify(root));
+    
+    // Apply the resize to the simulated root
+    affectedSplits.forEach(({ node: originalNode, targetInFirst, isRightSide, isBottomSide }) => {
+      // Find the corresponding node in the simulated root
+      const simulatedNode = findNodeById(simulatedRoot, originalNode.id);
+      if (!simulatedNode) return;
+      
+      console.log('Simulating resize on node:', simulatedNode.id);
+      console.log('Original split ratio:', simulatedNode.splitRatio);
+      
+      // Determine effective direction
+      let effectiveDirection = direction;
+      if (isRightSide && (direction === 'left' || direction === 'right')) {
+        effectiveDirection = direction === 'left' ? 'right' : 'left';
+      }
+      if (isBottomSide && (direction === 'up' || direction === 'down')) {
+        effectiveDirection = direction === 'up' ? 'down' : 'up';
+      }
+      
+      console.log('Effective direction:', effectiveDirection);
+      
+      // Apply the resize
+      switch (effectiveDirection) {
+        case 'left': // Shrink width
+          if (targetInFirst) {
+            simulatedNode.splitRatio = Math.max(0.1, simulatedNode.splitRatio - resizeStep);
+          } else {
+            simulatedNode.splitRatio = Math.min(0.9, simulatedNode.splitRatio + resizeStep);
+          }
+          break;
+          
+        case 'right': // Grow width
+          if (targetInFirst) {
+            simulatedNode.splitRatio = Math.min(0.9, simulatedNode.splitRatio + resizeStep);
+          } else {
+            simulatedNode.splitRatio = Math.max(0.1, simulatedNode.splitRatio - resizeStep);
+          }
+          break;
+          
+        case 'up': // Shrink height
+          if (targetInFirst) {
+            simulatedNode.splitRatio = Math.max(0.1, simulatedNode.splitRatio - resizeStep);
+          } else {
+            simulatedNode.splitRatio = Math.min(0.9, simulatedNode.splitRatio + resizeStep);
+          }
+          break;
+          
+        case 'down': // Grow height
+          if (targetInFirst) {
+            simulatedNode.splitRatio = Math.min(0.9, simulatedNode.splitRatio + resizeStep);
+          } else {
+            simulatedNode.splitRatio = Math.max(0.1, simulatedNode.splitRatio - resizeStep);
+          }
+          break;
+      }
+      
+      console.log('New split ratio:', simulatedNode.splitRatio);
+    });
+    
+    // Calculate the bounds of all windows after the simulated resize
+    const simulatedWindows = getWindowBounds(simulatedRoot);
+    console.log('Number of windows to check:', simulatedWindows.length);
+    
+    // Check if any window would be smaller than the minimum size
+    const tooSmallWindows = simulatedWindows.filter(window => {
+      const pixelDimensions = calculatePixelDimensions(window.bounds);
+      return pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+             pixelDimensions.height < MIN_WINDOW_HEIGHT_PX;
+    });
+    
+    const wouldViolate = tooSmallWindows.length > 0;
+    console.log('Windows that would be too small:', tooSmallWindows.length);
+    console.log('Would violate minimum size:', wouldViolate);
+    
+    return wouldViolate;
+  }, [calculatePixelDimensions]);
+
+  // Define splitWindow before createNewWindow since createNewWindow depends on it
+  const splitWindow = useCallback((nodeId, direction, newWindow = null) => {
+    // Get the original window's state if it exists
+    const originalWindowState = getWindowState(nodeId);
+    
+    if (!newWindow) {
+      newWindow = Node.createWindow(Date.now(), WINDOW_TYPES.TERMINAL);
+    }
+    
+    // If the original window had state, copy it to the new window
+    if (originalWindowState) {
+      // Clone the content to avoid reference issues
+      const clonedContent = JSON.parse(JSON.stringify(originalWindowState.content));
+      setWindowState(newWindow.id, newWindow.windowType, clonedContent);
+    }
+    
+    // Check if splitting would result in windows that are too small
+    const simulatedRoot = JSON.parse(JSON.stringify(rootNode));
+    const simulatedSplitRoot = splitNodeById(simulatedRoot, nodeId, direction, JSON.parse(JSON.stringify(newWindow)));
+    
+    // Calculate the bounds of all windows after the simulated split
+    const simulatedWindows = getWindowBounds(simulatedSplitRoot);
+    console.log('Simulating split - number of windows:', simulatedWindows.length);
+    
+    // Check if any window would be smaller than the minimum size
+    const tooSmallWindows = simulatedWindows.filter(window => {
+      const pixelDimensions = calculatePixelDimensions(window.bounds);
+      return pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+             pixelDimensions.height < MIN_WINDOW_HEIGHT_PX;
+    });
+    
+    const wouldViolate = tooSmallWindows.length > 0;
+    console.log('Split would create windows that are too small:', wouldViolate);
+    
+    if (wouldViolate) {
+      console.log('Split blocked: would result in windows smaller than minimum size');
+      alert('Cannot split: would result in windows smaller than minimum size');
+      return;
+    }
+  
+    updateWorkspace(workspace => ({
+      ...workspace,
+      root: splitNodeById(workspace.root, nodeId, direction, newWindow)
+    }));
+  }, [updateWorkspace, getWindowState, setWindowState, rootNode, calculatePixelDimensions]);
+
   const createNewWindow = useCallback((windowType) => {
     const newNode = Node.createWindow(Date.now(), windowType || WINDOW_TYPES.TERMINAL);
     
@@ -318,6 +476,7 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     setWindowState(newNode.id, newNode.windowType, initialContent);
     
     if (!rootNode) {
+      // First window, always allowed
       updateWorkspace({
         root: newNode,
         activeNodeId: newNode.id
@@ -326,6 +485,24 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     }
     
     if (!activeNodeId) {
+      // No active window, but we have a root - this is unusual
+      // Let's check if we can add a window without violating minimum size
+      const simulatedRoot = JSON.parse(JSON.stringify(rootNode));
+      const simulatedWindows = getWindowBounds(simulatedRoot);
+      
+      // Check if existing windows are already too small
+      const tooSmallWindows = simulatedWindows.filter(window => {
+        const pixelDimensions = calculatePixelDimensions(window.bounds);
+        return pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+               pixelDimensions.height < MIN_WINDOW_HEIGHT_PX;
+      });
+      
+      if (tooSmallWindows.length > 0) {
+        console.log('Cannot create new window: existing windows are already too small');
+        alert('Cannot create new window: existing windows are already too small');
+        return;
+      }
+      
       updateWorkspace({
         root: newNode,
         activeNodeId: newNode.id
@@ -333,30 +510,10 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
       return;
     }
     
+    // Use splitWindow which already has minimum size checks
     splitWindow(activeNodeId, 'vertical', newNode);
     setActiveNodeId(newNode.id);
-  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState]);
-
-  const splitWindow = useCallback((nodeId, direction, newWindow = null) => {
-    // Get the original window's state if it exists
-    const originalWindowState = getWindowState(nodeId);
-    
-    if (!newWindow) {
-      newWindow = Node.createWindow(Date.now(), WINDOW_TYPES.TERMINAL);
-    }
-    
-    // If the original window had state, copy it to the new window
-    if (originalWindowState) {
-      // Clone the content to avoid reference issues
-      const clonedContent = JSON.parse(JSON.stringify(originalWindowState.content));
-      setWindowState(newWindow.id, newWindow.windowType, clonedContent);
-    }
-  
-    updateWorkspace(workspace => ({
-      ...workspace,
-      root: splitNodeById(workspace.root, nodeId, direction, newWindow)
-    }));
-  }, [updateWorkspace, getWindowState, setWindowState]);
+  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState, calculatePixelDimensions, splitWindow]);
 
   const closeWindow = useCallback((nodeId) => {
     // Clean up window state when closing a window
@@ -485,6 +642,12 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
   
       const affectedSplits = findAffectedSplits(newRoot, activeNodeId);
       const resizeStep = 0.05;
+      
+      // Check if the resize would result in windows that are too small
+      if (wouldViolateMinSize(newRoot, direction, affectedSplits, resizeStep)) {
+        console.log('Resize blocked: would result in windows smaller than minimum size');
+        return workspace; // Return the original workspace without changes
+      }
   
       // Apply resize to all affected splits
       affectedSplits.forEach(({ node, targetInFirst, isRightSide, isBottomSide }) => {
@@ -534,7 +697,7 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
   
       return { ...workspace, root: newRoot };
     });
-  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace]);
+  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace, wouldViolateMinSize]);
   
   // Also add a debug check to see if the keyboard shortcut and resize mode are working
   useEffect(() => {

@@ -26,6 +26,21 @@ export const WindowManager = ({ defaultLayout = null }) => {
   } = useWindowManager({ defaultLayout });
 
   const [dragState, setDragState] = useState(null);
+  const [notification, setNotification] = useState(null);
+  
+  // Override window.alert to use our notification system
+  useEffect(() => {
+    const originalAlert = window.alert;
+    window.alert = (message) => {
+      console.log('Alert:', message);
+      setNotification(message);
+      setTimeout(() => setNotification(null), 3000); // Hide after 3 seconds
+    };
+    
+    return () => {
+      window.alert = originalAlert;
+    };
+  }, []);
 
   // Add keyboard shortcuts
   useKeyboardShortcuts({
@@ -75,6 +90,43 @@ export const WindowManager = ({ defaultLayout = null }) => {
     });
   }, []);
 
+  // Helper function to convert percentage-based bounds to pixel dimensions
+  const calculatePixelDimensions = useCallback((bounds) => {
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    return {
+      width: (bounds.width / 100) * windowWidth,
+      height: (bounds.height / 100) * windowHeight
+    };
+  }, []);
+  
+  // Helper function to check if a window tree would have any windows smaller than the minimum size
+  const hasWindowsBelowMinSize = useCallback((root) => {
+    if (!root) return false;
+    
+    // Import constants directly here to avoid dependency issues
+    const MIN_WINDOW_WIDTH_PX = 300;
+    const MIN_WINDOW_HEIGHT_PX = 200;
+    
+    // Calculate the bounds of all windows
+    const allWindows = getWindowBounds(root);
+    
+    // Check if any window would be smaller than the minimum size
+    return allWindows.some(window => {
+      const pixelDimensions = calculatePixelDimensions(window.bounds);
+      const isTooSmall = pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+                         pixelDimensions.height < MIN_WINDOW_HEIGHT_PX;
+      
+      if (isTooSmall) {
+        console.log('Window too small:', window.id);
+        console.log('Dimensions:', pixelDimensions);
+      }
+      
+      return isTooSmall;
+    });
+  }, [calculatePixelDimensions]);
+
   const handleResizeMove = useCallback((e) => {
     if (!dragState) return;
 
@@ -84,11 +136,25 @@ export const WindowManager = ({ defaultLayout = null }) => {
       : (e.clientY - initialPos.y) / window.innerHeight;
 
     const newRatio = Math.max(0.1, Math.min(0.9, initialRatio + delta));
+    
+    // Store the original ratio
+    const originalRatio = split.splitRatio;
+    
+    // Apply the new ratio temporarily
     split.splitRatio = newRatio;
-
+    
+    // Check if this would result in windows that are too small
+    if (hasWindowsBelowMinSize(rootNode)) {
+      console.log('Mouse resize blocked: would result in windows smaller than minimum size');
+      // Restore the original ratio
+      split.splitRatio = originalRatio;
+      return;
+    }
+    
+    // If we get here, the resize is allowed
     // Force a re-render
     setDragState(prev => ({ ...prev }));
-  }, [dragState]);
+  }, [dragState, rootNode, hasWindowsBelowMinSize]);
 
   const handleResizeEnd = useCallback(() => {
     setDragState(null);
@@ -221,6 +287,16 @@ export const WindowManager = ({ defaultLayout = null }) => {
           />
         ) : (
           <EmptyState />
+        )}
+        
+        {/* Notification system */}
+        {notification && (
+          <div 
+            className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50"
+            style={{ maxWidth: '80%' }}
+          >
+            {notification}
+          </div>
         )}
       </div>
     </div>
