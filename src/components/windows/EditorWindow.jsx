@@ -1,7 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const EditorWindow = ({ nodeId, onCommand }) => {
+const EditorWindow = ({ nodeId, onCommand, windowState, updateWindowState }) => {
+  // Use state from windowState or default value
+  const [text, setText] = useState(windowState?.text || `function hello() {\n  console.log("Hello, World!");\n}\n\n// Call the function\nhello();`);
   const [command, setCommand] = useState('');
+  
+  // Sync with external state when it changes
+  useEffect(() => {
+    if (windowState && windowState.text !== undefined) {
+      setText(windowState.text);
+    }
+  }, [windowState]);
+  
+  // Update window state when text changes
+  useEffect(() => {
+    if (updateWindowState) {
+      updateWindowState({ text });
+    }
+  }, [text, updateWindowState]);
   
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && command.trim()) {
@@ -10,17 +26,19 @@ const EditorWindow = ({ nodeId, onCommand }) => {
     }
   };
 
+  const handleTextChange = (e) => {
+    setText(e.target.value);
+  };
+
   return (
     <div className="p-4 font-mono text-sm h-full flex flex-col bg-white">
       <div className="flex-1">
-        <pre className="text-gray-800">
-          {`function hello() {
-  console.log("Hello, World!");
-}
-
-// Call the function
-hello();`}
-        </pre>
+        <textarea
+          className="w-full h-full text-gray-800 resize-none focus:outline-none"
+          value={text}
+          onChange={handleTextChange}
+          autoFocus
+        />
       </div>
 
       {/* Command input */}

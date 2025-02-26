@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 
 export const CommandBar = ({ 
   onCommand, 
-  currentWorkspaceIndex = 0
+  currentWorkspaceIndex = 0,
+  switchWorkspace
 }) => {
+  console.log('CommandBar render, currentWorkspaceIndex:', currentWorkspaceIndex);
   const [command, setCommand] = useState('');
   const inputRef = useRef(null);
 
@@ -21,7 +23,7 @@ export const CommandBar = ({
         inputRef.current?.focus();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
@@ -29,25 +31,19 @@ export const CommandBar = ({
   return (
     <div className="w-full bg-stone-800 p-2 flex items-center gap-2">
       <div className="flex gap-2 items-center pr-2 border-r border-stone-600">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div
-            key={i}
-            className={`rounded-full transition-all duration-200 ${
-              i === currentWorkspaceIndex 
-                ? 'w-3 h-3 bg-teal-400' 
-                : 'w-2 h-2 bg-stone-600'
-            }`}
-          />
-        ))}
+        <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 0 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(0)} />
+        <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 1 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(1)} />
+        <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 2 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(2)} />
+        <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 3 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(3)} />
       </div>
       <span className="text-gray-400 text-sm font-mono">$</span>
       <input
         ref={inputRef}
         type="text"
         value={command}
-        onChange={(e) => setCommand(e.target.value)}
+        onChange={(e) => setCommand(e.target.value)} 
         onKeyDown={handleKeyDown}
-        placeholder="Type 'help' for available commands or press '/' to focus"
+        placeholder="Press '/' to focus"
         className="flex-1 bg-stone-700 text-white px-4 py-1 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     </div>

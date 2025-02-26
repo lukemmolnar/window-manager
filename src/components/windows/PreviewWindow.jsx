@@ -11,26 +11,26 @@ const PreviewWindow = ({ nodeId, onCommand }) => {
   };
 
   return (
-    <div className="p-4 h-full flex flex-col bg-white">
+    <div className="p-4 h-full flex flex-col bg-stone-900">
       <div className="flex-1">
-        <h1 className="text-2xl font-bold">Preview Window</h1>
-        <p className="mt-2 text-gray-600">
-          Live preview of your content will appear here.
+        <h1 className="text-2xl text-teal-400 font-mono">Pretend this is a chart</h1>
+        <p className="mt-2 text-teal-400 font-mono text-sm">
+          these would be the different components
         </p>
       </div>
 
       {/* Command input */}
-      <div className="mt-2 flex items-center gap-2">
-        <span className="text-gray-400">$</span>
+      {/* <div className="mt-2 flex items-center gap-2">
+        <span className="mr-2">$</span>
         <input
           type="text"
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-gray-100 px-2 py-1 rounded text-sm focus:outline-none"
+          className="flex-1 bg-transparent outline-none text-teal-400"
           placeholder="Type a command..."
         />
-      </div>
+      </div> */}
     </div>
   );
 };

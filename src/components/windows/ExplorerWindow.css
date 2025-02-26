@@ -1,0 +1,125 @@
+/* Markdown content styling */
+.markdown-content {
+    color: #f0f9ff; /* Light blue-white for readability */
+    line-height: 1.6;
+    font-family: 'Oxygen Mono', monospace;
+    padding: 1rem;
+  }
+  
+  /* Header styles with clear size differences */
+  .markdown-content h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: #2dd4bf; /* Teal accent color */
+    border-bottom: 1px solid #44403c;
+    padding-bottom: 0.5rem;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  .markdown-content h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: #2dd4bf;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  .markdown-content h3 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+    color: #2dd4bf;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  .markdown-content h4 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #2dd4bf;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  .markdown-content h5 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #2dd4bf;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  .markdown-content h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #2dd4bf;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  /* Paragraph styling */
+  .markdown-content p {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  /* Make sure the code blocks stand out */
+  .markdown-content pre {
+    background-color: #1c1917; /* Darker background for code */
+    border-radius: 0.25rem;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-family: 'Oxygen Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
+  .markdown-content code {
+    font-family: 'Oxygen Mono', monospace;
+    background-color: #1c1917;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+  
+  /* Add some spacing between sections */
+  .markdown-content br + h1,
+  .markdown-content br + h2,
+  .markdown-content br + h3,
+  .markdown-content br + h4,
+  .markdown-content br + h5,
+  .markdown-content br + h6 {
+    margin-top: 0.5rem;
+  }
+  
+  /* Lists */
+  .markdown-content ul, .markdown-content ol {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding-left: 2rem;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  .markdown-content li {
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Links */
+  .markdown-content a {
+    color: #14b8a6;
+    text-decoration: underline;
+    font-family: 'Oxygen Mono', monospace;
+  }
+  
+  .markdown-content a:hover {
+    color: #2dd4bf;
+  }

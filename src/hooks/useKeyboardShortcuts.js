@@ -19,45 +19,60 @@ export const useKeyboardShortcuts = ({
   onClose,
   createNewWindow,
   hasActiveWindow,
-  hasRootNode
+  hasRootNode,
+  isResizeMode,
+  setIsResizeMode,
+  resizeActiveWindow
 }) => {
   useEffect(() => {
-    // Handler for keyboard events
     const handleKeyDown = (e) => {
-      // Only handle ctrl/cmd key combinations
-      if (!e.ctrlKey && !e.metaKey) return;
-
-      if (e.key === 'Enter') {
+      // Handle resize mode toggle
+      if (e.ctrlKey && e.key === 'q') {
         e.preventDefault();
-        
-        if (e.shiftKey) {
-          // Ctrl+Shift+Enter: Horizontal split
-          if (hasActiveWindow) {
-            onSplitHorizontal();
-          } else {
-            createNewWindow(WINDOW_TYPES.TERMINAL);
-          }
-        } else {
-          // Ctrl+Enter: Vertical split
-          if (hasActiveWindow) {
-            onSplitVertical();
-          } else {
-            createNewWindow(WINDOW_TYPES.TERMINAL);
-          }
+        setIsResizeMode(!isResizeMode);
+        return;
+      }
+
+      // Handle resize mode arrow keys
+      if (isResizeMode && !e.ctrlKey) {
+        switch (e.key) {
+          case 'ArrowLeft':
+            e.preventDefault();
+            resizeActiveWindow('left');
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            resizeActiveWindow('right');
+            break;
+          case 'ArrowUp':
+            e.preventDefault();
+            resizeActiveWindow('up');
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            resizeActiveWindow('down');
+            break;
         }
-      } else if (e.key === 'Backspace') {
-        // Only allow closing if we have an active window and root node
-        if (hasActiveWindow && hasRootNode) {
+        return;
+      }
+
+      // Handle other keyboard shortcuts...
+      if (e.ctrlKey) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            hasActiveWindow ? onSplitVertical() : createNewWindow();
+          } else {
+            hasActiveWindow ? onSplitHorizontal() : createNewWindow();
+          }
+        } else if ((e.key === 'Backspace' || e.key === 'Delete') && hasActiveWindow && hasRootNode) {
           e.preventDefault();
           onClose();
         }
       }
     };
 
-    // Add event listener for keyboard shortcuts
     window.addEventListener('keydown', handleKeyDown);
-    
-    // Clean up event listener on unmount
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     onSplitVertical,
@@ -65,6 +80,9 @@ export const useKeyboardShortcuts = ({
     onClose,
     createNewWindow,
     hasActiveWindow,
-    hasRootNode
+    hasRootNode,
+    isResizeMode,
+    setIsResizeMode,
+    resizeActiveWindow
   ]);
 };

@@ -7,8 +7,6 @@ import { CommandBar } from './CommandBar';
 import EmptyState from './EmptyState';
 
 export const WindowManager = ({ defaultLayout = null }) => {
-  // Get all state from useWindowManager
-  const windowManager = useWindowManager({ defaultLayout });
   const {
     rootNode,
     activeNodeId,
@@ -21,18 +19,25 @@ export const WindowManager = ({ defaultLayout = null }) => {
     transformWindow,
     currentWorkspaceIndex,
     workspaceCount,
-    switchWorkspace
-  } = windowManager;
+    switchWorkspace,
+    isResizeMode,
+    setIsResizeMode,
+    resizeActiveWindow
+  } = useWindowManager({ defaultLayout });
 
   const [dragState, setDragState] = useState(null);
 
   // Add keyboard shortcuts
   useKeyboardShortcuts({
-    activeNodeId,
-    rootNode,
-    splitWindow,
-    closeWindow,
-    createNewWindow
+    onSplitVertical: () => splitWindow(activeNodeId, 'vertical'),
+    onSplitHorizontal: () => splitWindow(activeNodeId, 'horizontal'),
+    onClose: () => closeWindow(activeNodeId),
+    createNewWindow,
+    hasActiveWindow: Boolean(activeNodeId),
+    hasRootNode: Boolean(rootNode),
+    isResizeMode,
+    setIsResizeMode: (mode) => setIsResizeMode(mode),
+    resizeActiveWindow: (direction) => resizeActiveWindow(direction)
   });
 
   // Command handling for terminal
@@ -116,7 +121,7 @@ export const WindowManager = ({ defaultLayout = null }) => {
       return (
         <div
           className={`absolute overflow-hidden border-2 ${
-            isActive ? 'border-teal-500' : 'border-stone-600'
+            isActive ? (isResizeMode ? 'border-yellow-500' : 'border-teal-500') : 'border-stone-600'
           }`}
           style={{
             left: `${available.x}%`,
@@ -202,14 +207,14 @@ export const WindowManager = ({ defaultLayout = null }) => {
 
   return (
     <div className="w-full h-screen flex flex-col">
-      <CommandBar 
+      <CommandBar
         onCommand={handleCommand}
-        currentWorkspaceIndex={Number(currentWorkspaceIndex)}
-        workspaceCount={Number(workspaceCount)}
+        currentWorkspaceIndex={currentWorkspaceIndex}
+        switchWorkspace={switchWorkspace}
       />
       <div className="flex-1 relative bg-stone-900">
         {rootNode ? (
-          <WindowTreeRenderer 
+          <WindowTreeRenderer
             node={rootNode}
             terminalStates={terminalStates}
             updateTerminalState={updateTerminalState}

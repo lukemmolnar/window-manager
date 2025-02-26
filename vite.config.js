@@ -10,4 +10,7 @@ export default defineConfig({
     // The Tailwind plugin handles utility class generation
     tailwindcss(),
   ],
+  resolve: {
+    extensions: ['.js', '.jsx', '.json']
+  }
 })

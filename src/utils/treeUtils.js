@@ -53,10 +53,11 @@ export const removeNodeById = (node, targetId) => {
   if (!node) return null;
 
   if (node.type === 'split') {
-    if (node.first.id === targetId) {
+    // Only remove if the child is a window node with matching ID
+    if (node.first.type === 'window' && node.first.id === targetId) {
       return node.second;
     }
-    if (node.second.id === targetId) {
+    if (node.second.type === 'window' && node.second.id === targetId) {
       return node.first;
     }
 

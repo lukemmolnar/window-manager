@@ -12,7 +12,6 @@ import { WINDOW_CONTENT } from './utils/windowTypes';
  * to specialized components and hooks.
  */
 function App() {
-  // Initialize window management system
   const {
     rootNode,
     activeNodeId,
@@ -26,7 +25,12 @@ function App() {
     handleResizeMove,
     handleResizeEnd,
     hasActiveWindow,
-    hasRootNode
+    hasRootNode,
+    currentWorkspaceIndex,
+    switchWorkspace,
+    isResizeMode,
+    setIsResizeMode,
+    resizeActiveWindow
   } = useWindowManager();
 
   // Set up keyboard shortcuts
@@ -36,7 +40,10 @@ function App() {
     onClose: () => closeWindow(activeNodeId),
     createNewWindow,
     hasActiveWindow,
-    hasRootNode
+    hasRootNode,
+    isResizeMode,
+    setIsResizeMode,
+    resizeActiveWindow
   });
 
   // Define component to render based on whether we have a root node
@@ -55,6 +62,7 @@ function App() {
         onResizeStart={handleResizeStart}
         onResizeMove={handleResizeMove}
         onResizeEnd={handleResizeEnd}
+        isResizeMode={isResizeMode} // Pass isResizeMode to WindowTreeRenderer
       />
     );
   };
@@ -62,7 +70,11 @@ function App() {
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Global command bar */}
-      <CommandBar onCommand={handleCommand} />
+      <CommandBar 
+        onCommand={handleCommand}
+        currentWorkspaceIndex={currentWorkspaceIndex}
+        switchWorkspace={switchWorkspace}
+      />
       
       {/* Main content area */}
       <div className="flex-1 relative">
@@ -85,9 +97,9 @@ const WindowTreeRenderer = ({
   transformWindow,
   onResizeStart,
   onResizeMove,
-  onResizeEnd
+  onResizeEnd,
+  isResizeMode // Add isResizeMode prop
 }) => {
-  // Handle window nodes
   if (node.type === 'window') {
     const windowContent = WINDOW_CONTENT[node.windowType];
     const Component = windowContent.component;
@@ -96,7 +108,11 @@ const WindowTreeRenderer = ({
     return (
       <div
         className={`absolute overflow-hidden border-2 ${
-          isActive ? 'border-teal-500' : 'border-stone-600'
+          isActive 
+            ? isResizeMode 
+              ? 'border-yellow-500' 
+              : 'border-teal-500'
+            : 'border-stone-600'
         }`}
         style={{
           left: `${available.x}%`,
@@ -116,7 +132,7 @@ const WindowTreeRenderer = ({
     );
   }
 
-  // Handle split nodes
+  // Handle split nodes...
   let firstDimensions, secondDimensions;
   if (node.direction === 'horizontal') {
     firstDimensions = {
@@ -146,7 +162,6 @@ const WindowTreeRenderer = ({
     };
   }
 
-  // Render split container with resize handle
   return (
     <>
       <WindowTreeRenderer
@@ -159,9 +174,9 @@ const WindowTreeRenderer = ({
         onResizeStart={onResizeStart}
         onResizeMove={onResizeMove}
         onResizeEnd={onResizeEnd}
+        isResizeMode={isResizeMode} // Pass down isResizeMode
       />
       
-      {/* Resize handle */}
       <div
         className={`absolute z-10 ${
           node.direction === 'horizontal' 
@@ -187,9 +202,11 @@ const WindowTreeRenderer = ({
         onResizeStart={onResizeStart}
         onResizeMove={onResizeMove}
         onResizeEnd={onResizeEnd}
+        isResizeMode={isResizeMode} // Pass down isResizeMode
       />
     </>
   );
 };
 
 export default App;
+

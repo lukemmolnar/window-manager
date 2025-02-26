@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 @tailwind base;
+
+@layer base {
+  html {
+    font-family: 'Oxygen Mono', monospace;
+  }
+}
 @tailwind components;
 @tailwind utilities;
 

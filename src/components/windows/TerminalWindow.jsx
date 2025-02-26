@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { WINDOW_TYPES } from '../../utils/windowTypes';
 
-const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow }) => {
+const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState }) => {
   // Refs for managing focus and scrolling
   const terminalRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Terminal state
-  const [history, setHistory] = useState([
-    'Welcome to the Terminal! Type "help" for available commands.'
-  ]);
-  const [commandHistory, setCommandHistory] = useState([]);
-  const [currentInput, setCurrentInput] = useState('');
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  // Terminal state - use windowState if available
+  const [history, setHistory] = useState(
+    windowState?.history || ['SLUMNET TERMINAL - Type "help" for available commands.']
+  );
+  const [commandHistory, setCommandHistory] = useState(windowState?.commandHistory || []);
+  const [currentInput, setCurrentInput] = useState(windowState?.currentInput || '');
+  const [historyIndex, setHistoryIndex] = useState(windowState?.historyIndex || -1);
 
   // Auto-focus when terminal becomes active
   useEffect(() => {
@@ -27,6 +27,18 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow }) => {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [history]);
+
+  // Update window state when terminal state changes
+  useEffect(() => {
+    if (updateWindowState) {
+      updateWindowState({
+        history,
+        commandHistory,
+        currentInput,
+        historyIndex
+      });
+    }
+  }, [history, commandHistory, currentInput, historyIndex, updateWindowState]);
 
   const handleTerminalClick = () => {
     inputRef.current?.focus();
@@ -103,16 +115,16 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow }) => {
 
   return (
     <div 
-      className="p-4 bg-stone-900 text-teal-400 font-mono text-sm h-full flex flex-col"
+      className="bg-stone-900 text-teal-400 font-mono text-sm h-full flex flex-col"
       onClick={handleTerminalClick}
     >
-      <div ref={terminalRef} className="flex-1 overflow-auto whitespace-pre-wrap">
+      <div ref={terminalRef} className="p-2 flex-1 overflow-auto whitespace-pre-wrap">
         {history.map((line, i) => (
           <div key={i}>{line}</div>
         ))}
       </div>
 
-      <div className="flex items-center mt-2">
+      <div className="p-2 flex items-center gap-2 border-t border-stone-700">
         <span className="mr-2">$</span>
         <input
           ref={inputRef}
@@ -120,7 +132,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow }) => {
           value={currentInput}
           onChange={(e) => setCurrentInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent outline-none text-teal-400"
+          className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
           autoFocus
         />
       </div>

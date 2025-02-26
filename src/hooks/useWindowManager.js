@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useReducer } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Node } from '../models/Node';
 import { WINDOW_TYPES } from '../utils/windowTypes';
 import { 
@@ -9,9 +9,8 @@ import {
   updateSplitRatio,
 } from '../utils/treeUtils';
 import { getWindowBounds } from '../utils/windowUtils';
-
-export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
-  
+import { useWindowState } from '../context/WindowStateContext';
+export const useWindowManager = ({ defaultLayout = null } = {}) => {
   // Workspace state
   const [workspaces, setWorkspaces] = useState([
     { id: 1, name: 'Main', root: defaultLayout, activeNodeId: null, terminalStates: {} },
@@ -20,19 +19,14 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
     { id: 4, name: 'Preview', root: null, activeNodeId: null, terminalStates: {} }
   ]);
   const [currentWorkspaceIndex, setCurrentWorkspaceIndex] = useState(0);
+  const [isResizeMode, setIsResizeMode] = useState(false);
+  const [isMoveMode, setIsMoveMode] = useState(false);
 
   // Get current workspace data directly from workspaces array
   const currentWorkspace = workspaces[currentWorkspaceIndex];
   const rootNode = currentWorkspace.root;
   const activeNodeId = currentWorkspace.activeNodeId;
   const terminalStates = currentWorkspace.terminalStates;
-
-  // Add logging to track workspace values
-  console.log('useWindowManager state:', {
-    workspaces,
-    currentWorkspaceIndex,
-    workspaceCount: workspaces.length
-  });
 
   // Create setActiveNodeId function that updates the workspace
   const setActiveNodeId = useCallback((nodeId) => {
@@ -65,18 +59,20 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
     });
   }, [currentWorkspaceIndex]);
 
-  const switchWorkspace = useCallback((direction) => {
-    setCurrentWorkspaceIndex(prev => {
-      let newIndex;
-      if (direction === 'right') {
-        newIndex = (prev + 1) % workspaces.length;
-      } else {
-        newIndex = prev - 1;
-        if (newIndex < 0) newIndex = workspaces.length - 1;
-      }
-      return newIndex;
-    });
-  }, [workspaces.length]);
+  const switchWorkspace = useCallback((target) => {
+    console.log('Switching to:', target);
+    if (typeof target === 'number' && target >= 0 && target < 4) {
+      setCurrentWorkspaceIndex(target);
+    } else if (target === 'right' || target === 'left') {
+      setCurrentWorkspaceIndex(prev => {
+        const newIndex = target === 'right' 
+          ? (prev + 1) % 4 
+          : prev - 1 < 0 ? 3 : prev - 1;
+        console.log('New index:', newIndex);
+        return newIndex;
+      });
+    }
+  }, [setCurrentWorkspaceIndex]);
 
   useEffect(() => {
     const handleWorkspaceKeys = (e) => {
@@ -99,10 +95,7 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
     return () => window.removeEventListener('keydown', handleWorkspaceKeys);
   }, [switchWorkspace]);
 
-  const workspaceCount = workspaces.length;
-
-
-  // Your existing window navigation functions
+  // Window navigation functions
   const navigateToWindow = useCallback((direction) => {
     if (!activeNodeId || !rootNode) return;
   
@@ -110,75 +103,151 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
     const activeWindow = allWindows.find(w => w.id === activeNodeId);
     if (!activeWindow) return;
   
-    const adjacentWindows = allWindows.filter(w => {
-      if (w.id === activeNodeId) return false;
-  
-      const bounds = w.bounds;
-      const activeBounds = activeWindow.bounds;
-  
-      const hasVerticalOverlap = () => 
-        !(bounds.bottom < activeBounds.top || bounds.top > activeBounds.bottom);
-  
-      const horizontalOverlap = () => 
-        !(bounds.right < activeBounds.left || bounds.left > activeBounds.right);
-  
-      const tolerance = 0.01;
-  
-      switch (direction) {
-        case 'up':
-          return hasVerticalOverlap() &&
-                 Math.abs(bounds.bottom - activeBounds.top) < tolerance;
-        case 'down':
-          return hasVerticalOverlap() &&
-                 Math.abs(bounds.top - activeBounds.bottom) < tolerance;
-        case 'left':
-          return horizontalOverlap() &&
-                 Math.abs(bounds.right - activeBounds.left) < tolerance;
-        case 'right':
-          return horizontalOverlap() &&
-                 Math.abs(bounds.left - activeBounds.right) < tolerance;
-        default:
-          return false;
+    // Filter out the active window
+    const otherWindows = allWindows.filter(w => w.id !== activeNodeId);
+    
+    // If no other windows, nothing to navigate to
+    if (otherWindows.length === 0) return;
+    
+    // Calculate the active window's center
+    const activeBounds = activeWindow.bounds;
+    
+    // Helper function to calculate overlap percentage between windows
+    const calculateOverlap = (window1, window2, isHorizontal) => {
+      if (isHorizontal) {
+        // Calculate horizontal overlap
+        const overlapStart = Math.max(window1.left, window2.left);
+        const overlapEnd = Math.min(window1.right, window2.right);
+        if (overlapEnd <= overlapStart) return 0; // No overlap
+        
+        const overlapWidth = overlapEnd - overlapStart;
+        const window1Width = window1.right - window1.left;
+        
+        return overlapWidth / window1Width;
+      } else {
+        // Calculate vertical overlap
+        const overlapStart = Math.max(window1.top, window2.top);
+        const overlapEnd = Math.min(window1.bottom, window2.bottom);
+        if (overlapEnd <= overlapStart) return 0; // No overlap
+        
+        const overlapHeight = overlapEnd - overlapStart;
+        const window1Height = window1.bottom - window1.top;
+        
+        return overlapHeight / window1Height;
       }
-    });
-  
-    if (adjacentWindows.length === 0) return;
-  
-    let nextWindow;
+    };
+    
+    // Find windows in the specified direction with a more relaxed approach
+    let candidateWindows = [];
+    const tolerance = 0.1; // 10% tolerance for adjacency
+    
     switch (direction) {
-      case 'left':
-        nextWindow = adjacentWindows.sort((a, b) => 
-          a.bounds.centerX !== b.bounds.centerX
-            ? b.bounds.centerX - a.bounds.centerX
-            : a.bounds.centerY - b.bounds.centerY
-        )[0];
-        break;
-      
-      case 'right':
-        nextWindow = adjacentWindows.sort((a, b) => 
-          a.bounds.centerX !== b.bounds.centerX
-            ? a.bounds.centerX - b.bounds.centerX
-            : a.bounds.centerY - b.bounds.centerY
-        )[0];
-        break;
-      
       case 'up':
-        nextWindow = adjacentWindows.sort((a, b) => 
-          a.bounds.centerY !== b.bounds.centerY
-            ? b.bounds.centerY - a.bounds.centerY
-            : a.bounds.centerX - b.bounds.centerX
-        )[0];
+        // Windows that are above the active window
+        candidateWindows = otherWindows.filter(w => {
+          const bounds = w.bounds;
+          // Window must be above the active window
+          if (bounds.bottom > activeBounds.top) return false;
+          
+          // Calculate horizontal overlap
+          const overlap = calculateOverlap(activeBounds, bounds, true);
+          return overlap > 0; // Any overlap makes it a candidate
+        });
         break;
-      
+        
       case 'down':
-        nextWindow = adjacentWindows.sort((a, b) => 
-          a.bounds.centerY !== b.bounds.centerY
-            ? a.bounds.centerY - b.bounds.centerY
-            : a.bounds.centerX - b.bounds.centerX
-        )[0];
+        // Windows that are below the active window
+        candidateWindows = otherWindows.filter(w => {
+          const bounds = w.bounds;
+          // Window must be below the active window
+          if (bounds.top < activeBounds.bottom) return false;
+          
+          // Calculate horizontal overlap
+          const overlap = calculateOverlap(activeBounds, bounds, true);
+          return overlap > 0; // Any overlap makes it a candidate
+        });
+        break;
+        
+      case 'left':
+        // Windows that are to the left of the active window
+        candidateWindows = otherWindows.filter(w => {
+          const bounds = w.bounds;
+          // Window must be to the left of the active window
+          if (bounds.right > activeBounds.left) return false;
+          
+          // Calculate vertical overlap
+          const overlap = calculateOverlap(activeBounds, bounds, false);
+          return overlap > 0; // Any overlap makes it a candidate
+        });
+        break;
+        
+      case 'right':
+        // Windows that are to the right of the active window
+        candidateWindows = otherWindows.filter(w => {
+          const bounds = w.bounds;
+          // Window must be to the right of the active window
+          if (bounds.left < activeBounds.right) return false;
+          
+          // Calculate vertical overlap
+          const overlap = calculateOverlap(activeBounds, bounds, false);
+          return overlap > 0; // Any overlap makes it a candidate
+        });
         break;
     }
-  
+    
+    // If no candidates found, return
+    if (candidateWindows.length === 0) return;
+    
+    // Calculate scores for each candidate window based on:
+    // 1. Overlap percentage (higher is better)
+    // 2. Distance from active window (lower is better)
+    const scoredWindows = candidateWindows.map(window => {
+      const bounds = window.bounds;
+      let overlapScore = 0;
+      let distanceScore = 0;
+      
+      switch (direction) {
+        case 'up':
+          overlapScore = calculateOverlap(activeBounds, bounds, true);
+          distanceScore = activeBounds.top - bounds.bottom;
+          break;
+          
+        case 'down':
+          overlapScore = calculateOverlap(activeBounds, bounds, true);
+          distanceScore = bounds.top - activeBounds.bottom;
+          break;
+          
+        case 'left':
+          overlapScore = calculateOverlap(activeBounds, bounds, false);
+          distanceScore = activeBounds.left - bounds.right;
+          break;
+          
+        case 'right':
+          overlapScore = calculateOverlap(activeBounds, bounds, false);
+          distanceScore = bounds.left - activeBounds.right;
+          break;
+      }
+      
+      // Normalize distance score (closer is better)
+      const normalizedDistanceScore = 1 / (1 + distanceScore);
+      
+      // Calculate final score with higher weight on overlap
+      const finalScore = (overlapScore * 0.7) + (normalizedDistanceScore * 0.3);
+      
+      return {
+        window,
+        overlapScore,
+        distanceScore,
+        finalScore
+      };
+    });
+    
+    // Sort by final score (higher is better)
+    scoredWindows.sort((a, b) => b.finalScore - a.finalScore);
+    
+    // Select the window with the highest score
+    const nextWindow = scoredWindows[0].window;
+    
     if (nextWindow) {
       setActiveNodeId(nextWindow.id);
     }
@@ -212,21 +281,41 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navigateToWindow]);
 
+  // Get window state management functions
+  const { getWindowState, setWindowState, removeWindowState } = useWindowState();
+
   const createNewWindow = useCallback((windowType) => {
     const newNode = Node.createWindow(Date.now(), windowType || WINDOW_TYPES.TERMINAL);
     
+    // Initialize window state based on window type
+    const initialContent = {};
+    
     if (windowType === WINDOW_TYPES.TERMINAL) {
+      // Initialize terminal state
+      initialContent.history = ['Welcome to the Terminal! Type "help" for available commands.'];
+      initialContent.commandHistory = [];
+      
       updateWorkspace(workspace => ({
         ...workspace,
         terminalStates: {
           ...workspace.terminalStates,
           [newNode.id]: {
-            history: ['Welcome to the Terminal! Type "help" for available commands.'],
-            commandHistory: []
+            history: initialContent.history,
+            commandHistory: initialContent.commandHistory
           }
         }
       }));
+    } else if (windowType === WINDOW_TYPES.EDITOR) {
+      // Initialize editor state with default content
+      initialContent.text = `function hello() {\n  console.log("Hello, World!");\n}\n\n// Call the function\nhello();`;
+    } else if (windowType === WINDOW_TYPES.EXPLORER) {
+      // Initialize explorer state
+      initialContent.currentPath = '/';
+      initialContent.selectedItem = null;
     }
+    
+    // Set the initial window state
+    setWindowState(newNode.id, newNode.windowType, initialContent);
     
     if (!rootNode) {
       updateWorkspace({
@@ -246,20 +335,33 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
     
     splitWindow(activeNodeId, 'vertical', newNode);
     setActiveNodeId(newNode.id);
-  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId]);
+  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState]);
 
   const splitWindow = useCallback((nodeId, direction, newWindow = null) => {
+    // Get the original window's state if it exists
+    const originalWindowState = getWindowState(nodeId);
+    
     if (!newWindow) {
       newWindow = Node.createWindow(Date.now(), WINDOW_TYPES.TERMINAL);
+    }
+    
+    // If the original window had state, copy it to the new window
+    if (originalWindowState) {
+      // Clone the content to avoid reference issues
+      const clonedContent = JSON.parse(JSON.stringify(originalWindowState.content));
+      setWindowState(newWindow.id, newWindow.windowType, clonedContent);
     }
   
     updateWorkspace(workspace => ({
       ...workspace,
       root: splitNodeById(workspace.root, nodeId, direction, newWindow)
     }));
-  }, [updateWorkspace]);
+  }, [updateWorkspace, getWindowState, setWindowState]);
 
   const closeWindow = useCallback((nodeId) => {
+    // Clean up window state when closing a window
+    removeWindowState(nodeId);
+    
     if (rootNode.type === 'window' && rootNode.id === nodeId) {
       updateWorkspace({
         root: null,
@@ -282,16 +384,26 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
         root: result
       });
     }
-  }, [rootNode, activeNodeId, updateWorkspace]);
+  }, [rootNode, activeNodeId, updateWorkspace, removeWindowState]);
 
   const transformWindow = useCallback((nodeId, newType) => {
     const newRoot = JSON.parse(JSON.stringify(rootNode));
+    
+    // Get the current window state before transformation
+    const currentWindowState = getWindowState(nodeId);
     
     const updateNodeInTree = (node) => {
       if (!node) return null;
       
       if (node.type === 'window' && node.id === nodeId) {
+        // Update the window type
         node.windowType = newType;
+        
+        // Update the window state with the new type but preserve content
+        if (currentWindowState) {
+          setWindowState(nodeId, newType, currentWindowState.content);
+        }
+        
         return true;
       }
       
@@ -308,7 +420,7 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
         root: newRoot
       });
     }
-  }, [rootNode, updateWorkspace]);
+  }, [rootNode, updateWorkspace, getWindowState, setWindowState]);
 
   const handleCommand = useCallback((command) => {
     const parts = command.split(' ');
@@ -329,8 +441,86 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
     }
   }, [activeNodeId, splitWindow, closeWindow]);
 
-  const wsCount = Number(workspaces.length);
-  const wsIndex = Number(currentWorkspaceIndex);
+  const resizeActiveWindow = useCallback((direction) => {
+    if (!activeNodeId || !rootNode || !isResizeMode) return;
+  
+    updateWorkspace(workspace => {
+      const newRoot = JSON.parse(JSON.stringify(workspace.root));
+      
+      // Helper function to find all affected splits
+      const findAffectedSplits = (node, targetId) => {
+        if (!node) return [];
+        
+        const splits = [];
+        if (node.type === 'split') {
+          const targetInFirst = findNodeById(node.first, targetId);
+          const targetInSecond = findNodeById(node.second, targetId);
+          
+          if (targetInFirst || targetInSecond) {
+            // Add this split if it matches our resize direction
+            if ((direction === 'left' || direction === 'right') && node.direction === 'horizontal') {
+              splits.push({ node, targetInFirst: !!targetInFirst });
+            }
+            if ((direction === 'up' || direction === 'down') && node.direction === 'vertical') {
+              splits.push({ node, targetInFirst: !!targetInFirst });
+            }
+          }
+          
+          splits.push(...findAffectedSplits(node.first, targetId));
+          splits.push(...findAffectedSplits(node.second, targetId));
+        }
+        
+        return splits;
+      };
+  
+      const affectedSplits = findAffectedSplits(newRoot, activeNodeId);
+      const resizeStep = 0.05;
+  
+      // Apply resize to all affected splits
+      affectedSplits.forEach(({ node, targetInFirst }) => {
+        switch (direction) {
+          case 'left': // Shrink width
+            if (targetInFirst) {
+              node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
+            } else {
+              node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
+            }
+            break;
+            
+          case 'right': // Grow width
+            if (targetInFirst) {
+              node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
+            } else {
+              node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
+            }
+            break;
+            
+          case 'up': // Shrink height
+            if (targetInFirst) {
+              node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
+            } else {
+              node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
+            }
+            break;
+            
+          case 'down': // Grow height
+            if (targetInFirst) {
+              node.splitRatio = Math.min(0.9, node.splitRatio + resizeStep);
+            } else {
+              node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
+            }
+            break;
+        }
+      });
+  
+      return { ...workspace, root: newRoot };
+    });
+  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace]);
+  
+  // Also add a debug check to see if the keyboard shortcut and resize mode are working
+  useEffect(() => {
+    console.log('Resize mode:', isResizeMode);
+  }, [isResizeMode]);
 
   return {
     rootNode,
@@ -345,8 +535,11 @@ export const useWindowManager = ({ defaultLayout = null, onChange } = {}) => {
     navigateToWindow,
     hasActiveWindow: Boolean(activeNodeId),
     hasRootNode: Boolean(rootNode),
-    currentWorkspaceIndex: wsIndex,
-    workspaceCount: wsCount,
-    switchWorkspace
+    currentWorkspaceIndex,
+    workspaceCount: 4,
+    switchWorkspace,
+    isResizeMode,
+    setIsResizeMode,
+    resizeActiveWindow
   };
 };
