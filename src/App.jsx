@@ -19,8 +19,8 @@ function App() {
   // If authentication is still loading, show a loading screen
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-teal-500 text-2xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-stone-900">
+        <div className="text-teal-500 text-2xl font-mono">Loading...</div>
       </div>
     );
   }
@@ -88,7 +88,7 @@ function App() {
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Global command bar with user info */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center">
         <CommandBar 
           onCommand={handleCommand}
           currentWorkspaceIndex={currentWorkspaceIndex}
@@ -96,13 +96,13 @@ function App() {
         />
         
         {/* User info and logout */}
-        <div className="flex items-center pr-4">
-          <span className="text-teal-500 mr-3">
-            Welcome, {user?.username || 'User'}
+        <div className="flex items-center border-l border-stone-600 ml-2 pl-2">
+          <span className="text-white text-sm font-mono mr-2">
+            {user?.username || 'User'}
           </span>
           <button 
             onClick={logout}
-            className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-1 rounded"
+            className="bg-stone-700 hover:bg-stone-600 text-white text-sm px-2 py-1 rounded"
           >
             Logout
           </button>

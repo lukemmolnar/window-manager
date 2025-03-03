@@ -13,8 +13,8 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-stone-900">
+      <div className="bg-stone-800 p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">Login to Window Manager</h2>
         
         {error && (
@@ -26,13 +26,13 @@ export function Login() {
         
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-gray-300 mb-2" htmlFor="username">
+            <label className="block text-stone-300 mb-2 font-mono text-sm" htmlFor="username">
               Username
             </label>
             <input
               id="username"
               type="text"
-              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+              className="w-full p-2 rounded bg-stone-700 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -40,13 +40,13 @@ export function Login() {
           </div>
           
           <div className="mb-6">
-            <label className="block text-gray-300 mb-2" htmlFor="password">
+            <label className="block text-stone-300 mb-2 font-mono text-sm" htmlFor="password">
               Password
             </label>
             <input
               id="password"
               type="password"
-              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+              className="w-full p-2 rounded bg-stone-700 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -55,7 +55,7 @@ export function Login() {
           
           <button
             type="submit"
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-mono text-sm py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             disabled={loading}
           >
             {loading ? 'Logging in...' : 'Login'}
@@ -63,7 +63,7 @@ export function Login() {
         </form>
         
         <div className="mt-4 text-center">
-          <p className="text-gray-400 text-sm">
+          <p className="text-stone-400 text-sm font-mono">
             Contact administrator if you need an account
           </p>
         </div>
