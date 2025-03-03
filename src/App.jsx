@@ -2,8 +2,10 @@ import React from 'react';
 import { WindowManager } from './components/WindowManager';
 import { CommandBar } from './components/CommandBar';
 import { EmptyState } from './components/EmptyState';
+import { AuthScreen } from './components/auth';
 import { useWindowManager } from './hooks/useWindowManager';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useAuth } from './context/AuthContext';
 import { WINDOW_CONTENT } from './utils/windowTypes';
 
 /**
@@ -12,6 +14,22 @@ import { WINDOW_CONTENT } from './utils/windowTypes';
  * to specialized components and hooks.
  */
 function App() {
+  const { isAuthenticated, loading, user, logout } = useAuth();
+  
+  // If authentication is still loading, show a loading screen
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-teal-500 text-2xl">Loading...</div>
+      </div>
+    );
+  }
+  
+  // If not authenticated, show the auth screen
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
+  
   const {
     rootNode,
     activeNodeId,
@@ -69,12 +87,27 @@ function App() {
 
   return (
     <div className="w-full h-screen flex flex-col">
-      {/* Global command bar */}
-      <CommandBar 
-        onCommand={handleCommand}
-        currentWorkspaceIndex={currentWorkspaceIndex}
-        switchWorkspace={switchWorkspace}
-      />
+      {/* Global command bar with user info */}
+      <div className="flex justify-between items-center">
+        <CommandBar 
+          onCommand={handleCommand}
+          currentWorkspaceIndex={currentWorkspaceIndex}
+          switchWorkspace={switchWorkspace}
+        />
+        
+        {/* User info and logout */}
+        <div className="flex items-center pr-4">
+          <span className="text-teal-500 mr-3">
+            Welcome, {user?.username || 'User'}
+          </span>
+          <button 
+            onClick={logout}
+            className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-1 rounded"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
       
       {/* Main content area */}
       <div className="flex-1 relative">
@@ -209,4 +242,3 @@ const WindowTreeRenderer = ({
 };
 
 export default App;
-

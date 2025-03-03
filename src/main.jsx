@@ -4,11 +4,14 @@ import App from './App'
 import './styles.css'
 import './app.css'
 import { WindowStateProvider } from './context/WindowStateContext'
+import { AuthProvider } from './context/AuthContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <WindowStateProvider>
-      <App />
-    </WindowStateProvider>
+    <AuthProvider>
+      <WindowStateProvider>
+        <App />
+      </WindowStateProvider>
+    </AuthProvider>
   </React.StrictMode>,
 )
