@@ -16,20 +16,7 @@ import { WINDOW_CONTENT } from './utils/windowTypes';
 function App() {
   const { isAuthenticated, loading, user, logout } = useAuth();
   
-  // If authentication is still loading, show a loading screen
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-900">
-        <div className="text-teal-500 text-2xl font-mono">Loading...</div>
-      </div>
-    );
-  }
-  
-  // If not authenticated, show the auth screen
-  if (!isAuthenticated) {
-    return <AuthScreen />;
-  }
-  
+  // Call all hooks at the top level, before any conditional returns
   const {
     rootNode,
     activeNodeId,
@@ -51,7 +38,7 @@ function App() {
     resizeActiveWindow
   } = useWindowManager();
 
-  // Set up keyboard shortcuts
+  // Set up keyboard shortcuts - always call this hook, even if we'll return early
   useKeyboardShortcuts({
     onSplitVertical: () => splitWindow(activeNodeId, 'vertical'),
     onSplitHorizontal: () => splitWindow(activeNodeId, 'horizontal'),
@@ -63,6 +50,20 @@ function App() {
     setIsResizeMode,
     resizeActiveWindow
   });
+  
+  // If authentication is still loading, show a loading screen
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-900">
+        <div className="text-teal-500 text-2xl font-mono">Loading...</div>
+      </div>
+    );
+  }
+  
+  // If not authenticated, show the auth screen
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
 
   // Define component to render based on whether we have a root node
   const renderContent = () => {

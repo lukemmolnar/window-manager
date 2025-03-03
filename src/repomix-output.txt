@@ -48,6 +48,10 @@ Directory Structure
 App.css
 App.jsx
 assets/react.svg
+components/auth/AuthScreen.jsx
+components/auth/index.js
+components/auth/Login.jsx
+components/auth/Register.jsx
 components/CommandBar.jsx
 components/EmptyState.jsx
 components/WindowManager.jsx
@@ -59,6 +63,8 @@ components/windows/imageWindow.jsx
 components/windows/index.js
 components/windows/PreviewWindow.jsx
 components/windows/TerminalWindow.jsx
+config/api.js
+context/AuthContext.jsx
 context/WindowStateContext.jsx
 hocs/withCommandHandling.jsx
 hocs/withWindowState.jsx
@@ -70,7 +76,9 @@ main.jsx
 models/Node.js
 styles.css
 styles/main.css
+utils/constants.js
 utils/treeUtils.js
+utils/windowSizeConstants.js
 utils/windowTypes.js
 utils/windowUtils.js
 
@@ -105,8 +113,10 @@ import React from 'react';
 import { WindowManager } from './components/WindowManager';
 import { CommandBar } from './components/CommandBar';
 import { EmptyState } from './components/EmptyState';
+import { AuthScreen } from './components/auth';
 import { useWindowManager } from './hooks/useWindowManager';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useAuth } from './context/AuthContext';
 import { WINDOW_CONTENT } from './utils/windowTypes';
 
 /**
@@ -115,6 +125,9 @@ import { WINDOW_CONTENT } from './utils/windowTypes';
  * to specialized components and hooks.
  */
 function App() {
+  const { isAuthenticated, loading, user, logout } = useAuth();
+  
+  // Call all hooks at the top level, before any conditional returns
   const {
     rootNode,
     activeNodeId,
@@ -133,11 +146,10 @@ function App() {
     switchWorkspace,
     isResizeMode,
     setIsResizeMode,
-    resizeActiveWindow,
-    getWindowState
+    resizeActiveWindow
   } = useWindowManager();
 
-  // Set up keyboard shortcuts
+  // Set up keyboard shortcuts - always call this hook, even if we'll return early
   useKeyboardShortcuts({
     onSplitVertical: () => splitWindow(activeNodeId, 'vertical'),
     onSplitHorizontal: () => splitWindow(activeNodeId, 'horizontal'),
@@ -149,6 +161,20 @@ function App() {
     setIsResizeMode,
     resizeActiveWindow
   });
+  
+  // If authentication is still loading, show a loading screen
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-900">
+        <div className="text-teal-500 text-2xl font-mono">Loading...</div>
+      </div>
+    );
+  }
+  
+  // If not authenticated, show the auth screen
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
 
   // Define component to render based on whether we have a root node
   const renderContent = () => {
@@ -166,19 +192,34 @@ function App() {
         onResizeStart={handleResizeStart}
         onResizeMove={handleResizeMove}
         onResizeEnd={handleResizeEnd}
-        isResizeMode={isResizeMode}
+        isResizeMode={isResizeMode} // Pass isResizeMode to WindowTreeRenderer
       />
     );
   };
 
   return (
     <div className="w-full h-screen flex flex-col">
-      {/* Global command bar */}
-      <CommandBar 
-        onCommand={handleCommand}
-        currentWorkspaceIndex={currentWorkspaceIndex}
-        switchWorkspace={switchWorkspace}
-      />
+      {/* Global command bar with user info */}
+      <div className="flex items-center">
+        <CommandBar 
+          onCommand={handleCommand}
+          currentWorkspaceIndex={currentWorkspaceIndex}
+          switchWorkspace={switchWorkspace}
+        />
+        
+        {/* User info and logout */}
+        <div className="flex items-center border-l border-stone-600 ml-2 pl-2">
+          <span className="text-white text-sm font-mono mr-2">
+            {user?.username || 'User'}
+          </span>
+          <button 
+            onClick={logout}
+            className="bg-stone-700 hover:bg-stone-600 text-white text-sm px-2 py-1 rounded"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
       
       {/* Main content area */}
       <div className="flex-1 relative">
@@ -202,7 +243,7 @@ const WindowTreeRenderer = ({
   onResizeStart,
   onResizeMove,
   onResizeEnd,
-  isResizeMode
+  isResizeMode // Add isResizeMode prop
 }) => {
   if (node.type === 'window') {
     const windowContent = WINDOW_CONTENT[node.windowType];
@@ -278,7 +319,7 @@ const WindowTreeRenderer = ({
         onResizeStart={onResizeStart}
         onResizeMove={onResizeMove}
         onResizeEnd={onResizeEnd}
-        isResizeMode={isResizeMode}
+        isResizeMode={isResizeMode} // Pass down isResizeMode
       />
       
       <div
@@ -306,7 +347,7 @@ const WindowTreeRenderer = ({
         onResizeStart={onResizeStart}
         onResizeMove={onResizeMove}
         onResizeEnd={onResizeEnd}
-        isResizeMode={isResizeMode}
+        isResizeMode={isResizeMode} // Pass down isResizeMode
       />
     </>
   );
@@ -318,6 +359,245 @@ export default App;
 File: assets/react.svg
 ================
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+
+================
+File: components/auth/AuthScreen.jsx
+================
+import React from 'react';
+import { Login } from './Login';
+
+export function AuthScreen() {
+  return <Login />;
+}
+
+================
+File: components/auth/index.js
+================
+export { AuthScreen } from './AuthScreen';
+export { Login } from './Login';
+
+================
+File: components/auth/Login.jsx
+================
+import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+
+export function Login() {
+  const { login, error, clearError, loading } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    clearError();
+    await login(username, password);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-stone-900">
+      <div className="bg-stone-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">Login to Window Manager</h2>
+        
+        {error && (
+          <div className="bg-red-900 text-white p-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-stone-300 mb-2 font-mono text-sm" htmlFor="username">
+              Username
+            </label>
+            <input
+              id="username"
+              type="text"
+              className="w-full p-2 rounded bg-stone-700 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-stone-300 mb-2 font-mono text-sm" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              className="w-full p-2 rounded bg-stone-700 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          <button
+            type="submit"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-mono text-sm py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            disabled={loading}
+          >
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+        
+        <div className="mt-4 text-center">
+          <p className="text-stone-400 text-sm font-mono">
+            Contact administrator if you need an account
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+================
+File: components/auth/Register.jsx
+================
+import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+
+export function Register({ onSwitchToLogin }) {
+  const { register, error, clearError, loading } = useAuth();
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    clearError();
+    setPasswordError('');
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    
+    // Validate password strength
+    if (password.length < 8) {
+      setPasswordError('Password must be at least 8 characters long');
+      return;
+    }
+    
+    const result = await register(username, email, password);
+    if (result.success) {
+      setSuccess(true);
+      // Reset form
+      setUsername('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">Create an Account</h2>
+        
+        {error && (
+          <div className="bg-red-900 text-white p-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        {passwordError && (
+          <div className="bg-red-900 text-white p-3 rounded mb-4">
+            {passwordError}
+          </div>
+        )}
+        
+        {success && (
+          <div className="bg-green-900 text-white p-3 rounded mb-4">
+            Registration successful! You can now login.
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-300 mb-2" htmlFor="username">
+              Username
+            </label>
+            <input
+              id="username"
+              type="text"
+              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-300 mb-2" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-300 mb-2" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <p className="text-gray-400 text-xs mt-1">Must be at least 8 characters long</p>
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-gray-300 mb-2" htmlFor="confirmPassword">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:border-teal-500 focus:outline-none"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          <button
+            type="submit"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            disabled={loading}
+          >
+            {loading ? 'Registering...' : 'Register'}
+          </button>
+        </form>
+        
+        <div className="mt-4 text-center">
+          <button
+            onClick={onSwitchToLogin}
+            className="text-teal-400 hover:text-teal-300 text-sm"
+          >
+            Already have an account? Login
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 ================
 File: components/CommandBar.jsx
@@ -355,10 +635,10 @@ export const CommandBar = ({
   return (
     <div className="w-full bg-stone-800 p-2 flex items-center gap-2">
       <div className="flex gap-2 items-center pr-2 border-r border-stone-600">
-        <div className={`rounded-full transition-all duration-200 cursor-pointer ${currentWorkspaceIndex === 0 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(0)} />
-        <div className={`rounded-full transition-all duration-200 cursor-pointer ${currentWorkspaceIndex === 1 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(1)} />
-        <div className={`rounded-full transition-all duration-200 cursor-pointer ${currentWorkspaceIndex === 2 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(2)} />
-        <div className={`rounded-full transition-all duration-200 cursor-pointer ${currentWorkspaceIndex === 3 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(3)} />
+        <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 0 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(0)} />
+        <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 1 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(1)} />
+        <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 2 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(2)} />
+        <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 3 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(3)} />
       </div>
       <span className="text-gray-400 text-sm font-mono">$</span>
       <input
@@ -410,6 +690,28 @@ import { CommandBar } from './CommandBar';
 import EmptyState from './EmptyState';
 
 export const WindowManager = ({ defaultLayout = null }) => {
+  const [dragState, setDragState] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const [flashingWindowIds, setFlashingWindowIds] = useState(new Set());
+  
+  // Function to flash a window's border red
+  const flashWindowBorder = useCallback((windowId) => {
+    setFlashingWindowIds(prev => {
+      const newSet = new Set(prev);
+      newSet.add(windowId);
+      return newSet;
+    });
+    
+    // Remove the window from flashing state after 500ms
+    setTimeout(() => {
+      setFlashingWindowIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(windowId);
+        return newSet;
+      });
+    }, 500);
+  }, []);
+
   const {
     rootNode,
     activeNodeId,
@@ -426,9 +728,33 @@ export const WindowManager = ({ defaultLayout = null }) => {
     isResizeMode,
     setIsResizeMode,
     resizeActiveWindow
-  } = useWindowManager({ defaultLayout });
-
-  const [dragState, setDragState] = useState(null);
+  } = useWindowManager({ 
+    defaultLayout,
+    onFlashBorder: flashWindowBorder
+  });
+  
+  // Override window.alert to use our notification system
+  useEffect(() => {
+    const originalAlert = window.alert;
+    window.alert = (message) => {
+      console.log('Alert:', message);
+      
+      // If the message is about splitting or creating windows, flash the active window border
+      if (message.includes('split') || message.includes('create')) {
+        if (activeNodeId) {
+          flashWindowBorder(activeNodeId);
+        }
+      } else {
+        // For other alerts, show the notification
+        setNotification(message);
+        setTimeout(() => setNotification(null), 3000); // Hide after 3 seconds
+      }
+    };
+    
+    return () => {
+      window.alert = originalAlert;
+    };
+  }, [activeNodeId, flashWindowBorder]);
 
   // Add keyboard shortcuts
   useKeyboardShortcuts({
@@ -478,6 +804,43 @@ export const WindowManager = ({ defaultLayout = null }) => {
     });
   }, []);
 
+  // Helper function to convert percentage-based bounds to pixel dimensions
+  const calculatePixelDimensions = useCallback((bounds) => {
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    return {
+      width: (bounds.width / 100) * windowWidth,
+      height: (bounds.height / 100) * windowHeight
+    };
+  }, []);
+  
+  // Helper function to check if a window tree would have any windows smaller than the minimum size
+  const hasWindowsBelowMinSize = useCallback((root) => {
+    if (!root) return false;
+    
+    // Import constants directly here to avoid dependency issues
+    const MIN_WINDOW_WIDTH_PX = 300;
+    const MIN_WINDOW_HEIGHT_PX = 200;
+    
+    // Calculate the bounds of all windows
+    const allWindows = getWindowBounds(root);
+    
+    // Check if any window would be smaller than the minimum size
+    return allWindows.some(window => {
+      const pixelDimensions = calculatePixelDimensions(window.bounds);
+      const isTooSmall = pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+                         pixelDimensions.height < MIN_WINDOW_HEIGHT_PX;
+      
+      if (isTooSmall) {
+        console.log('Window too small:', window.id);
+        console.log('Dimensions:', pixelDimensions);
+      }
+      
+      return isTooSmall;
+    });
+  }, [calculatePixelDimensions]);
+
   const handleResizeMove = useCallback((e) => {
     if (!dragState) return;
 
@@ -487,11 +850,22 @@ export const WindowManager = ({ defaultLayout = null }) => {
       : (e.clientY - initialPos.y) / window.innerHeight;
 
     const newRatio = Math.max(0.1, Math.min(0.9, initialRatio + delta));
+    
+    // Store the original ratio
+    const originalRatio = split.splitRatio;
+    
+    // Apply the new ratio
     split.splitRatio = newRatio;
-
+    
+    // Check if this would result in windows that are too small, but don't block the resize
+    if (hasWindowsBelowMinSize(rootNode)) {
+      console.log('Windows are below minimum size, but resize is allowed');
+    }
+    
+    // If we get here, the resize is allowed
     // Force a re-render
     setDragState(prev => ({ ...prev }));
-  }, [dragState]);
+  }, [dragState, rootNode, hasWindowsBelowMinSize, activeNodeId, flashWindowBorder]);
 
   const handleResizeEnd = useCallback(() => {
     setDragState(null);
@@ -521,16 +895,21 @@ export const WindowManager = ({ defaultLayout = null }) => {
       const Component = windowContent.component;
       const isActive = node.id === activeNodeId;
   
+      // Check if this window is currently flashing
+      const isFlashing = flashingWindowIds.has(node.id);
+      
       return (
         <div
           className={`absolute overflow-hidden border-2 ${
+            isFlashing ? 'border-red-600' : 
             isActive ? (isResizeMode ? 'border-yellow-500' : 'border-teal-500') : 'border-stone-600'
-          }`}
+          } ${isFlashing ? 'animate-pulse' : ''}`}
           style={{
             left: `${available.x}%`,
             top: `${available.y}%`,
             width: `${available.width}%`,
             height: `${available.height}%`,
+            transition: 'border-color 0.2s ease-in-out'
           }}
           onClick={() => setActiveNodeId(node.id)}
         >
@@ -625,6 +1004,16 @@ export const WindowManager = ({ defaultLayout = null }) => {
         ) : (
           <EmptyState />
         )}
+        
+        {/* Notification system */}
+        {notification && (
+          <div 
+            className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50"
+            style={{ maxWidth: '80%' }}
+          >
+            {notification}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -635,69 +1024,50 @@ export default WindowManager;
 ================
 File: components/windows/AudioWindow.jsx
 ================
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Play, Pause, Volume2 } from 'lucide-react';
 
-const AudioWindow = ({ nodeId, onCommand }) => {
+const AudioWindow = ({ nodeId, onCommand, windowState, updateWindowState }) => {
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const animationRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(windowState?.isPlaying || false);
+  const [currentTime, setCurrentTime] = useState(windowState?.currentTime || 0);
 
-  useEffect(() => {
-    // Set up audio context and analyser
-    const setupAudio = async () => {
-      try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 2048;
-        
-        const audio = audioRef.current;
-        if (!audio) return;
-
-        // Resume audio context (needed due to browser autoplay policies)
-        await audioContext.resume();
-        
-        const source = audioContext.createMediaElementSource(audio);
-        source.connect(analyser);
-        analyser.connect(audioContext.destination);
-
-        audioContextRef.current = audioContext;
-        analyserRef.current = analyser;
-
-        console.log('Audio setup complete');
-      } catch (error) {
-        console.error('Error setting up audio:', error);
-      }
-    };
-
-    if (audioRef.current && !audioContextRef.current) {
-      setupAudio();
+  // Define draw function outside of other functions to avoid dependency issues
+  const draw = useCallback(() => {
+    if (!canvasRef.current || !analyserRef.current) {
+      console.error('Cannot draw: canvas or analyser is null');
+      return;
     }
-
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
-
-  const draw = () => {
-    if (!canvasRef.current || !analyserRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const analyser = analyserRef.current;
+    
+    // Make sure canvas dimensions are set correctly
+    if (canvas.width === 0 || canvas.height === 0) {
+      canvas.width = canvas.offsetWidth || 300;
+      canvas.height = canvas.offsetHeight || 150;
+    }
+    
+    // Use a smaller FFT size for better visualization
+    analyser.fftSize = 512;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
     const drawFrame = () => {
+      // Cancel any existing animation frame
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      
+      // Request next frame
       animationRef.current = requestAnimationFrame(drawFrame);
+      
+      // Get frequency data
       analyser.getByteFrequencyData(dataArray);
 
       // Clear canvas
@@ -712,6 +1082,9 @@ const AudioWindow = ({ nodeId, onCommand }) => {
       for (let i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i] * 1.5;
         
+        // Make sure we have a minimum height for bars
+        if (barHeight < 1) barHeight = 1;
+        
         const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
         gradient.addColorStop(0, '#14b8a6');
         gradient.addColorStop(1, '#2dd4bf');
@@ -723,33 +1096,186 @@ const AudioWindow = ({ nodeId, onCommand }) => {
       }
     };
 
+    // Start the animation
     drawFrame();
-  };
+    
+    console.log('Visualization started');
+    
+    // Return a cleanup function
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    };
+  }, []);
 
-  const togglePlay = async () => {
+  // Track if audio element has been connected to a source
+  const sourceConnectedRef = useRef(false);
+
+  // Setup audio with Web Audio API for visualization
+  const setupAudio = useCallback(async () => {
+    try {
+      const audio = audioRef.current;
+      if (!audio) {
+        console.error('Audio element reference is null');
+        return false;
+      }
+      
+      // Force reset the sourceConnected flag if we're having issues
+      if (audioContextRef.current?.state === 'closed') {
+        sourceConnectedRef.current = false;
+      }
+      
+      // Create new AudioContext if needed
+      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+        console.log('Creating new AudioContext');
+        
+        // Create new AudioContext
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create and configure analyser
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256; // Smaller FFT size for better visualization
+        analyser.smoothingTimeConstant = 0.8; // Add smoothing
+        
+        // Resume audio context (needed due to browser autoplay policies)
+        await audioContext.resume();
+        
+        // Create a new MediaElementSource and connect it
+        try {
+          console.log('Creating new MediaElementSource');
+          const source = audioContext.createMediaElementSource(audio);
+          source.connect(analyser);
+          analyser.connect(audioContext.destination);
+          sourceConnectedRef.current = true;
+          
+          // Store references
+          audioContextRef.current = audioContext;
+          analyserRef.current = analyser;
+          
+          console.log('Audio setup complete with new AudioContext');
+        } catch (sourceError) {
+          console.error('Error creating MediaElementSource:', sourceError);
+          return false;
+        }
+      } else {
+        // If AudioContext exists but is suspended, resume it
+        if (audioContextRef.current.state === 'suspended') {
+          console.log('Resuming suspended AudioContext');
+          await audioContextRef.current.resume();
+        }
+        
+        console.log('Using existing AudioContext');
+      }
+      
+      // Restore playback position from window state
+      if (windowState?.currentTime) {
+        audio.currentTime = windowState.currentTime;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error setting up audio:', error);
+      return false;
+    }
+  }, [windowState]);
+
+  // Initialize audio on mount or when windowState changes
+  useEffect(() => {
+    const initializeAudio = async () => {
+      // Set up the audio context
+      const success = await setupAudio();
+      
+      // If setup was successful and we should be playing, start playback
+      if (success && windowState?.isPlaying) {
+        try {
+          await audioRef.current.play();
+          draw();
+        } catch (error) {
+          console.error('Error auto-playing audio:', error);
+          setIsPlaying(false);
+        }
+      }
+    };
+
+    if (audioRef.current && 
+        (!audioContextRef.current || audioContextRef.current.state === 'closed')) {
+      initializeAudio();
+    }
+
+    return () => {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        try {
+          audioContextRef.current.close();
+        } catch (error) {
+          console.error('Error closing AudioContext:', error);
+        }
+      }
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [windowState, setupAudio, draw]);
+
+  // Toggle play/pause
+  const togglePlay = useCallback(async () => {
     if (!audioRef.current) return;
 
     try {
-      // Make sure audio context is running
-      if (audioContextRef.current?.state === 'suspended') {
+      console.log('Toggle play clicked, current state:', isPlaying);
+      
+      // Make sure audio context is initialized and running
+      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+        console.log('Setting up audio again');
+        const success = await setupAudio();
+        if (!success) {
+          console.error('Failed to set up audio');
+          return;
+        }
+      } else if (audioContextRef.current.state === 'suspended') {
+        console.log('Resuming suspended AudioContext');
         await audioContextRef.current.resume();
       }
 
       if (isPlaying) {
+        console.log('Pausing audio');
         audioRef.current.pause();
-        cancelAnimationFrame(animationRef.current);
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+          animationRef.current = null;
+        }
       } else {
-        const playPromise = audioRef.current.play();
-        if (playPromise) {
-          await playPromise;
-          draw();
+        console.log('Starting audio playback');
+        try {
+          // Start visualization before playing to ensure it's ready
+          if (analyserRef.current && !animationRef.current) {
+            console.log('Starting visualization');
+            draw();
+          }
+          
+          // Play the audio
+          const playPromise = audioRef.current.play();
+          if (playPromise) {
+            await playPromise;
+            console.log('Audio playback started successfully');
+            
+            // Make sure visualization is running
+            if (!animationRef.current && analyserRef.current) {
+              console.log('Starting visualization after successful play');
+              draw();
+            }
+          }
+        } catch (playError) {
+          console.error('Error playing audio:', playError);
         }
       }
+      
       setIsPlaying(!isPlaying);
     } catch (error) {
-      console.error('Error playing audio:', error);
+      console.error('Error in togglePlay:', error);
     }
-  };
+  }, [isPlaying, setupAudio, draw]);
 
   // Handle canvas resize
   useEffect(() => {
@@ -764,6 +1290,46 @@ const AudioWindow = ({ nodeId, onCommand }) => {
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
   }, []);
+
+  // Update current time when playing
+  useEffect(() => {
+    if (!audioRef.current) return;
+    
+    const updateTime = () => {
+      setCurrentTime(audioRef.current.currentTime);
+    };
+    
+    audioRef.current.addEventListener('timeupdate', updateTime);
+    return () => {
+      audioRef.current?.removeEventListener('timeupdate', updateTime);
+    };
+  }, []);
+  
+  // Start visualization when audio is playing
+  useEffect(() => {
+    // If audio is playing but visualization is not running, start it
+    if (isPlaying && audioRef.current && analyserRef.current && !animationRef.current) {
+      console.log('Starting visualization due to isPlaying state change');
+      draw();
+    }
+    
+    // If audio is not playing but visualization is running, stop it
+    if (!isPlaying && animationRef.current) {
+      console.log('Stopping visualization due to isPlaying state change');
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+  }, [isPlaying, draw]);
+
+  // Update window state when relevant state changes
+  useEffect(() => {
+    if (updateWindowState) {
+      updateWindowState({
+        isPlaying,
+        currentTime
+      });
+    }
+  }, [isPlaying, currentTime, updateWindowState]);
 
   return (
     <div className="h-full w-full flex flex-col bg-stone-900 text-teal-400">
@@ -787,9 +1353,12 @@ const AudioWindow = ({ nodeId, onCommand }) => {
 
         <audio
           ref={audioRef}
-          src="/scamming-on-runescape.mp3" // Put the audio file in your public folder
+          src="scamming-on-runescape.mp3"
+          preload="auto"
+          crossOrigin="anonymous"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}
-          onError={(e) => console.error('Audio error:', e)}
         />
 
         <div className="p-2 flex items-center gap-2 border-t border-stone-700">
@@ -1013,15 +1582,16 @@ import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, Bo
 import showdown from 'showdown';
 import './ExplorerWindow.css';
 
-const ExplorerWindow = ({ nodeId, onCommand, transformWindow }) => {
+const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updateWindowState }) => {
+  // Use state from windowState or initialize with defaults
   const [files, setFiles] = useState([]);
-  const [currentPath, setCurrentPath] = useState('/');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [expandedFolders, setExpandedFolders] = useState({});
+  const [currentPath, setCurrentPath] = useState(windowState?.currentPath || '/');
+  const [selectedFile, setSelectedFile] = useState(windowState?.selectedFile || null);
+  const [expandedFolders, setExpandedFolders] = useState(windowState?.expandedFolders || {});
   const [isLoading, setIsLoading] = useState(true);
-  const [fileContent, setFileContent] = useState('');
+  const [fileContent, setFileContent] = useState(windowState?.fileContent || '');
   const [errorMessage, setErrorMessage] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(windowState?.showPreview || false);
   
   // Initialize Showdown converter for Markdown
   const converter = new showdown.Converter({
@@ -1180,6 +1750,19 @@ Provides a command interface for controlling the window manager.
   useEffect(() => {
     fetchDirectoryContents();
   }, []);
+
+  // Update window state when relevant state changes
+  useEffect(() => {
+    if (updateWindowState) {
+      updateWindowState({
+        currentPath,
+        selectedFile,
+        expandedFolders,
+        fileContent,
+        showPreview
+      });
+    }
+  }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, updateWindowState]);
 
   // Toggle folder expansion
   const toggleFolder = (folderPath) => {
@@ -1359,19 +1942,49 @@ export default ExplorerWindow;
 ================
 File: components/windows/imageWindow.jsx
 ================
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
-import dhakmir from '../../assets/dhakmir-01.png';  // Adjust the path based on your project structure
+import dhakmir from '../../assets/dhakmir-01.png';  // Default image
+import martell from '../../assets/Martell2.png';    // Alternative image
 
-const ImageWindow = ({ nodeId, onCommand }) => {
+const ImageWindow = ({ nodeId, onCommand, windowState, updateWindowState }) => {
+  // Use state from windowState or initialize with defaults
+  const [imageSrc, setImageSrc] = useState(windowState?.imageSrc || dhakmir);
+  const [imageAlt, setImageAlt] = useState(windowState?.imageAlt || 'dhakmir');
+
+  // Update window state when image changes
+  useEffect(() => {
+    if (updateWindowState) {
+      updateWindowState({
+        imageSrc,
+        imageAlt
+      });
+    }
+  }, [imageSrc, imageAlt, updateWindowState]);
+
+  // Handle image switching command
+  const handleImageCommand = (command) => {
+    if (command === 'switch') {
+      if (imageSrc === dhakmir) {
+        setImageSrc(martell);
+        setImageAlt('martell');
+      } else {
+        setImageSrc(dhakmir);
+        setImageAlt('dhakmir');
+      }
+      return true;
+    }
+    return false;
+  };
+
   return (
     <div className="h-full w-full flex flex-col bg-stone-900">
       {/* Container div with relative positioning */}
       <div className="flex-1 relative">
         {/* Image absolutely positioned to fill space while staying centered */}
         <img 
-          src={dhakmir} 
-          alt="dhakmir" 
+          src={imageSrc} 
+          alt={imageAlt} 
           className="absolute inset-0 w-full h-full object-contain m-auto"
         />
       </div>
@@ -1384,11 +1997,20 @@ const ImageWindow = ({ nodeId, onCommand }) => {
           className="flex-1 bg-transparent outline-none text-teal-400 font-mono"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && e.target.value.trim()) {
-              onCommand(e.target.value.trim());
+              const command = e.target.value.trim();
+              // First try our custom image commands
+              const handled = handleImageCommand(command);
+              // If not handled, pass to the general command handler
+              if (!handled) {
+                onCommand(command);
+              }
               e.target.value = '';
             }
           }}
         />
+      </div>
+      <div className="p-2 text-xs text-teal-600 text-center">
+        Type "switch" to toggle between images
       </div>
     </div>
   );
@@ -1404,26 +2026,19 @@ import ExplorerWindow from './ExplorerWindow';
 import EditorWindow from './EditorWindow';
 import PreviewWindow from './PreviewWindow';
 import ImageWindow from './imageWindow';
-import AudioWindow from './AudioWindow';
 import withCommandHandling from '../../hocs/withCommandHandling';
 import withWindowState from '../../hocs/withWindowState';
-import { WINDOW_TYPES } from '../../utils/windowTypes';
+import AudioWindow from './AudioWindow';
+import { WINDOW_TYPES } from '../../utils/constants';
 
-// First enhance the components with window state management
-const StateTerminalWindow = withWindowState(TerminalWindow, WINDOW_TYPES.TERMINAL);
-const StateExplorerWindow = withWindowState(ExplorerWindow, WINDOW_TYPES.EXPLORER);
-const StateEditorWindow = withWindowState(EditorWindow, WINDOW_TYPES.EDITOR);
-const StatePreviewWindow = withWindowState(PreviewWindow, WINDOW_TYPES.CHART);
-const StateImageWindow = withWindowState(ImageWindow, WINDOW_TYPES.IMAGE);
-const StateAudioWindow = withWindowState(AudioWindow, WINDOW_TYPES.AUDIO);
-
-// Then enhance with command handling (order matters - we want command handling to have access to state)
-export const EnhancedTerminalWindow = withCommandHandling(StateTerminalWindow);
-export const EnhancedExplorerWindow = withCommandHandling(StateExplorerWindow);
-export const EnhancedEditorWindow = withCommandHandling(StateEditorWindow);
-export const EnhancedPreviewWindow = withCommandHandling(StatePreviewWindow);
-export const EnhancedImageWindow = withCommandHandling(StateImageWindow);
-export const EnhancedAudioWindow = withCommandHandling(StateAudioWindow);
+// Create enhanced versions of each window component by wrapping them with both HOCs
+// First apply withCommandHandling, then withWindowState to provide state management
+export const EnhancedTerminalWindow = withWindowState(withCommandHandling(TerminalWindow), WINDOW_TYPES.TERMINAL);
+export const EnhancedExplorerWindow = withWindowState(withCommandHandling(ExplorerWindow), WINDOW_TYPES.EXPLORER);
+export const EnhancedEditorWindow = withWindowState(withCommandHandling(EditorWindow), WINDOW_TYPES.EDITOR);
+export const EnhancedPreviewWindow = withWindowState(withCommandHandling(PreviewWindow), WINDOW_TYPES.CHART);
+export const EnhancedImageWindow = withWindowState(withCommandHandling(ImageWindow), WINDOW_TYPES.IMAGE);
+export const EnhancedAudioWindow = withWindowState(withCommandHandling(AudioWindow), WINDOW_TYPES.AUDIO);
 
 // Also export the base components in case they're needed
 export { TerminalWindow, ExplorerWindow, EditorWindow, PreviewWindow };
@@ -1480,20 +2095,14 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   // Refs for managing focus and scrolling
   const terminalRef = useRef(null);
   const inputRef = useRef(null);
-  
-  // Use state from windowState prop or default values
-  const [history, setHistory] = useState(windowState?.history || ['SLUMNET TERMINAL - Type "help" for available commands.']);
-  const [commandHistory, setCommandHistory] = useState(windowState?.commandHistory || []);
-  const [currentInput, setCurrentInput] = useState('');
-  const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // Effect to sync local state with windowState when it changes
-  useEffect(() => {
-    if (windowState) {
-      if (windowState.history) setHistory(windowState.history);
-      if (windowState.commandHistory) setCommandHistory(windowState.commandHistory);
-    }
-  }, [windowState]);
+  // Terminal state - use windowState if available
+  const [history, setHistory] = useState(
+    windowState?.history || ['SLUMNET TERMINAL - Type "help" for available commands.']
+  );
+  const [commandHistory, setCommandHistory] = useState(windowState?.commandHistory || []);
+  const [currentInput, setCurrentInput] = useState(windowState?.currentInput || '');
+  const [historyIndex, setHistoryIndex] = useState(windowState?.historyIndex || -1);
 
   // Auto-focus when terminal becomes active
   useEffect(() => {
@@ -1507,26 +2116,27 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-    
-    // Update the window state when history changes
-    if (updateWindowState && (history.length > 0 || commandHistory.length > 0)) {
+  }, [history]);
+
+  // Update window state when terminal state changes
+  useEffect(() => {
+    if (updateWindowState) {
       updateWindowState({
         history,
-        commandHistory
+        commandHistory,
+        currentInput,
+        historyIndex
       });
     }
-  }, [history, commandHistory, updateWindowState]);
+  }, [history, commandHistory, currentInput, historyIndex, updateWindowState]);
 
   const handleTerminalClick = () => {
     inputRef.current?.focus();
   };
 
   const executeCommand = (command) => {
-    const newHistory = [...history, `$ ${command}`];
-    const newCommandHistory = [...commandHistory, command];
-    
-    setHistory(newHistory);
-    setCommandHistory(newCommandHistory);
+    setHistory(prev => [...prev, `$ ${command}`]);
+    setCommandHistory(prev => [...prev, command]);
   
     const cmd = command.toLowerCase();
   
@@ -1623,122 +2233,249 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
 export default TerminalWindow;
 
 ================
-File: context/WindowStateContext.jsx
+File: config/api.js
 ================
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-
-// Initial state with different content types
-const initialState = {
-  windowStates: {},
-  // Example structure:
-  // windowStates: {
-  //   "window-id-1": {
-  //     type: "terminal",
-  //     content: {
-  //       history: [],
-  //       commandHistory: []
-  //     }
-  //   },
-  //   "window-id-2": {
-  //     type: "editor",
-  //     content: {
-  //       text: "function hello() {\n  console.log('Hello World');\n}"
-  //     }
-  //   }
-  // }
+// API configuration
+const API_CONFIG = {
+  // Replace with your actual server URL
+  BASE_URL: 'http://45.45.239.125:3001/api',
+  
+  // Endpoints
+  ENDPOINTS: {
+    LOGIN: '/login',
+    REGISTER: '/register',
+    PROFILE: '/profile'
+  }
 };
 
-// Actions
-const SET_WINDOW_STATE = 'SET_WINDOW_STATE';
-const REMOVE_WINDOW_STATE = 'REMOVE_WINDOW_STATE';
+export default API_CONFIG;
 
-// Reducer
-function reducer(state, action) {
-  switch (action.type) {
-    case SET_WINDOW_STATE:
-      return {
-        ...state,
-        windowStates: {
-          ...state.windowStates,
-          [action.payload.windowId]: {
-            type: action.payload.windowType,
-            content: action.payload.content
-          }
-        }
-      };
-    case REMOVE_WINDOW_STATE:
-      const newState = { ...state };
-      delete newState.windowStates[action.payload.windowId];
-      return newState;
-    default:
-      return state;
-  }
+================
+File: context/AuthContext.jsx
+================
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+import API_CONFIG from '../config/api';
+
+// Create the authentication context
+const AuthContext = createContext();
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Check if user is already logged in on component mount
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      fetchUserProfile(token);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch user profile using the token
+  const fetchUserProfile = async (token) => {
+    try {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROFILE}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUser(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch user profile:', err);
+      localStorage.removeItem('auth_token');
+      setError('Session expired. Please login again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Login function
+  const login = async (username, password) => {
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGIN}`, {
+        username,
+        password
+      });
+      
+      const { token } = response.data;
+      localStorage.setItem('auth_token', token);
+      
+      await fetchUserProfile(token);
+      return { success: true };
+    } catch (err) {
+      setLoading(false);
+      const message = err.response?.data?.message || 'Login failed';
+      setError(message);
+      return { success: false, message };
+    }
+  };
+
+  // Logout function
+  const logout = () => {
+    localStorage.removeItem('auth_token');
+    setUser(null);
+    setError(null);
+  };
+
+  // Clear any authentication errors
+  const clearError = () => {
+    setError(null);
+  };
+
+  // Context value
+  const value = {
+    user,
+    loading,
+    error,
+    login,
+    logout,
+    clearError,
+    isAuthenticated: !!user
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
+
+// Custom hook to use the auth context
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
+================
+File: context/WindowStateContext.jsx
+================
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 // Create context
 const WindowStateContext = createContext();
 
+// Initial state with different content types
+const initialState = {
+  windowStates: {}
+};
+
 // Context provider component
 export function WindowStateProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  // Use a ref to store the state to avoid re-renders
+  const stateRef = useRef(initialState);
+  
+  // Use useState just to trigger re-renders when needed
+  const [, forceUpdate] = useState({});
+  
+  // Add a ref to track if we should update localStorage
+  const isInitialMount = useRef(true);
+  const saveTimeoutRef = useRef(null);
 
-  // Optional: Persist state to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('windowStates', JSON.stringify(state));
-    } catch (error) {
-      console.error('Failed to save window states to localStorage:', error);
-    }
-  }, [state]);
-
-  // Load initial state from localStorage
+  // Load initial state from localStorage once on mount
   useEffect(() => {
     try {
       const savedState = localStorage.getItem('windowStates');
       if (savedState) {
         const parsedState = JSON.parse(savedState);
-        Object.keys(parsedState.windowStates).forEach(windowId => {
-          dispatch({
-            type: SET_WINDOW_STATE,
-            payload: {
-              windowId,
-              windowType: parsedState.windowStates[windowId].type,
-              content: parsedState.windowStates[windowId].content
-            }
-          });
-        });
+        if (parsedState && parsedState.windowStates) {
+          // Update the state ref directly
+          stateRef.current = parsedState;
+          // Force a re-render
+          forceUpdate({});
+        }
       }
+      // Mark initial load as complete
+      isInitialMount.current = false;
     } catch (error) {
       console.error('Failed to load window states from localStorage:', error);
+      isInitialMount.current = false;
     }
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Save to localStorage with debounce
+  const saveToLocalStorage = useCallback(() => {
+    // Skip saving on initial load
+    if (isInitialMount.current) {
+      return;
+    }
+    
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Set a new timeout to save the state after a delay
+    saveTimeoutRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem('windowStates', JSON.stringify(stateRef.current));
+      } catch (error) {
+        console.error('Failed to save window states to localStorage:', error);
+      }
+    }, 500); // 500ms debounce
   }, []);
 
   // Action creators
-  const setWindowState = (windowId, windowType, content) => {
-    dispatch({
-      type: SET_WINDOW_STATE,
-      payload: { windowId, windowType, content }
-    });
-  };
+  const setWindowState = useCallback((windowId, windowType, content) => {
+    // Update the state ref directly
+    stateRef.current = {
+      ...stateRef.current,
+      windowStates: {
+        ...stateRef.current.windowStates,
+        [windowId]: {
+          type: windowType,
+          content
+        }
+      }
+    };
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Force a re-render
+    forceUpdate({});
+  }, [saveToLocalStorage]);
 
-  const removeWindowState = (windowId) => {
-    dispatch({
-      type: REMOVE_WINDOW_STATE,
-      payload: { windowId }
-    });
-  };
+  const removeWindowState = useCallback((windowId) => {
+    // Create a new state object
+    const newState = {
+      ...stateRef.current,
+      windowStates: { ...stateRef.current.windowStates }
+    };
+    
+    // Delete the window state
+    delete newState.windowStates[windowId];
+    
+    // Update the state ref
+    stateRef.current = newState;
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Force a re-render
+    forceUpdate({});
+  }, [saveToLocalStorage]);
 
-  const getWindowState = (windowId) => {
-    return state.windowStates[windowId] || null;
-  };
+  const getWindowState = useCallback((windowId) => {
+    return stateRef.current.windowStates[windowId] || null;
+  }, []);
+
+  // Create a stable context value
+  const contextValue = useMemo(() => ({
+    windowStates: stateRef.current.windowStates,
+    setWindowState,
+    removeWindowState,
+    getWindowState
+  }), [setWindowState, removeWindowState, getWindowState]);
 
   return (
-    <WindowStateContext.Provider value={{ 
-      windowStates: state.windowStates,
-      setWindowState,
-      removeWindowState,
-      getWindowState
-    }}>
+    <WindowStateContext.Provider value={contextValue}>
       {children}
     </WindowStateContext.Provider>
   );
@@ -1829,7 +2566,7 @@ export default withCommandHandling;
 ================
 File: hocs/withWindowState.jsx
 ================
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useWindowState } from '../context/WindowStateContext';
 
 /**
@@ -1849,17 +2586,24 @@ const withWindowState = (WrappedComponent, windowType) => {
     const { getWindowState, setWindowState } = useWindowState();
     
     // Get the current state or use an empty object if none exists
-    const currentState = getWindowState(nodeId)?.content || {};
+    // Use useMemo to avoid recreating the object on every render
+    const currentState = useMemo(() => {
+      return getWindowState(nodeId)?.content || {};
+    }, [getWindowState, nodeId]);
     
     // Create an updater function for the component to use
-    const updateWindowState = (updates) => {
+    // Use useCallback to avoid recreating the function on every render
+    const updateWindowState = useCallback((updates) => {
+      // Get the latest state to ensure we're working with current data
+      const latestState = getWindowState(nodeId)?.content || {};
+      
       // Allow both object and function updaters
       const newContent = typeof updates === 'function'
-        ? updates(currentState)
-        : { ...currentState, ...updates };
+        ? updates(latestState)
+        : { ...latestState, ...updates };
         
       setWindowState(nodeId, windowType, newContent);
-    };
+    }, [getWindowState, setWindowState, nodeId, windowType]);
     
     return (
       <WrappedComponent
@@ -1991,51 +2735,30 @@ import {
 } from '../utils/treeUtils';
 import { getWindowBounds } from '../utils/windowUtils';
 import { useWindowState } from '../context/WindowStateContext';
+import { 
+  MIN_WINDOW_WIDTH_PX, 
+  MIN_WINDOW_HEIGHT_PX 
+} from '../utils/windowSizeConstants';
 
-export const useWindowManager = ({ defaultLayout = null } = {}) => {
-  const { setWindowState, removeWindowState, getWindowState } = useWindowState();
-  
-  // Workspace state - now just storing structural information
-  const [workspaces, setWorkspaces] = useState(() => {
-    // Try to load workspaces from localStorage
-    try {
-      const savedWorkspaces = localStorage.getItem('workspaces');
-      if (savedWorkspaces) {
-        return JSON.parse(savedWorkspaces);
-      }
-    } catch (error) {
-      console.error('Failed to load workspaces from localStorage:', error);
-    }
-
-    // Default workspaces if none found in localStorage
-    return [
-      { id: 1, name: 'Main', root: defaultLayout, activeNodeId: null },
-      { id: 2, name: 'Code', root: null, activeNodeId: null },
-      { id: 3, name: 'Terminal', root: null, activeNodeId: null },
-      { id: 4, name: 'Preview', root: null, activeNodeId: null }
-    ];
-  });
-
+export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } = {}) => {
+  // Workspace state
+  const [workspaces, setWorkspaces] = useState([
+    { id: 1, name: 'Main', root: defaultLayout, activeNodeId: null, terminalStates: {} },
+    { id: 2, name: 'Code', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 3, name: 'Terminal', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 4, name: 'Preview', root: null, activeNodeId: null, terminalStates: {} }
+  ]);
   const [currentWorkspaceIndex, setCurrentWorkspaceIndex] = useState(0);
   const [isResizeMode, setIsResizeMode] = useState(false);
   const [isMoveMode, setIsMoveMode] = useState(false);
-  const [dragState, setDragState] = useState(null);
 
-  // Save workspaces to localStorage when they change
-  useEffect(() => {
-    try {
-      localStorage.setItem('workspaces', JSON.stringify(workspaces));
-    } catch (error) {
-      console.error('Failed to save workspaces to localStorage:', error);
-    }
-  }, [workspaces]);
-
-  // Get current workspace data
+  // Get current workspace data directly from workspaces array
   const currentWorkspace = workspaces[currentWorkspaceIndex];
   const rootNode = currentWorkspace.root;
   const activeNodeId = currentWorkspace.activeNodeId;
+  const terminalStates = currentWorkspace.terminalStates;
 
-  // Update the active node
+  // Create setActiveNodeId function that updates the workspace
   const setActiveNodeId = useCallback((nodeId) => {
     setWorkspaces(prev => {
       const updated = [...prev];
@@ -2066,9 +2789,8 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     });
   }, [currentWorkspaceIndex]);
 
-  // Switch to a different workspace
   const switchWorkspace = useCallback((target) => {
-    console.log('Switching to workspace:', target);
+    console.log('Switching to:', target);
     if (typeof target === 'number' && target >= 0 && target < 4) {
       setCurrentWorkspaceIndex(target);
     } else if (target === 'right' || target === 'left') {
@@ -2076,55 +2798,413 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
         const newIndex = target === 'right' 
           ? (prev + 1) % 4 
           : prev - 1 < 0 ? 3 : prev - 1;
-        console.log('New workspace index:', newIndex);
+        console.log('New index:', newIndex);
         return newIndex;
       });
     }
+  }, [setCurrentWorkspaceIndex]);
+
+  useEffect(() => {
+    const handleWorkspaceKeys = (e) => {
+      if (e.ctrlKey && e.altKey) {
+        switch (e.key) {
+          case 'ArrowRight':
+            e.preventDefault();
+            switchWorkspace('right');
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            switchWorkspace('left');
+            break;
+          // Removed 'n' key handler for creating new workspaces
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleWorkspaceKeys);
+    return () => window.removeEventListener('keydown', handleWorkspaceKeys);
+  }, [switchWorkspace]);
+
+  // Window navigation functions
+  const navigateToWindow = useCallback((direction) => {
+    if (!activeNodeId || !rootNode) return;
+  
+    const allWindows = getWindowBounds(rootNode);
+    const activeWindow = allWindows.find(w => w.id === activeNodeId);
+    if (!activeWindow) return;
+  
+    // Filter out the active window
+    const otherWindows = allWindows.filter(w => w.id !== activeNodeId);
+    
+    // If no other windows, nothing to navigate to
+    if (otherWindows.length === 0) return;
+    
+    // Calculate the active window's center
+    const activeBounds = activeWindow.bounds;
+    
+    // Helper function to calculate overlap percentage between windows
+    const calculateOverlap = (window1, window2, isHorizontal) => {
+      if (isHorizontal) {
+        // Calculate horizontal overlap
+        const overlapStart = Math.max(window1.left, window2.left);
+        const overlapEnd = Math.min(window1.right, window2.right);
+        if (overlapEnd <= overlapStart) return 0; // No overlap
+        
+        const overlapWidth = overlapEnd - overlapStart;
+        const window1Width = window1.right - window1.left;
+        
+        return overlapWidth / window1Width;
+      } else {
+        // Calculate vertical overlap
+        const overlapStart = Math.max(window1.top, window2.top);
+        const overlapEnd = Math.min(window1.bottom, window2.bottom);
+        if (overlapEnd <= overlapStart) return 0; // No overlap
+        
+        const overlapHeight = overlapEnd - overlapStart;
+        const window1Height = window1.bottom - window1.top;
+        
+        return overlapHeight / window1Height;
+      }
+    };
+    
+    // Find windows in the specified direction with a more relaxed approach
+    let candidateWindows = [];
+    const tolerance = 0.1; // 10% tolerance for adjacency
+    
+    switch (direction) {
+      case 'up':
+        // Windows that are above the active window
+        candidateWindows = otherWindows.filter(w => {
+          const bounds = w.bounds;
+          // Window must be above the active window
+          if (bounds.bottom > activeBounds.top) return false;
+          
+          // Calculate horizontal overlap
+          const overlap = calculateOverlap(activeBounds, bounds, true);
+          return overlap > 0; // Any overlap makes it a candidate
+        });
+        break;
+        
+      case 'down':
+        // Windows that are below the active window
+        candidateWindows = otherWindows.filter(w => {
+          const bounds = w.bounds;
+          // Window must be below the active window
+          if (bounds.top < activeBounds.bottom) return false;
+          
+          // Calculate horizontal overlap
+          const overlap = calculateOverlap(activeBounds, bounds, true);
+          return overlap > 0; // Any overlap makes it a candidate
+        });
+        break;
+        
+      case 'left':
+        // Windows that are to the left of the active window
+        candidateWindows = otherWindows.filter(w => {
+          const bounds = w.bounds;
+          // Window must be to the left of the active window
+          if (bounds.right > activeBounds.left) return false;
+          
+          // Calculate vertical overlap
+          const overlap = calculateOverlap(activeBounds, bounds, false);
+          return overlap > 0; // Any overlap makes it a candidate
+        });
+        break;
+        
+      case 'right':
+        // Windows that are to the right of the active window
+        candidateWindows = otherWindows.filter(w => {
+          const bounds = w.bounds;
+          // Window must be to the right of the active window
+          if (bounds.left < activeBounds.right) return false;
+          
+          // Calculate vertical overlap
+          const overlap = calculateOverlap(activeBounds, bounds, false);
+          return overlap > 0; // Any overlap makes it a candidate
+        });
+        break;
+    }
+    
+    // If no candidates found, return
+    if (candidateWindows.length === 0) return;
+    
+    // Calculate scores for each candidate window based on:
+    // 1. Overlap percentage (higher is better)
+    // 2. Distance from active window (lower is better)
+    const scoredWindows = candidateWindows.map(window => {
+      const bounds = window.bounds;
+      let overlapScore = 0;
+      let distanceScore = 0;
+      
+      switch (direction) {
+        case 'up':
+          overlapScore = calculateOverlap(activeBounds, bounds, true);
+          distanceScore = activeBounds.top - bounds.bottom;
+          break;
+          
+        case 'down':
+          overlapScore = calculateOverlap(activeBounds, bounds, true);
+          distanceScore = bounds.top - activeBounds.bottom;
+          break;
+          
+        case 'left':
+          overlapScore = calculateOverlap(activeBounds, bounds, false);
+          distanceScore = activeBounds.left - bounds.right;
+          break;
+          
+        case 'right':
+          overlapScore = calculateOverlap(activeBounds, bounds, false);
+          distanceScore = bounds.left - activeBounds.right;
+          break;
+      }
+      
+      // Normalize distance score (closer is better)
+      const normalizedDistanceScore = 1 / (1 + distanceScore);
+      
+      // Calculate final score with higher weight on overlap
+      const finalScore = (overlapScore * 0.7) + (normalizedDistanceScore * 0.3);
+      
+      return {
+        window,
+        overlapScore,
+        distanceScore,
+        finalScore
+      };
+    });
+    
+    // Sort by final score (higher is better)
+    scoredWindows.sort((a, b) => b.finalScore - a.finalScore);
+    
+    // Select the window with the highest score
+    const nextWindow = scoredWindows[0].window;
+    
+    if (nextWindow) {
+      setActiveNodeId(nextWindow.id);
+    }
+  }, [activeNodeId, rootNode, setActiveNodeId]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!e.ctrlKey) return;
+  
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          navigateToWindow('left');
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          navigateToWindow('right');
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          navigateToWindow('up');
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          navigateToWindow('down');
+          break;
+      }
+    };
+  
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigateToWindow]);
+
+  // Get window state management functions
+  const { getWindowState, setWindowState, removeWindowState } = useWindowState();
+
+  // Helper function to convert percentage-based bounds to pixel dimensions
+  const calculatePixelDimensions = useCallback((bounds) => {
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    const pixelDimensions = {
+      width: (bounds.width / 100) * windowWidth,
+      height: (bounds.height / 100) * windowHeight
+    };
+    
+    console.log('Window dimensions (percentage):', bounds);
+    console.log('Window dimensions (pixels):', pixelDimensions);
+    console.log('Minimum required:', MIN_WINDOW_WIDTH_PX, 'x', MIN_WINDOW_HEIGHT_PX);
+    console.log('Is too small:', 
+      pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+      pixelDimensions.height < MIN_WINDOW_HEIGHT_PX
+    );
+    
+    return pixelDimensions;
   }, []);
 
-  // Helper to initialize window state based on type
-  const initializeWindowState = (windowType, windowId) => {
-    switch (windowType) {
-      case WINDOW_TYPES.TERMINAL:
-        return {
-          history: ['Welcome to the Terminal! Type "help" for available commands.'],
-          commandHistory: []
-        };
-      case WINDOW_TYPES.EDITOR:
-        return {
-          text: `function hello() {\n  console.log("Hello, World!");\n}\n\n// Call the function\nhello();`
-        };
-      case WINDOW_TYPES.EXPLORER:
-        return {
-          currentPath: '/',
-          selectedFile: null,
-          expandedFolders: {}
-        };
-      case WINDOW_TYPES.IMAGE:
-        return {
-          zoom: 1,
-          position: { x: 0, y: 0 }
-        };
-      case WINDOW_TYPES.AUDIO:
-        return {
-          isPlaying: false,
-          volume: 1.0,
-          currentTime: 0
-        };
-      default:
-        return {};
-    }
-  };
-
-  // Create a new window with initial state
-  const createNewWindow = useCallback((windowType = WINDOW_TYPES.TERMINAL) => {
-    const newNode = Node.createWindow(Date.now(), windowType);
+  // Helper function to check if a resize operation would result in windows that are too small
+  const wouldViolateMinSize = useCallback((root, direction, affectedSplits, resizeStep) => {
+    console.log('Checking if resize would violate minimum size...');
+    console.log('Direction:', direction);
+    console.log('Affected splits:', affectedSplits.length);
+    console.log('Browser window size:', window.innerWidth, 'x', window.innerHeight);
     
-    // Initialize state for the new window based on type
-    const initialState = initializeWindowState(windowType, newNode.id);
-    setWindowState(newNode.id, windowType, initialState);
+    // Create a deep copy of the root to simulate the resize
+    const simulatedRoot = JSON.parse(JSON.stringify(root));
+    
+    // Apply the resize to the simulated root
+    affectedSplits.forEach(({ node: originalNode, targetInFirst, isRightSide, isBottomSide }) => {
+      // Find the corresponding node in the simulated root
+      const simulatedNode = findNodeById(simulatedRoot, originalNode.id);
+      if (!simulatedNode) return;
+      
+      console.log('Simulating resize on node:', simulatedNode.id);
+      console.log('Original split ratio:', simulatedNode.splitRatio);
+      
+      // Determine effective direction
+      let effectiveDirection = direction;
+      if (isRightSide && (direction === 'left' || direction === 'right')) {
+        effectiveDirection = direction === 'left' ? 'right' : 'left';
+      }
+      if (isBottomSide && (direction === 'up' || direction === 'down')) {
+        effectiveDirection = direction === 'up' ? 'down' : 'up';
+      }
+      
+      console.log('Effective direction:', effectiveDirection);
+      
+      // Apply the resize
+      switch (effectiveDirection) {
+        case 'left': // Shrink width
+          if (targetInFirst) {
+            simulatedNode.splitRatio = Math.max(0.1, simulatedNode.splitRatio - resizeStep);
+          } else {
+            simulatedNode.splitRatio = Math.min(0.9, simulatedNode.splitRatio + resizeStep);
+          }
+          break;
+          
+        case 'right': // Grow width
+          if (targetInFirst) {
+            simulatedNode.splitRatio = Math.min(0.9, simulatedNode.splitRatio + resizeStep);
+          } else {
+            simulatedNode.splitRatio = Math.max(0.1, simulatedNode.splitRatio - resizeStep);
+          }
+          break;
+          
+        case 'up': // Shrink height
+          if (targetInFirst) {
+            simulatedNode.splitRatio = Math.max(0.1, simulatedNode.splitRatio - resizeStep);
+          } else {
+            simulatedNode.splitRatio = Math.min(0.9, simulatedNode.splitRatio + resizeStep);
+          }
+          break;
+          
+        case 'down': // Grow height
+          if (targetInFirst) {
+            simulatedNode.splitRatio = Math.min(0.9, simulatedNode.splitRatio + resizeStep);
+          } else {
+            simulatedNode.splitRatio = Math.max(0.1, simulatedNode.splitRatio - resizeStep);
+          }
+          break;
+      }
+      
+      console.log('New split ratio:', simulatedNode.splitRatio);
+    });
+    
+    // Calculate the bounds of all windows after the simulated resize
+    const simulatedWindows = getWindowBounds(simulatedRoot);
+    console.log('Number of windows to check:', simulatedWindows.length);
+    
+    // Check if any window would be smaller than the minimum size
+    const tooSmallWindows = simulatedWindows.filter(window => {
+      const pixelDimensions = calculatePixelDimensions(window.bounds);
+      return pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+             pixelDimensions.height < MIN_WINDOW_HEIGHT_PX;
+    });
+    
+    const wouldViolate = tooSmallWindows.length > 0;
+    console.log('Windows that would be too small:', tooSmallWindows.length);
+    console.log('Would violate minimum size:', wouldViolate);
+    
+    return wouldViolate;
+  }, [calculatePixelDimensions]);
+
+  // Define splitWindow before createNewWindow since createNewWindow depends on it
+  const splitWindow = useCallback((nodeId, direction, newWindow = null) => {
+    // Get the original window's state if it exists
+    const originalWindowState = getWindowState(nodeId);
+    
+    if (!newWindow) {
+      newWindow = Node.createWindow(Date.now(), WINDOW_TYPES.TERMINAL);
+    }
+    
+    // If the original window had state, copy it to the new window
+    if (originalWindowState) {
+      // Clone the content to avoid reference issues
+      const clonedContent = JSON.parse(JSON.stringify(originalWindowState.content));
+      setWindowState(newWindow.id, newWindow.windowType, clonedContent);
+    }
+    
+    // Check if splitting would result in windows that are too small
+    const simulatedRoot = JSON.parse(JSON.stringify(rootNode));
+    const simulatedSplitRoot = splitNodeById(simulatedRoot, nodeId, direction, JSON.parse(JSON.stringify(newWindow)));
+    
+    // Calculate the bounds of all windows after the simulated split
+    const simulatedWindows = getWindowBounds(simulatedSplitRoot);
+    console.log('Simulating split - number of windows:', simulatedWindows.length);
+    
+    // Check if any window would be smaller than the minimum size
+    const tooSmallWindows = simulatedWindows.filter(window => {
+      const pixelDimensions = calculatePixelDimensions(window.bounds);
+      return pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+             pixelDimensions.height < MIN_WINDOW_HEIGHT_PX;
+    });
+    
+    const wouldViolate = tooSmallWindows.length > 0;
+    console.log('Split would create windows that are too small:', wouldViolate);
+    
+    if (wouldViolate) {
+      console.log('Split blocked: would result in windows smaller than minimum size');
+      // Flash the active window border to indicate we've hit the minimum size
+      if (onFlashBorder && activeNodeId) {
+        onFlashBorder(activeNodeId);
+      }
+      return;
+    }
+  
+    updateWorkspace(workspace => ({
+      ...workspace,
+      root: splitNodeById(workspace.root, nodeId, direction, newWindow)
+    }));
+  }, [updateWorkspace, getWindowState, setWindowState, rootNode, calculatePixelDimensions]);
+
+  const createNewWindow = useCallback((windowType) => {
+    const newNode = Node.createWindow(Date.now(), windowType || WINDOW_TYPES.TERMINAL);
+    
+    // Initialize window state based on window type
+    const initialContent = {};
+    
+    if (windowType === WINDOW_TYPES.TERMINAL) {
+      // Initialize terminal state
+      initialContent.history = ['Welcome to the Terminal! Type "help" for available commands.'];
+      initialContent.commandHistory = [];
+      
+      updateWorkspace(workspace => ({
+        ...workspace,
+        terminalStates: {
+          ...workspace.terminalStates,
+          [newNode.id]: {
+            history: initialContent.history,
+            commandHistory: initialContent.commandHistory
+          }
+        }
+      }));
+    } else if (windowType === WINDOW_TYPES.EDITOR) {
+      // Initialize editor state with default content
+      initialContent.text = `function hello() {\n  console.log("Hello, World!");\n}\n\n// Call the function\nhello();`;
+    } else if (windowType === WINDOW_TYPES.EXPLORER) {
+      // Initialize explorer state
+      initialContent.currentPath = '/';
+      initialContent.selectedItem = null;
+    }
+    
+    // Set the initial window state
+    setWindowState(newNode.id, newNode.windowType, initialContent);
     
     if (!rootNode) {
+      // First window, always allowed
       updateWorkspace({
         root: newNode,
         activeNodeId: newNode.id
@@ -2133,6 +3213,27 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     }
     
     if (!activeNodeId) {
+      // No active window, but we have a root - this is unusual
+      // Let's check if we can add a window without violating minimum size
+      const simulatedRoot = JSON.parse(JSON.stringify(rootNode));
+      const simulatedWindows = getWindowBounds(simulatedRoot);
+      
+      // Check if existing windows are already too small
+      const tooSmallWindows = simulatedWindows.filter(window => {
+        const pixelDimensions = calculatePixelDimensions(window.bounds);
+        return pixelDimensions.width < MIN_WINDOW_WIDTH_PX || 
+               pixelDimensions.height < MIN_WINDOW_HEIGHT_PX;
+      });
+      
+      if (tooSmallWindows.length > 0) {
+        console.log('Cannot create new window: existing windows are already too small');
+        // Flash the active window border to indicate we've hit the minimum size
+        if (onFlashBorder && activeNodeId) {
+          onFlashBorder(activeNodeId);
+        }
+        return;
+      }
+      
       updateWorkspace({
         root: newNode,
         activeNodeId: newNode.id
@@ -2140,40 +3241,22 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
       return;
     }
     
+    // Use splitWindow which already has minimum size checks
     splitWindow(activeNodeId, 'vertical', newNode);
     setActiveNodeId(newNode.id);
-  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState]);
+  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState, calculatePixelDimensions, splitWindow]);
 
-  // Split a window, preserving state
-  const splitWindow = useCallback((nodeId, direction, newWindow = null) => {
-    if (!newWindow) {
-      newWindow = Node.createWindow(Date.now(), WINDOW_TYPES.TERMINAL);
-      
-      // Initialize state for the new window
-      const initialState = initializeWindowState(WINDOW_TYPES.TERMINAL, newWindow.id);
-      setWindowState(newWindow.id, WINDOW_TYPES.TERMINAL, initialState);
-    }
-  
-    updateWorkspace(workspace => ({
-      ...workspace,
-      root: splitNodeById(workspace.root, nodeId, direction, newWindow)
-    }));
-  }, [updateWorkspace, setWindowState]);
-
-  // Close a window and clean up its state
   const closeWindow = useCallback((nodeId) => {
-    // Clean up window state when closing
+    // Clean up window state when closing a window
     removeWindowState(nodeId);
     
-    if (rootNode && rootNode.type === 'window' && rootNode.id === nodeId) {
+    if (rootNode.type === 'window' && rootNode.id === nodeId) {
       updateWorkspace({
         root: null,
         activeNodeId: null
       });
       return;
     }
-
-    if (!rootNode) return;
 
     const newRoot = JSON.parse(JSON.stringify(rootNode));
     const result = removeNodeById(newRoot, nodeId);
@@ -2191,35 +3274,24 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     }
   }, [rootNode, activeNodeId, updateWorkspace, removeWindowState]);
 
-  // Transform a window to a different type, preserving relevant state
   const transformWindow = useCallback((nodeId, newType) => {
-    if (!rootNode) return;
-    
     const newRoot = JSON.parse(JSON.stringify(rootNode));
+    
+    // Get the current window state before transformation
+    const currentWindowState = getWindowState(nodeId);
     
     const updateNodeInTree = (node) => {
       if (!node) return null;
       
       if (node.type === 'window' && node.id === nodeId) {
-        const oldType = node.windowType;
+        // Update the window type
         node.windowType = newType;
         
-        // Initialize new state while preserving any relevant data
-        const existingState = getWindowState(nodeId)?.content || {};
-        const newState = initializeWindowState(newType, nodeId);
-        
-        // Merge states or handle transitions between different window types
-        let mergedState = { ...newState };
-        
-        // Custom state transitions
-        if (oldType === WINDOW_TYPES.TERMINAL && newType === WINDOW_TYPES.EDITOR) {
-          // Terminal -> Editor: Use last command as initial text
-          if (existingState.commandHistory && existingState.commandHistory.length) {
-            mergedState.text = existingState.commandHistory[existingState.commandHistory.length - 1];
-          }
+        // Update the window state with the new type but preserve content
+        if (currentWindowState) {
+          setWindowState(nodeId, newType, currentWindowState.content);
         }
         
-        setWindowState(nodeId, newType, mergedState);
         return true;
       }
       
@@ -2236,135 +3308,8 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
         root: newRoot
       });
     }
-  }, [rootNode, updateWorkspace, setWindowState, getWindowState]);
+  }, [rootNode, updateWorkspace, getWindowState, setWindowState]);
 
-  // Window resizing logic
-  const handleResizeStart = useCallback((e, split) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragState({
-      split,
-      initialPos: {
-        x: e.clientX,
-        y: e.clientY
-      },
-      initialRatio: split.splitRatio
-    });
-  }, []);
-
-  const handleResizeMove = useCallback((e) => {
-    if (!dragState) return;
-
-    const { split, initialPos, initialRatio } = dragState;
-    const delta = split.direction === 'horizontal' 
-      ? (e.clientX - initialPos.x) / window.innerWidth 
-      : (e.clientY - initialPos.y) / window.innerHeight;
-
-    const newRatio = Math.max(0.1, Math.min(0.9, initialRatio + delta));
-    split.splitRatio = newRatio;
-
-    // Force a re-render
-    setDragState(prev => ({ ...prev }));
-  }, [dragState]);
-
-  const handleResizeEnd = useCallback(() => {
-    setDragState(null);
-  }, []);
-
-  useEffect(() => {
-    if (dragState) {
-      window.addEventListener('mousemove', handleResizeMove);
-      window.addEventListener('mouseup', handleResizeEnd);
-      return () => {
-        window.removeEventListener('mousemove', handleResizeMove);
-        window.removeEventListener('mouseup', handleResizeEnd);
-      };
-    }
-  }, [dragState, handleResizeMove, handleResizeEnd]);
-
-  // Window navigation function
-  const navigateToWindow = useCallback((direction) => {
-    if (!activeNodeId || !rootNode) return;
-  
-    const allWindows = getWindowBounds(rootNode);
-    const activeWindow = allWindows.find(w => w.id === activeNodeId);
-    if (!activeWindow) return;
-  
-    const adjacentWindows = allWindows.filter(w => {
-      if (w.id === activeNodeId) return false;
-  
-      const bounds = w.bounds;
-      const activeBounds = activeWindow.bounds;
-  
-      const hasVerticalOverlap = () => 
-        !(bounds.bottom < activeBounds.top || bounds.top > activeBounds.bottom);
-  
-      const horizontalOverlap = () => 
-        !(bounds.right < activeBounds.left || bounds.left > activeBounds.right);
-  
-      const tolerance = 0.01;
-  
-      switch (direction) {
-        case 'up':
-          return hasVerticalOverlap() &&
-                 Math.abs(bounds.bottom - activeBounds.top) < tolerance;
-        case 'down':
-          return hasVerticalOverlap() &&
-                 Math.abs(bounds.top - activeBounds.bottom) < tolerance;
-        case 'left':
-          return horizontalOverlap() &&
-                 Math.abs(bounds.right - activeBounds.left) < tolerance;
-        case 'right':
-          return horizontalOverlap() &&
-                 Math.abs(bounds.left - activeBounds.right) < tolerance;
-        default:
-          return false;
-      }
-    });
-  
-    if (adjacentWindows.length === 0) return;
-  
-    let nextWindow;
-    switch (direction) {
-      case 'left':
-        nextWindow = adjacentWindows.sort((a, b) => 
-          a.bounds.centerX !== b.bounds.centerX
-            ? b.bounds.centerX - a.bounds.centerX
-            : a.bounds.centerY - b.bounds.centerY
-        )[0];
-        break;
-      
-      case 'right':
-        nextWindow = adjacentWindows.sort((a, b) => 
-          a.bounds.centerX !== b.bounds.centerX
-            ? a.bounds.centerX - b.bounds.centerX
-            : a.bounds.centerY - b.bounds.centerY
-        )[0];
-        break;
-      
-      case 'up':
-        nextWindow = adjacentWindows.sort((a, b) => 
-          a.bounds.centerY !== b.bounds.centerY
-            ? b.bounds.centerY - a.bounds.centerY
-            : a.bounds.centerX - b.bounds.centerX
-        )[0];
-        break;
-      
-      case 'down':
-        nextWindow = adjacentWindows.sort((a, b) => 
-          a.bounds.centerY !== b.bounds.centerY
-            ? a.bounds.centerY - b.bounds.centerY
-            : a.bounds.centerX - b.bounds.centerX
-        )[0];
-        break;
-    }
-  
-    if (nextWindow) {
-      setActiveNodeId(nextWindow.id);
-    }
-  }, [activeNodeId, rootNode, setActiveNodeId]);
-
-  // Command handling
   const handleCommand = useCallback((command) => {
     const parts = command.split(' ');
     const cmd = parts[0].toLowerCase();
@@ -2384,14 +3329,13 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     }
   }, [activeNodeId, splitWindow, closeWindow]);
 
-  // Window resizing in resize mode
   const resizeActiveWindow = useCallback((direction) => {
     if (!activeNodeId || !rootNode || !isResizeMode) return;
   
     updateWorkspace(workspace => {
       const newRoot = JSON.parse(JSON.stringify(workspace.root));
       
-      // Helper function to find all affected splits
+      // Helper function to find all affected splits and determine if window is in second child
       const findAffectedSplits = (node, targetId) => {
         if (!node) return [];
         
@@ -2403,10 +3347,20 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
           if (targetInFirst || targetInSecond) {
             // Add this split if it matches our resize direction
             if ((direction === 'left' || direction === 'right') && node.direction === 'horizontal') {
-              splits.push({ node, targetInFirst: !!targetInFirst });
+              splits.push({ 
+                node, 
+                targetInFirst: !!targetInFirst,
+                // If this is a horizontal split and window is in second child, it's on the right side
+                isRightSide: !!targetInSecond && node.direction === 'horizontal'
+              });
             }
             if ((direction === 'up' || direction === 'down') && node.direction === 'vertical') {
-              splits.push({ node, targetInFirst: !!targetInFirst });
+              splits.push({ 
+                node, 
+                targetInFirst: !!targetInFirst,
+                isRightSide: !!targetInSecond && node.direction === 'horizontal',
+                isBottomSide: !!targetInSecond && node.direction === 'vertical'
+              });
             }
           }
           
@@ -2419,10 +3373,26 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
   
       const affectedSplits = findAffectedSplits(newRoot, activeNodeId);
       const resizeStep = 0.05;
+      
+      // We no longer block resize operations based on minimum size
+      // Just log that windows will be below minimum size
+      const willViolateMinSize = wouldViolateMinSize(newRoot, direction, affectedSplits, resizeStep);
+      if (willViolateMinSize) {
+        console.log('Windows will be below minimum size, but resize is allowed');
+      }
   
       // Apply resize to all affected splits
-      affectedSplits.forEach(({ node, targetInFirst }) => {
-        switch (direction) {
+      affectedSplits.forEach(({ node, targetInFirst, isRightSide, isBottomSide }) => {
+        // Determine if we need to invert the direction based on window position
+        let effectiveDirection = direction;
+        if (isRightSide && (direction === 'left' || direction === 'right')) {
+          effectiveDirection = direction === 'left' ? 'right' : 'left';
+        }
+        if (isBottomSide && (direction === 'up' || direction === 'down')) {
+          effectiveDirection = direction === 'up' ? 'down' : 'up';
+        }
+        
+        switch (effectiveDirection) {
           case 'left': // Shrink width
             if (targetInFirst) {
               node.splitRatio = Math.max(0.1, node.splitRatio - resizeStep);
@@ -2459,20 +3429,23 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
   
       return { ...workspace, root: newRoot };
     });
-  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace]);
+  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace, wouldViolateMinSize]);
+  
+  // Also add a debug check to see if the keyboard shortcut and resize mode are working
+  useEffect(() => {
+    console.log('Resize mode:', isResizeMode);
+  }, [isResizeMode]);
 
   return {
     rootNode,
     activeNodeId,
     setActiveNodeId,
+    terminalStates,
     createNewWindow,
     splitWindow,
     closeWindow,
     transformWindow,
     handleCommand,
-    handleResizeStart,
-    handleResizeMove,
-    handleResizeEnd,
     navigateToWindow,
     hasActiveWindow: Boolean(activeNodeId),
     hasRootNode: Boolean(rootNode),
@@ -2481,9 +3454,7 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     switchWorkspace,
     isResizeMode,
     setIsResizeMode,
-    resizeActiveWindow,
-    getWindowState,
-    dragState
+    resizeActiveWindow
   };
 };
 
@@ -2515,14 +3486,17 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles.css'
-import './App.css'
-import { WindowStateProvider } from './context/WindowStateContext';
+import './app.css'
+import { WindowStateProvider } from './context/WindowStateContext'
+import { AuthProvider } from './context/AuthContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <WindowStateProvider>
-      <App />
-    </WindowStateProvider>
+    <AuthProvider>
+      <WindowStateProvider>
+        <App />
+      </WindowStateProvider>
+    </AuthProvider>
   </React.StrictMode>,
 )
 
@@ -2586,6 +3560,31 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* Custom scrollbar styling to match the application theme */
+::-webkit-scrollbar {
+  width: 8px;  /* for vertical scrollbars */
+  height: 8px; /* for horizontal scrollbars */
+}
+
+::-webkit-scrollbar-track {
+  background: #292524; /* stone-800 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #44403c; /* stone-700 */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #14b8a6; /* teal-500 */
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #44403c #292524; /* thumb and track color */
+}
+
 .window-container {
   position: absolute;
   overflow: hidden;
@@ -2628,6 +3627,19 @@ File: styles/main.css
 @import "tailwindcss";
 
 /* You can add any custom CSS below this line */
+
+================
+File: utils/constants.js
+================
+// src/utils/constants.js
+export const WINDOW_TYPES = {
+    EXPLORER: 'explorer',
+    EDITOR: 'editor',
+    TERMINAL: 'terminal',
+    CHART: 'chart',
+    IMAGE: 'image',
+    AUDIO: 'audio'
+  };
 
 ================
 File: utils/treeUtils.js
@@ -2748,26 +3760,43 @@ export const updateSplitRatio = (node, splitId, newRatio) => {
 };
 
 ================
+File: utils/windowSizeConstants.js
+================
+/**
+ * Constants for window size constraints
+ * These values define the minimum sizes for windows to ensure they remain usable
+ */
+
+// Minimum window dimensions in percentage of screen size
+export const MIN_WINDOW_WIDTH_PERCENT = 30; // 30% of screen width
+export const MIN_WINDOW_HEIGHT_PERCENT = 30; // 30% of screen height
+
+// Minimum window dimensions in pixels (used for absolute size checks)
+export const MIN_WINDOW_WIDTH_PX = 300; // 300px minimum width
+export const MIN_WINDOW_HEIGHT_PX = 200; // 200px minimum height
+
+// Maximum number of windows total (regardless of arrangement)
+export const MAX_HORIZONTAL_WINDOWS = 4; // Maximum windows total
+export const MAX_VERTICAL_WINDOWS = 4;   // Maximum windows total
+
+================
 File: utils/windowTypes.js
 ================
+// src/utils/windowTypes.js
 import { FolderOpen, Code, Terminal as TerminalIcon, Eye } from 'lucide-react';
+import { WINDOW_TYPES } from './constants';
+
+// Import individually to avoid circular dependency
 import { 
-  EnhancedExplorerWindow,
-  EnhancedEditorWindow,
   EnhancedTerminalWindow,
+  EnhancedEditorWindow,
+  EnhancedExplorerWindow,
   EnhancedPreviewWindow,
   EnhancedImageWindow,
   EnhancedAudioWindow
 } from '../components/windows';
 
-export const WINDOW_TYPES = {
-  EXPLORER: 'explorer',
-  EDITOR: 'editor',
-  TERMINAL: 'terminal',
-  CHART: 'chart',
-  IMAGE: 'image',
-  AUDIO: 'audio'
-};
+export { WINDOW_TYPES };
 
 export const WINDOW_CONTENT = {
   [WINDOW_TYPES.EXPLORER]: {
