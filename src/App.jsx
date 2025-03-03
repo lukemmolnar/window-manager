@@ -89,26 +89,13 @@ function App() {
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Global command bar with user info */}
-      <div className="flex items-center">
-        <CommandBar 
-          onCommand={handleCommand}
-          currentWorkspaceIndex={currentWorkspaceIndex}
-          switchWorkspace={switchWorkspace}
-        />
-        
-        {/* User info and logout */}
-        <div className="flex items-center border-l border-stone-600 ml-2 pl-2">
-          <span className="text-white text-sm font-mono mr-2">
-            {user?.username || 'User'}
-          </span>
-          <button 
-            onClick={logout}
-            className="bg-stone-700 hover:bg-stone-600 text-white text-sm px-2 py-1 rounded"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
+      <CommandBar 
+        onCommand={handleCommand}
+        currentWorkspaceIndex={currentWorkspaceIndex}
+        switchWorkspace={switchWorkspace}
+        user={user}
+        onLogout={logout}
+      />
       
       {/* Main content area */}
       <div className="flex-1 relative">
