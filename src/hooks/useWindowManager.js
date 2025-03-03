@@ -15,7 +15,7 @@ import {
   MIN_WINDOW_HEIGHT_PX 
 } from '../utils/windowSizeConstants';
 
-export const useWindowManager = ({ defaultLayout = null } = {}) => {
+export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } = {}) => {
   // Workspace state
   const [workspaces, setWorkspaces] = useState([
     { id: 1, name: 'Main', root: defaultLayout, activeNodeId: null, terminalStates: {} },
@@ -432,7 +432,10 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
     
     if (wouldViolate) {
       console.log('Split blocked: would result in windows smaller than minimum size');
-      // Use alert which will be intercepted by our custom handler to flash the border
+      // Flash the active window border to indicate we've hit the minimum size
+      if (onFlashBorder && activeNodeId) {
+        onFlashBorder(activeNodeId);
+      }
       return;
     }
   
@@ -499,7 +502,10 @@ export const useWindowManager = ({ defaultLayout = null } = {}) => {
       
       if (tooSmallWindows.length > 0) {
         console.log('Cannot create new window: existing windows are already too small');
-        // Use alert which will be intercepted by our custom handler to flash the border
+        // Flash the active window border to indicate we've hit the minimum size
+        if (onFlashBorder && activeNodeId) {
+          onFlashBorder(activeNodeId);
+        }
         return;
       }
       

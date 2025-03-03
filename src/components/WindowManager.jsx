@@ -7,24 +7,6 @@ import { CommandBar } from './CommandBar';
 import EmptyState from './EmptyState';
 
 export const WindowManager = ({ defaultLayout = null }) => {
-  const {
-    rootNode,
-    activeNodeId,
-    setActiveNodeId,
-    terminalStates,
-    updateTerminalState,
-    splitWindow,
-    createNewWindow,
-    closeWindow,
-    transformWindow,
-    currentWorkspaceIndex,
-    workspaceCount,
-    switchWorkspace,
-    isResizeMode,
-    setIsResizeMode,
-    resizeActiveWindow
-  } = useWindowManager({ defaultLayout });
-
   const [dragState, setDragState] = useState(null);
   const [notification, setNotification] = useState(null);
   const [flashingWindowIds, setFlashingWindowIds] = useState(new Set());
@@ -46,6 +28,27 @@ export const WindowManager = ({ defaultLayout = null }) => {
       });
     }, 500);
   }, []);
+
+  const {
+    rootNode,
+    activeNodeId,
+    setActiveNodeId,
+    terminalStates,
+    updateTerminalState,
+    splitWindow,
+    createNewWindow,
+    closeWindow,
+    transformWindow,
+    currentWorkspaceIndex,
+    workspaceCount,
+    switchWorkspace,
+    isResizeMode,
+    setIsResizeMode,
+    resizeActiveWindow
+  } = useWindowManager({ 
+    defaultLayout,
+    onFlashBorder: flashWindowBorder
+  });
   
   // Override window.alert to use our notification system
   useEffect(() => {
