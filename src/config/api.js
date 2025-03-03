@@ -1,7 +1,7 @@
 // API configuration
 const API_CONFIG = {
   // Replace with your actual server URL
-  BASE_URL: 'http:45.45.239.125	:3001/api',
+  BASE_URL: 'http://45.45.239.125:3001/api',
   
   // Endpoints
   ENDPOINTS: {
