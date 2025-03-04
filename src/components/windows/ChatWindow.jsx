@@ -153,31 +153,16 @@ const ChatWindow = ({ isActive, nodeId }) => {
   return (
     <div className="flex h-full">
       {/* Room sidebar */}
-      <div className="w-1/4 bg-stone-800 border-r border-stone-700 flex flex-col">
+      <div className="w-1/9 bg-stone-900 border-r border-stone-700 flex flex-col">
         <div className="p-3 border-b border-stone-700">
-          <h3 className="text-white font-medium mb-2">Chat Rooms</h3>
-          <form onSubmit={handleCreateRoom} className="flex">
-            <input
-              type="text"
-              value={newRoomName}
-              onChange={(e) => setNewRoomName(e.target.value)}
-              placeholder="New room name"
-              className="flex-1 bg-stone-700 text-white px-2 py-1 rounded-l text-sm"
-            />
-            <button
-              type="submit"
-              className="bg-teal-600 text-white px-2 py-1 rounded-r text-sm"
-            >
-              Create
-            </button>
-          </form>
+          <h3 className="text-white font-medium">Chat Rooms</h3>
         </div>
         <div className="flex-1 overflow-y-auto">
           {rooms.map((room) => (
             <div
               key={room.id}
               className={`p-3 cursor-pointer hover:bg-stone-700 ${
-                activeRoom?.id === room.id ? 'bg-stone-700' : ''
+                activeRoom?.id === room.id ? 'bg-stone-800' : ''
               }`}
               onClick={() => joinRoom(room)}
             >
@@ -191,7 +176,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
       <div className="flex-1 flex flex-col">
         {activeRoom ? (
           <>
-            <div className="p-3 bg-stone-800 border-b border-stone-700">
+            <div className="p-3 bg-stone-900 border-b border-stone-700">
               <h3 className="text-white font-medium">{activeRoom.name}</h3>
             </div>
             <div className="flex-1 overflow-y-auto p-4 bg-stone-900">
@@ -203,19 +188,37 @@ const ChatWindow = ({ isActive, nodeId }) => {
                   }`}
                 >
                   <div
-                    className={`inline-block rounded-lg px-4 py-2 max-w-[80%] break-words overflow-hidden whitespace-pre-wrap ${
+                    className={`inline-block rounded-lg px-4 py-2 max-w-[100%] break-all overflow-wrap break-word hyphens-auto overflow-hidden whitespace-pre-wrap ${
                       msg.user_id === user.id
                         ? 'bg-teal-600 text-white'
-                        : 'bg-stone-700 text-white'
+                        : 'text-white'
                     }`}
+                    style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                   >
-                    <div className="font-medium text-xs mb-1">
+                    <div className="text-teal-400 flex font-medium text-s mb-1">
                       {msg.username}
+                      <div className="text-xs text-white opacity-75 mt-1 ml-3">
+                        {(() => {
+                          // Ensure UTC interpretation by appending 'Z' if not already present
+                          const timestamp = msg.created_at.endsWith('Z') ? 
+                            msg.created_at : 
+                            msg.created_at + 'Z';
+                          
+                          const msgDate = new Date(timestamp);
+                          
+                          return msgDate.toLocaleTimeString('en-US', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            timeZoneName: 'short',
+                            hour12: false
+                          });
+                        })()}
+                      </div>
                     </div>
                     <div>{msg.message}</div>
-                    <div className="text-xs opacity-75 mt-1">
-                      {new Date(msg.created_at).toLocaleTimeString()}
-                    </div>
                   </div>
                 </div>
               ))}
@@ -223,28 +226,20 @@ const ChatWindow = ({ isActive, nodeId }) => {
             </div>
             <form
               onSubmit={handleSendMessage}
-              className="p-3 bg-stone-800 border-t border-stone-700 flex"
+              className="p-3 bg-stone-900 border-t border-stone-700 flex"
             >
               <div className="flex-1 flex flex-col">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={handleMessageChange}
-                  placeholder="Type a message..."
-                  className="w-full bg-stone-700 text-white px-4 py-2 rounded-l"
+                  className="w-full bg-stone-800 text-white px-4 py-1 rounded-l"
                   maxLength={MAX_CHARS}
                 />
                 <div className="text-xs text-stone-400 mt-1 text-right pr-2">
                   {charCount}/{MAX_CHARS}
                 </div>
               </div>
-              <button
-                type="submit"
-                className="bg-teal-600 text-white px-4 py-2 rounded-r"
-                disabled={newMessage.trim().length === 0}
-              >
-                Send
-              </button>
             </form>
           </>
         ) : (
