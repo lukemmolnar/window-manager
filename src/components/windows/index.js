@@ -6,6 +6,7 @@ import ImageWindow from './imageWindow';
 import withCommandHandling from '../../hocs/withCommandHandling';
 import withWindowState from '../../hocs/withWindowState';
 import AudioWindow from './AudioWindow';
+import ChatWindow from './ChatWindow';
 import { WINDOW_TYPES } from '../../utils/constants';
 
 // Create enhanced versions of each window component by wrapping them with both HOCs
@@ -16,6 +17,7 @@ export const EnhancedEditorWindow = withWindowState(withCommandHandling(EditorWi
 export const EnhancedPreviewWindow = withWindowState(withCommandHandling(PreviewWindow), WINDOW_TYPES.CHART);
 export const EnhancedImageWindow = withWindowState(withCommandHandling(ImageWindow), WINDOW_TYPES.IMAGE);
 export const EnhancedAudioWindow = withWindowState(withCommandHandling(AudioWindow), WINDOW_TYPES.AUDIO);
+export const EnhancedChatWindow = withWindowState(withCommandHandling(ChatWindow), WINDOW_TYPES.CHAT);
 
 // Also export the base components in case they're needed
-export { TerminalWindow, ExplorerWindow, EditorWindow, PreviewWindow };
+export { TerminalWindow, ExplorerWindow, EditorWindow, PreviewWindow, ChatWindow };

@@ -7,7 +7,11 @@ const API_CONFIG = {
   ENDPOINTS: {
     LOGIN: '/login',
     REGISTER: '/register',
-    PROFILE: '/profile'
+    PROFILE: '/profile',
+    // Chat endpoints
+    CHAT_ROOMS: '/chat/rooms',
+    CHAT_MESSAGES: '/chat/rooms/:id/messages',
+    CHAT_JOIN: '/chat/rooms/:id/join'
   }
 };
 

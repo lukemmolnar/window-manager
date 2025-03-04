@@ -5,5 +5,6 @@ export const WINDOW_TYPES = {
     TERMINAL: 'terminal',
     CHART: 'chart',
     IMAGE: 'image',
-    AUDIO: 'audio'
+    AUDIO: 'audio',
+    CHAT: 'chat'  // Add chat window type
   };

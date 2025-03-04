@@ -15,7 +15,7 @@ export function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-900">
       <div className="bg-stone-800 p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">Login to Window Manager</h2>
+        <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">Login to SLUMTERM</h2>
         
         {error && (
           <div className="bg-red-900 text-white p-3 rounded mb-4">
