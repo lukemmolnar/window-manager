@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import API_CONFIG from '../../config/api';
@@ -10,9 +10,12 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [charCount, setCharCount] = useState(0);
   const [newRoomName, setNewRoomName] = useState('');
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
+  
+  const MAX_CHARS = 500; // Maximum character limit
 
   // Connect to WebSocket server
   useEffect(() => {
@@ -88,6 +91,14 @@ const ChatWindow = ({ isActive, nodeId }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleMessageChange = (e) => {
+    const value = e.target.value;
+    if (value.length <= MAX_CHARS) {
+      setNewMessage(value);
+      setCharCount(value.length);
+    }
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeRoom) return;
@@ -100,6 +111,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setNewMessage('');
+      setCharCount(0);
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -191,7 +203,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
                   }`}
                 >
                   <div
-                    className={`inline-block rounded-lg px-4 py-2 max-w-3/4 ${
+                    className={`inline-block rounded-lg px-4 py-2 max-w-[80%] break-words overflow-hidden whitespace-pre-wrap ${
                       msg.user_id === user.id
                         ? 'bg-teal-600 text-white'
                         : 'bg-stone-700 text-white'
@@ -213,16 +225,23 @@ const ChatWindow = ({ isActive, nodeId }) => {
               onSubmit={handleSendMessage}
               className="p-3 bg-stone-800 border-t border-stone-700 flex"
             >
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type a message..."
-                className="flex-1 bg-stone-700 text-white px-4 py-2 rounded-l"
-              />
+              <div className="flex-1 flex flex-col">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={handleMessageChange}
+                  placeholder="Type a message..."
+                  className="w-full bg-stone-700 text-white px-4 py-2 rounded-l"
+                  maxLength={MAX_CHARS}
+                />
+                <div className="text-xs text-stone-400 mt-1 text-right pr-2">
+                  {charCount}/{MAX_CHARS}
+                </div>
+              </div>
               <button
                 type="submit"
                 className="bg-teal-600 text-white px-4 py-2 rounded-r"
+                disabled={newMessage.trim().length === 0}
               >
                 Send
               </button>
