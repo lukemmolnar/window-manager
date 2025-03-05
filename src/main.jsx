@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles.css'
-import './app.css'
+import './App.css'
 import { WindowStateProvider } from './context/WindowStateContext'
 import { AuthProvider } from './context/AuthContext'
 
