@@ -183,7 +183,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`mb-4 ${
+                  className={`mb-1 ${
                     msg.user_id === user.id ? 'text-right' : ''
                   }`}
                 >
