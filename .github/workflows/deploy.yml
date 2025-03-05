@@ -2,7 +2,7 @@ name: Deploy to Production
 
 on:
   push:
-    branches: [ main ]  # Adjust branch name as needed
+    branches: [ main ]  # Change this to your main branch name if different (e.g., master)
 
 jobs:
   build-and-deploy:
@@ -21,6 +21,11 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Create production environment file
+      run: |
+        echo "VITE_API_BASE_URL=/api" > .env.production
+        echo "VITE_SOCKET_URL=" >> .env.production
+      
     - name: Build project
       run: npm run build
       
@@ -31,11 +36,18 @@ jobs:
         username: ${{ secrets.SERVER_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # Clear previous deployment
-          rm -rf /var/www/window-manager/*
-          
           # Create directory if it doesn't exist
-          mkdir -p /var/www/window-manager
+          mkdir -p /var/www/public_site
           
-          # Copy new build files
-          echo "Copying new build files..."
+          # Clear previous deployment (optional - remove if you want to keep old files)
+          rm -rf /var/www/public_site/*
+    
+    - name: Copy build files to server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "dist/*"
+        target: "/var/www/public_site"
+        strip_components: 1
