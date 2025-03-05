@@ -1,7 +1,7 @@
 // API configuration
 const API_CONFIG = {
-  // Replace with your actual server URL
-  BASE_URL: 'http://45.45.239.125:3001/api',
+  // Use environment variable with fallback
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || '/api',
   
   // Endpoints
   ENDPOINTS: {
