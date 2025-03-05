@@ -2,11 +2,11 @@ name: Deploy to Production
 
 on:
   push:
-    branches: [ main ]  # Change this to your main branch name if different (e.g., master)
+    branches: [ master ]  # Using master branch as per your Git logs
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: debian-latest
     
     steps:
     - name: Checkout code
