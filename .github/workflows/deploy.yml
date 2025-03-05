@@ -2,7 +2,7 @@ name: Deploy to Production
 
 on:
   push:
-    branches: [ master ]  # Using master branch as per your Git logs
+    branches: [ master ]
 
 jobs:
   build-and-deploy:
@@ -32,22 +32,24 @@ jobs:
     - name: Deploy to production server
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.SERVER_HOST }}
+        host: "45.45.239.125"
+        port: 8190
         username: ${{ secrets.SERVER_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        password: ${{ secrets.SERVER_PASSWORD }}
         script: |
           # Create directory if it doesn't exist
           mkdir -p /var/www/public_site
           
-          # Clear previous deployment (optional - remove if you want to keep old files)
+          # Clear previous deployment
           rm -rf /var/www/public_site/*
     
     - name: Copy build files to server
       uses: appleboy/scp-action@master
       with:
-        host: ${{ secrets.SERVER_HOST }}
+        host: "45.45.239.125"
+        port: 8190
         username: ${{ secrets.SERVER_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        password: ${{ secrets.SERVER_PASSWORD }}
         source: "dist/*"
         target: "/var/www/public_site"
         strip_components: 1
