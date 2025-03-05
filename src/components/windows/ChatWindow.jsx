@@ -153,15 +153,15 @@ const ChatWindow = ({ isActive, nodeId }) => {
   return (
     <div className="flex h-full">
       {/* Room sidebar */}
-      <div className="w-1/9 bg-stone-900 border-r border-stone-700 flex flex-col">
-        <div className="p-3 border-b border-stone-700">
-          <h3 className="text-white font-medium">Chat Rooms</h3>
+      <div className="w-1/9 max-w-[20%] min-w-[10%] bg-stone-900 border-r border-stone-700 flex flex-col">
+        <div className="p-2 border-b border-stone-700">
+          <h3 className="text-teal-400 font-medium text-sm">Channels</h3>
         </div>
         <div className="flex-1 overflow-y-auto">
           {rooms.map((room) => (
             <div
               key={room.id}
-              className={`p-3 cursor-pointer hover:bg-stone-700 ${
+              className={`text-sm p-2 cursor-pointer hover:bg-stone-700 ${
                 activeRoom?.id === room.id ? 'bg-stone-800' : ''
               }`}
               onClick={() => joinRoom(room)}
@@ -176,8 +176,8 @@ const ChatWindow = ({ isActive, nodeId }) => {
       <div className="flex-1 flex flex-col">
         {activeRoom ? (
           <>
-            <div className="p-3 bg-stone-900 border-b border-stone-700">
-              <h3 className="text-white font-medium">{activeRoom.name}</h3>
+            <div className="p-2 bg-stone-900 border-b border-stone-700 font-mono text-sm">
+              <h3 className="text-teal-400 font-medium">{activeRoom.name}</h3>
             </div>
             <div className="flex-1 overflow-y-auto p-4 bg-stone-900">
               {messages.map((msg) => (
@@ -188,7 +188,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
                   }`}
                 >
                   <div
-                    className={`inline-block rounded-lg px-4 py-2 max-w-[100%] break-all overflow-wrap break-word hyphens-auto overflow-hidden whitespace-pre-wrap ${
+                    className={`hover:bg-stone-800 inline-block rounded-lg px-4 py-2 w-[100%] break-all overflow-wrap break-word hyphens-auto overflow-hidden whitespace-pre-wrap ${
                       msg.user_id === user.id
                         ? 'bg-teal-600 text-white'
                         : 'text-white'
@@ -226,26 +226,24 @@ const ChatWindow = ({ isActive, nodeId }) => {
             </div>
             <form
               onSubmit={handleSendMessage}
-              className="p-3 bg-stone-900 border-t border-stone-700 flex"
+              className="p-2 bg-stone-900 border-t border-stone-700 flex"
             >
               <div className="flex-1 flex flex-col">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={handleMessageChange}
-                  className="w-full bg-stone-800 text-white px-4 py-1 rounded-l"
+                  className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
                   maxLength={MAX_CHARS}
                 />
-                <div className="text-xs text-stone-400 mt-1 text-right pr-2">
-                  {charCount}/{MAX_CHARS}
-                </div>
+
               </div>
             </form>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-stone-900">
             <div className="text-stone-500">
-              Select a room to start chatting
+              Select a channel to start chatting
             </div>
           </div>
         )}
