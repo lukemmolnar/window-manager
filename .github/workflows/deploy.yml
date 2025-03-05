@@ -28,28 +28,48 @@ jobs:
       
     - name: Build project
       run: npm run build
+
+    - name: Debug Secrets
+      run: |
+        if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+          echo "SSH_PRIVATE_KEY is set"
+        else
+          echo "SSH_PRIVATE_KEY is not set"
+        fi
+        
+        if [ -n "${{ secrets.SERVER_USERNAME }}" ]; then
+          echo "SERVER_USERNAME is set"
+        else
+          echo "SERVER_USERNAME is not set"
+        fi
       
-    - name: Deploy to production server
-      uses: appleboy/ssh-action@master
-      with:
-        host: "45.45.239.125"
-        port: 8190
-        username: ${{ secrets.SERVER_USERNAME }}
-        password: ${{ secrets.SERVER_PASSWORD }}
-        script: |
-          # Create directory if it doesn't exist
-          mkdir -p /var/www/public_site
-          
-          # Clear previous deployment
-          rm -rf /var/www/public_site/*
-    
-    - name: Copy build files to server
-      uses: appleboy/scp-action@master
-      with:
-        host: "45.45.239.125"
-        port: 8190
-        username: ${{ secrets.SERVER_USERNAME }}
-        password: ${{ secrets.SERVER_PASSWORD }}
-        source: "dist/*"
-        target: "/var/www/public_site"
-        strip_components: 1
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        
+        # Add known hosts
+        ssh-keyscan -p 8190 -H 45.45.239.125 >> ~/.ssh/known_hosts
+        
+        # Create SSH config
+        echo "Host deployment-server" > ~/.ssh/config
+        echo "    HostName 45.45.239.125" >> ~/.ssh/config
+        echo "    Port 8190" >> ~/.ssh/config
+        echo "    User ${{ secrets.SERVER_USERNAME }}" >> ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        echo "    StrictHostKeyChecking yes" >> ~/.ssh/config
+        
+    - name: Deploy with SSH
+      run: |
+        # Test SSH connection
+        ssh deployment-server "echo SSH connection successful"
+        
+        # Create remote directory
+        ssh deployment-server "mkdir -p /var/www/public_site"
+        
+        # Clear old files
+        ssh deployment-server "rm -rf /var/www/public_site/*"
+        
+        # Copy files
+        scp -r dist/* deployment-server:/var/www/public_site/
