@@ -39,6 +39,7 @@ function App() {
   } = useWindowManager();
 
   // Set up keyboard shortcuts - always call this hook, even if we'll return early
+  // But don't include move mode props to avoid conflicts with WindowManager
   useKeyboardShortcuts({
     onSplitVertical: () => splitWindow(activeNodeId, 'vertical'),
     onSplitHorizontal: () => splitWindow(activeNodeId, 'horizontal'),
@@ -48,7 +49,8 @@ function App() {
     hasRootNode,
     isResizeMode,
     setIsResizeMode,
-    resizeActiveWindow
+    resizeActiveWindow,
+    activeNodeId
   });
   
   // If authentication is still loading, show a loading screen

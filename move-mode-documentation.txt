@@ -1,0 +1,55 @@
+# Move Mode Documentation
+
+## Overview
+
+Move Mode is a feature that allows users to swap the positions of two windows in the window manager. This is useful for rearranging the layout of windows without having to close and recreate them.
+
+## Implementation
+
+Move Mode is implemented using the following components:
+
+1. **State Management**: The `useWindowManager` hook manages the state for Move Mode, including:
+   - `isMoveMode`: A boolean indicating whether Move Mode is active
+   - `moveSourceWindowId`: The ID of the first selected window (the source window)
+
+2. **Keyboard Shortcuts**: 
+   - `Ctrl+M`: Toggle Move Mode on/off
+   - `Enter`: Select a window in Move Mode
+   - `Ctrl+Arrow Keys`: Navigate between windows
+
+3. **Visual Feedback**:
+   - Active window in Move Mode: Green border
+   - First selected window: Blue border
+   - Normal active window: Teal border
+
+## Usage
+
+1. Press `Ctrl+M` to enter Move Mode
+   - The active window's border will turn green to indicate Move Mode is active
+
+2. Press `Enter` to select the first window
+   - The selected window's border will turn blue to indicate it's the source window
+
+3. Use `Ctrl+Arrow` keys to navigate to another window
+   - The active window's border will be green (Move Mode is still active)
+
+4. Press `Enter` again to swap the windows
+   - The windows will swap positions
+   - Move Mode will automatically exit after the swap
+
+## Technical Details
+
+The window swapping is implemented in the `swapWindows` function in the `useWindowManager` hook. This function:
+
+1. Takes the source and target window IDs
+2. Creates a deep copy of the current window tree
+3. Finds the source and target nodes in the tree
+4. Swaps the window types and states between the nodes
+5. Updates the workspace with the new tree
+6. Exits Move Mode and resets the source window ID
+
+## Limitations
+
+- Move Mode only swaps the window content and state, not the actual window positions in the tree structure
+- The window sizes remain the same after swapping
+- Move Mode automatically exits after a swap, requiring the user to re-enter Move Mode for multiple swaps

@@ -44,7 +44,12 @@ export const WindowManager = ({ defaultLayout = null }) => {
     switchWorkspace,
     isResizeMode,
     setIsResizeMode,
-    resizeActiveWindow
+    resizeActiveWindow,
+    isMoveMode,
+    setIsMoveMode,
+    moveSourceWindowId,
+    setMoveSourceWindowId,
+    swapWindows
   } = useWindowManager({ 
     defaultLayout,
     onFlashBorder: flashWindowBorder
@@ -73,6 +78,18 @@ export const WindowManager = ({ defaultLayout = null }) => {
     };
   }, [activeNodeId, flashWindowBorder]);
 
+  // Log when component mounts
+  useEffect(() => {
+    console.log('WindowManager component mounted');
+    console.log('setIsMoveMode is a function:', typeof setIsMoveMode === 'function');
+    console.log('Initial isMoveMode state:', isMoveMode);
+  }, [isMoveMode]);
+  
+  // Log move mode state changes
+  useEffect(() => {
+    console.log('Move mode changed to:', isMoveMode);
+  }, [isMoveMode]);
+
   // Add keyboard shortcuts
   useKeyboardShortcuts({
     onSplitVertical: () => splitWindow(activeNodeId, 'vertical'),
@@ -82,8 +99,14 @@ export const WindowManager = ({ defaultLayout = null }) => {
     hasActiveWindow: Boolean(activeNodeId),
     hasRootNode: Boolean(rootNode),
     isResizeMode,
-    setIsResizeMode: (mode) => setIsResizeMode(mode),
-    resizeActiveWindow: (direction) => resizeActiveWindow(direction)
+    setIsResizeMode,
+    resizeActiveWindow,
+    isMoveMode,
+    setIsMoveMode,
+    moveSourceWindowId,
+    setMoveSourceWindowId,
+    swapWindows,
+    activeNodeId
   });
 
   // Command handling for terminal
@@ -215,11 +238,19 @@ export const WindowManager = ({ defaultLayout = null }) => {
       // Check if this window is currently flashing
       const isFlashing = flashingWindowIds.has(node.id);
       
+      // Check if this is the first selected window in move mode
+      const isFirstSelectedWindow = isMoveMode && moveSourceWindowId === node.id;
+      
       return (
         <div
           className={`absolute overflow-hidden border-2 ${
             isFlashing ? 'border-red-600' : 
-            isActive ? (isResizeMode ? 'border-yellow-500' : 'border-teal-500') : 'border-stone-600'
+            isFirstSelectedWindow ? 'border-blue-500' :
+            isActive ? (
+              isMoveMode ? 'border-green-500' : 
+              isResizeMode ? 'border-yellow-500' : 
+              'border-teal-500'
+            ) : 'border-stone-600'
           } ${isFlashing ? 'animate-pulse' : ''}`}
           style={{
             left: `${available.x}%`,

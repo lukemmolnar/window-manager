@@ -20,16 +20,94 @@ export const useKeyboardShortcuts = ({
   createNewWindow,
   hasActiveWindow,
   hasRootNode,
-  isResizeMode,
-  setIsResizeMode,
-  resizeActiveWindow
+  isResizeMode = false,
+  setIsResizeMode = () => console.warn('setIsResizeMode not provided'),
+  resizeActiveWindow = () => console.warn('resizeActiveWindow not provided'),
+  isMoveMode = false,
+  setIsMoveMode = () => console.warn('setIsMoveMode not provided'),
+  moveSourceWindowId = null,
+  setMoveSourceWindowId = () => console.warn('setMoveSourceWindowId not provided'),
+  swapWindows = () => console.warn('swapWindows not provided'),
+  activeNodeId = null
 }) => {
+  // Log the props for debugging
+  console.log('useKeyboardShortcuts props:', {
+    isResizeMode,
+    isMoveMode,
+    moveSourceWindowId,
+    activeNodeId,
+    hasSetIsResizeMode: typeof setIsResizeMode === 'function',
+    hasSetIsMoveMode: typeof setIsMoveMode === 'function',
+    hasSetMoveSourceWindowId: typeof setMoveSourceWindowId === 'function',
+    hasSwapWindows: typeof swapWindows === 'function'
+  });
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Handle resize mode toggle
       if (e.ctrlKey && e.key === 'q') {
         e.preventDefault();
         setIsResizeMode(!isResizeMode);
+        // Exit move mode if it's active
+        if (isMoveMode) {
+          setIsMoveMode(false);
+          setMoveSourceWindowId(null);
+        }
+        return;
+      }
+
+      // Handle move mode toggle
+      if (e.ctrlKey && e.key === 'm') {
+        e.preventDefault();
+        e.stopPropagation(); // Stop event propagation to prevent multiple handlers
+        console.log('Move mode toggle pressed in useKeyboardShortcuts');
+        console.log('setIsMoveMode type:', typeof setIsMoveMode);
+        console.log('Current isMoveMode:', isMoveMode);
+        console.log('Component ID:', Math.random()); // Add a random ID to identify which instance is handling the event
+        
+        // Check if setIsMoveMode is a function before calling it
+        if (typeof setIsMoveMode === 'function') {
+          // Toggle move mode with a direct call to ensure it works
+          const newMoveMode = !isMoveMode;
+          console.log('Setting move mode to:', newMoveMode);
+          setIsMoveMode(newMoveMode);
+          
+          // Reset source window when toggling off
+          if (isMoveMode && typeof setMoveSourceWindowId === 'function') {
+            setMoveSourceWindowId(null);
+          }
+          
+          // Exit resize mode if it's active
+          if (isResizeMode && typeof setIsResizeMode === 'function') {
+            setIsResizeMode(false);
+          }
+        } else {
+          console.error('setIsMoveMode is not a function');
+        }
+        return;
+      }
+
+      // Handle move mode Enter key
+      if (isMoveMode && e.key === 'Enter') {
+        e.preventDefault();
+        console.log('Enter key pressed in move mode');
+        
+        if (!moveSourceWindowId) {
+          // First window selection
+          console.log('Selected first window for move:', activeNodeId);
+          if (typeof setMoveSourceWindowId === 'function') {
+            setMoveSourceWindowId(activeNodeId);
+          } else {
+            console.error('setMoveSourceWindowId is not a function');
+          }
+        } else {
+          // Second window selection - perform the swap
+          console.log('Selected second window for move:', activeNodeId);
+          if (typeof swapWindows === 'function') {
+            swapWindows(moveSourceWindowId, activeNodeId);
+          } else {
+            console.error('swapWindows is not a function');
+          }
+        }
         return;
       }
 
@@ -83,6 +161,12 @@ export const useKeyboardShortcuts = ({
     hasRootNode,
     isResizeMode,
     setIsResizeMode,
-    resizeActiveWindow
+    resizeActiveWindow,
+    isMoveMode,
+    setIsMoveMode,
+    moveSourceWindowId,
+    setMoveSourceWindowId,
+    swapWindows,
+    activeNodeId
   ]);
 };
