@@ -204,6 +204,7 @@ const WindowTreeRenderer = ({
         onResizeMove={onResizeMove}
         onResizeEnd={onResizeEnd}
         isResizeMode={isResizeMode} // Pass down isResizeMode
+        isMoveMode={isMoveMode} // Pass down isMoveMode
       />
       
       <div
@@ -232,6 +233,7 @@ const WindowTreeRenderer = ({
         onResizeMove={onResizeMove}
         onResizeEnd={onResizeEnd}
         isResizeMode={isResizeMode} // Pass down isResizeMode
+        isMoveMode={isMoveMode} // Pass down isMoveMode
       />
     </>
   );
