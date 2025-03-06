@@ -34,6 +34,7 @@ function App() {
     currentWorkspaceIndex,
     switchWorkspace,
     isResizeMode,
+    isMoveMode,
     setIsResizeMode,
     resizeActiveWindow
   } = useWindowManager();
@@ -48,6 +49,7 @@ function App() {
     hasActiveWindow,
     hasRootNode,
     isResizeMode,
+    isMoveMode,
     setIsResizeMode,
     resizeActiveWindow,
     activeNodeId
@@ -84,6 +86,7 @@ function App() {
         onResizeMove={handleResizeMove}
         onResizeEnd={handleResizeEnd}
         isResizeMode={isResizeMode} // Pass isResizeMode to WindowTreeRenderer
+        isMoveMode={isMoveMode}
       />
     );
   };
@@ -121,7 +124,8 @@ const WindowTreeRenderer = ({
   onResizeStart,
   onResizeMove,
   onResizeEnd,
-  isResizeMode // Add isResizeMode prop
+  isResizeMode, // Add isResizeMode prop
+  isMoveMode
 }) => {
   if (node.type === 'window') {
     const windowContent = WINDOW_CONTENT[node.windowType];
@@ -133,8 +137,10 @@ const WindowTreeRenderer = ({
         className={`absolute overflow-hidden border-2 ${
           isActive 
             ? isResizeMode 
-              ? 'border-yellow-500' 
-              : 'border-teal-500'
+              ? 'border-yellow-500'
+              : isMoveMode
+                ? 'border-blue-500'
+                : 'border-teal-500'
             : 'border-stone-600'
         }`}
         style={{
