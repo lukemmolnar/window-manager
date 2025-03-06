@@ -398,18 +398,30 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
 
   // Define splitWindow before createNewWindow since createNewWindow depends on it
   const splitWindow = useCallback((nodeId, direction, newWindow = null) => {
-    // Get the original window's state if it exists
-    const originalWindowState = getWindowState(nodeId);
-    
+    // Create a new terminal window if one wasn't provided
     if (!newWindow) {
       newWindow = Node.createWindow(Date.now(), WINDOW_TYPES.TERMINAL);
-    }
-    
-    // If the original window had state, copy it to the new window
-    if (originalWindowState) {
-      // Clone the content to avoid reference issues
-      const clonedContent = JSON.parse(JSON.stringify(originalWindowState.content));
-      setWindowState(newWindow.id, newWindow.windowType, clonedContent);
+      
+      // Initialize terminal state with default content
+      const initialContent = {
+        history: ['Welcome to the Terminal! Type "help" for available commands.'],
+        commandHistory: []
+      };
+      
+      // Set the initial window state for the terminal
+      setWindowState(newWindow.id, WINDOW_TYPES.TERMINAL, initialContent);
+      
+      // Also update the workspace terminal states
+      updateWorkspace(workspace => ({
+        ...workspace,
+        terminalStates: {
+          ...workspace.terminalStates,
+          [newWindow.id]: {
+            history: initialContent.history,
+            commandHistory: initialContent.commandHistory
+          }
+        }
+      }));
     }
     
     // Check if splitting would result in windows that are too small
