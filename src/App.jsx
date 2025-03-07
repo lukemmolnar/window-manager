@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { WindowManager } from './components/WindowManager';
 import { CommandBar } from './components/CommandBar';
 import { EmptyState } from './components/EmptyState';
@@ -15,6 +15,27 @@ import { WINDOW_CONTENT } from './utils/windowTypes';
  */
 function App() {
   const { isAuthenticated, loading, user, logout } = useAuth();
+  
+  // State for tracking which windows are currently flashing
+  const [flashingWindowIds, setFlashingWindowIds] = useState(new Set());
+  
+  // Function to flash a window's border red
+  const flashWindowBorder = useCallback((windowId) => {
+    setFlashingWindowIds(prev => {
+      const newSet = new Set(prev);
+      newSet.add(windowId);
+      return newSet;
+    });
+    
+    // Remove the window from flashing state after 500ms
+    setTimeout(() => {
+      setFlashingWindowIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(windowId);
+        return newSet;
+      });
+    }, 500);
+  }, []);
   
   // Call all hooks at the top level, before any conditional returns
   const {
@@ -38,7 +59,9 @@ function App() {
     setIsResizeMode,
     resizeActiveWindow,
     moveSourceWindowId
-  } = useWindowManager();
+  } = useWindowManager({
+    onFlashBorder: flashWindowBorder
+  });
 
   // Set up keyboard shortcuts - always call this hook, even if we'll return early
   // But don't include move mode props to avoid conflicts with WindowManager
@@ -89,6 +112,7 @@ function App() {
         isResizeMode={isResizeMode} // Pass isResizeMode to WindowTreeRenderer
         isMoveMode={isMoveMode}
         moveSourceWindowId={moveSourceWindowId} // Pass moveSourceWindowId to WindowTreeRenderer
+        flashingWindowIds={flashingWindowIds} // Pass flashingWindowIds to WindowTreeRenderer
       />
     );
   };
@@ -128,7 +152,8 @@ const WindowTreeRenderer = ({
   onResizeEnd,
   isResizeMode, // Add isResizeMode prop
   isMoveMode,
-  moveSourceWindowId
+  moveSourceWindowId,
+  flashingWindowIds
 }) => {
   if (node.type === 'window') {
     const windowContent = WINDOW_CONTENT[node.windowType];
@@ -136,10 +161,13 @@ const WindowTreeRenderer = ({
     const isActive = node.id === activeNodeId;
     // Check if this is the first selected window in move mode
     const isFirstSelectedWindow = isMoveMode && moveSourceWindowId === node.id;
+    // Check if this window is currently flashing
+    const isFlashing = flashingWindowIds.has(node.id);
 
     return (
       <div
         className={`absolute overflow-hidden border-2 ${
+          isFlashing ? 'border-red-600' : 
           isFirstSelectedWindow 
             ? 'border-blue-300' 
             : isActive 
@@ -149,7 +177,7 @@ const WindowTreeRenderer = ({
                   ? 'border-blue-500'
                   : 'border-teal-500'
               : 'border-stone-600'
-        }`}
+        } ${isFlashing ? 'animate-pulse' : ''}`}
         style={{
           left: `${available.x}%`,
           top: `${available.y}%`,
@@ -213,6 +241,7 @@ const WindowTreeRenderer = ({
         isResizeMode={isResizeMode} // Pass down isResizeMode
         isMoveMode={isMoveMode} // Pass down isMoveMode
         moveSourceWindowId={moveSourceWindowId} // Pass down moveSourceWindowId
+        flashingWindowIds={flashingWindowIds} // Pass down flashingWindowIds
       />
       
       <div
@@ -243,6 +272,7 @@ const WindowTreeRenderer = ({
         isResizeMode={isResizeMode} // Pass down isResizeMode
         isMoveMode={isMoveMode} // Pass down isMoveMode
         moveSourceWindowId={moveSourceWindowId} // Pass down moveSourceWindowId
+        flashingWindowIds={flashingWindowIds} // Pass down flashingWindowIds
       />
     </>
   );

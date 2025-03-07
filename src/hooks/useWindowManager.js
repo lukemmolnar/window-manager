@@ -445,9 +445,9 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     
     if (wouldViolate) {
       console.log('Split blocked: would result in windows smaller than minimum size');
-      // Flash the active window border to indicate we've hit the minimum size
-      if (onFlashBorder && activeNodeId) {
-        onFlashBorder(activeNodeId);
+      // Flash the window being split to indicate we've hit the minimum size
+      if (onFlashBorder && nodeId) {
+        onFlashBorder(nodeId);
       }
       return;
     }
@@ -515,9 +515,13 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       
       if (tooSmallWindows.length > 0) {
         console.log('Cannot create new window: existing windows are already too small');
-        // Flash the active window border to indicate we've hit the minimum size
-        if (onFlashBorder && activeNodeId) {
-          onFlashBorder(activeNodeId);
+        // Flash the window that would be affected
+        if (onFlashBorder && rootNode) {
+          // If there's no active window but there's a root node, flash the root node
+          const nodeToFlash = rootNode.type === 'window' ? rootNode.id : null;
+          if (nodeToFlash) {
+            onFlashBorder(nodeToFlash);
+          }
         }
         return;
       }
