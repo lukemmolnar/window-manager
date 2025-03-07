@@ -245,7 +245,7 @@ export const WindowManager = ({ defaultLayout = null }) => {
         <div
           className={`absolute overflow-hidden border-2 ${
             isFlashing ? 'border-red-600' : 
-            isFirstSelectedWindow ? 'border-blue-500' :
+            isFirstSelectedWindow ? 'border-blue-300' :
             isActive ? (
               isMoveMode ? 'border-green-500' : 
               isResizeMode ? 'border-yellow-500' : 

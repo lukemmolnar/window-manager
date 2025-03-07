@@ -36,7 +36,8 @@ function App() {
     isResizeMode,
     isMoveMode,
     setIsResizeMode,
-    resizeActiveWindow
+    resizeActiveWindow,
+    moveSourceWindowId
   } = useWindowManager();
 
   // Set up keyboard shortcuts - always call this hook, even if we'll return early
@@ -87,6 +88,7 @@ function App() {
         onResizeEnd={handleResizeEnd}
         isResizeMode={isResizeMode} // Pass isResizeMode to WindowTreeRenderer
         isMoveMode={isMoveMode}
+        moveSourceWindowId={moveSourceWindowId} // Pass moveSourceWindowId to WindowTreeRenderer
       />
     );
   };
@@ -125,23 +127,28 @@ const WindowTreeRenderer = ({
   onResizeMove,
   onResizeEnd,
   isResizeMode, // Add isResizeMode prop
-  isMoveMode
+  isMoveMode,
+  moveSourceWindowId
 }) => {
   if (node.type === 'window') {
     const windowContent = WINDOW_CONTENT[node.windowType];
     const Component = windowContent.component;
     const isActive = node.id === activeNodeId;
+    // Check if this is the first selected window in move mode
+    const isFirstSelectedWindow = isMoveMode && moveSourceWindowId === node.id;
 
     return (
       <div
         className={`absolute overflow-hidden border-2 ${
-          isActive 
-            ? isResizeMode 
-              ? 'border-yellow-500'
-              : isMoveMode
-                ? 'border-blue-500'
-                : 'border-teal-500'
-            : 'border-stone-600'
+          isFirstSelectedWindow 
+            ? 'border-blue-300' 
+            : isActive 
+              ? isResizeMode 
+                ? 'border-yellow-500'
+                : isMoveMode
+                  ? 'border-blue-500'
+                  : 'border-teal-500'
+              : 'border-stone-600'
         }`}
         style={{
           left: `${available.x}%`,
@@ -205,6 +212,7 @@ const WindowTreeRenderer = ({
         onResizeEnd={onResizeEnd}
         isResizeMode={isResizeMode} // Pass down isResizeMode
         isMoveMode={isMoveMode} // Pass down isMoveMode
+        moveSourceWindowId={moveSourceWindowId} // Pass down moveSourceWindowId
       />
       
       <div
@@ -234,6 +242,7 @@ const WindowTreeRenderer = ({
         onResizeEnd={onResizeEnd}
         isResizeMode={isResizeMode} // Pass down isResizeMode
         isMoveMode={isMoveMode} // Pass down isMoveMode
+        moveSourceWindowId={moveSourceWindowId} // Pass down moveSourceWindowId
       />
     </>
   );
