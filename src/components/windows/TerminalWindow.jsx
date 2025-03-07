@@ -60,11 +60,9 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     switch (cmd) {
       case 'help':
         response = [
-          'Available commands:',
-          '  explorer     - Transform into file explorer',
-          '  editor       - Transform into code editor',
+          'Commands:',
+          '  explorer     - Transform window into file explorer',
           '  terminal     - Transform into terminal',
-          '  preview      - Transform into preview window',
           '  help         - Show this help message',
           '  clear        - Clear terminal output',
           '',
@@ -72,12 +70,13 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           '  Ctrl + Enter       - Split vertically',
           '  Ctrl + Shift + Enter - Split horizontally',
           '  Ctrl + Backspace   - Close window',
-          '  /                  - Focus command bar'
+          '  Ctrl + Q   - Resize mode',
+          '  Ctrl + M   - Move mode'
         ].join('\n');
         break;
   
       case 'clear':
-        setHistory(['Terminal cleared']);
+        setHistory(['']);
         return;
   
       case 'version':
