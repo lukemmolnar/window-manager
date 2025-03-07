@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import emptyStateSvg from '../../assets/SVG/emptyState.svg';
 
 export function Login() {
   const { login, error, clearError, loading } = useAuth();
@@ -13,9 +14,16 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-900">
-      <div className="bg-stone-800 p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">Login to SLUMTERM</h2>
+    <div className="min-h-screen flex items-center justify-center bg-stone-950">
+      <div className="bg-stone-950 p-8 rounded-lg w-full max-w-md">
+      <div className="flex justify-center mb-4">
+          <img 
+            src={emptyStateSvg} 
+            alt="Empty State" 
+            className="h-auto"
+          />
+        </div>
+        <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">SLUMNET</h2>
         
         {error && (
           <div className="bg-red-900 text-white p-3 rounded mb-4">
@@ -32,7 +40,7 @@ export function Login() {
             <input
               id="username"
               type="text"
-              className="w-full p-2 rounded bg-stone-700 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
+              className="w-full p-2 rounded bg-stone-800 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -46,7 +54,7 @@ export function Login() {
             <input
               id="password"
               type="password"
-              className="w-full p-2 rounded bg-stone-700 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
+              className="w-full p-2 rounded bg-stone-800 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -64,7 +72,7 @@ export function Login() {
         
         <div className="mt-4 text-center">
           <p className="text-stone-400 text-sm font-mono">
-            Contact administrator if you need an account
+            Are ya in the know?
           </p>
         </div>
       </div>
