@@ -26,7 +26,7 @@ export const WindowManager = ({ defaultLayout = null }) => {
         newSet.delete(windowId);
         return newSet;
       });
-    }, 500);
+    }, 200);
   }, []);
 
   const {

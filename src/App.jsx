@@ -34,7 +34,7 @@ function App() {
         newSet.delete(windowId);
         return newSet;
       });
-    }, 500);
+    }, 200);
   }, []);
   
   // Call all hooks at the top level, before any conditional returns
@@ -177,7 +177,7 @@ const WindowTreeRenderer = ({
                   ? 'border-blue-500'
                   : 'border-teal-500'
               : 'border-stone-600'
-        } ${isFlashing ? 'animate-pulse' : ''}`}
+        } $`}
         style={{
           left: `${available.x}%`,
           top: `${available.y}%`,
