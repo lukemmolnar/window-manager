@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { WINDOW_TYPES } from '../../utils/windowTypes';
+import { useAuth } from '../../context/AuthContext';
 
 const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState }) => {
+  // Get user authentication info
+  const { user } = useAuth();
+  
   // Refs for managing focus and scrolling
   const terminalRef = useRef(null);
   const inputRef = useRef(null);
@@ -58,11 +62,23 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   
     let response;
     switch (cmd) {
+      case 'admin':
+        // Check if user is admin
+        if (user?.is_admin) {
+          transformWindow(nodeId, WINDOW_TYPES.ADMIN);
+          return;
+        } else {
+          response = 'Access denied: Admin privileges required';
+        }
+        break;
+        
       case 'help':
+        const adminCommand = user?.is_admin ? '  admin        - Access admin panel\n' : '';
         response = [
           'Commands:',
           '  explorer     - Transform window into file explorer',
           '  terminal     - Transform into terminal',
+          adminCommand,
           '  help         - Show this help message',
           '  clear        - Clear terminal output',
           '',

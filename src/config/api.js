@@ -12,7 +12,9 @@ const API_CONFIG = {
     CHAT_ROOMS: '/chat/rooms',
     CHAT_MESSAGES: '/chat/rooms/:id/messages',
     CHAT_JOIN: '/chat/rooms/:id/join',
-    CHAT_DELETE_MESSAGE: '/chat/messages/:id'
+    CHAT_DELETE_MESSAGE: '/chat/messages/:id',
+    // Admin endpoints
+    USERS: '/users'
   }
 };
 

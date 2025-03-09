@@ -1,5 +1,5 @@
 // src/utils/windowTypes.js
-import { FolderOpen, Code, Terminal as TerminalIcon, Eye, MessageSquare } from 'lucide-react';
+import { FolderOpen, Code, Terminal as TerminalIcon, Eye, MessageSquare, Shield } from 'lucide-react';
 import { WINDOW_TYPES } from './constants';
 
 // Import individually to avoid circular dependency
@@ -10,7 +10,8 @@ import {
   EnhancedPreviewWindow,
   EnhancedImageWindow,
   EnhancedAudioWindow,
-  EnhancedChatWindow
+  EnhancedChatWindow,
+  EnhancedAdminWindow
 } from '../components/windows';
 
 export { WINDOW_TYPES };
@@ -50,5 +51,10 @@ export const WINDOW_CONTENT = {
     title: 'Chat',
     icon: MessageSquare,
     component: EnhancedChatWindow
+  },
+  [WINDOW_TYPES.ADMIN]: {
+    title: 'Admin Panel',
+    icon: Shield,
+    component: EnhancedAdminWindow
   }
 };
