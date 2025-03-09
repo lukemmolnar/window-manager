@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { MoreVertical, Trash } from 'lucide-react'; // Import icons
 
 const ChatWindow = ({ isActive, nodeId }) => {
   const { user } = useAuth();
@@ -17,6 +18,9 @@ const ChatWindow = ({ isActive, nodeId }) => {
   
   const MAX_CHARS = 500; // Maximum character limit
 
+  // New state for tracking which message's menu is open
+  const [activeMenu, setActiveMenu] = useState(null);
+
   // Connect to WebSocket server
   useEffect(() => {
     const socketInstance = io(API_CONFIG.BASE_URL.replace('/api', ''));
@@ -26,6 +30,21 @@ const ChatWindow = ({ isActive, nodeId }) => {
       socketInstance.disconnect();
     };
   }, []);
+  
+  // Add a new effect to listen for message_deleted events
+  useEffect(() => {
+    if (!socket) return;
+    
+    const handleMessageDeleted = (data) => {
+      setMessages(prev => prev.filter(msg => msg.id !== data.id));
+    };
+    
+    socket.on('message_deleted', handleMessageDeleted);
+    
+    return () => {
+      socket.off('message_deleted', handleMessageDeleted);
+    };
+  }, [socket]);
 
   // Fetch available rooms
   useEffect(() => {
@@ -135,6 +154,27 @@ const ChatWindow = ({ isActive, nodeId }) => {
       console.error('Failed to create room:', error);
     }
   };
+  
+  // Add new function to handle message deletion
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const endpoint = API_CONFIG.ENDPOINTS.CHAT_DELETE_MESSAGE.replace(':id', messageId);
+      await axios.delete(
+        `${API_CONFIG.BASE_URL}${endpoint}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // The message will be removed from the UI when the socket event is received
+      setActiveMenu(null); // Close the menu
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
+  };
+
+  // Toggle menu function
+  const toggleMenu = (messageId) => {
+    setActiveMenu(activeMenu === messageId ? null : messageId);
+  };
 
   const joinRoom = async (room) => {
     try {
@@ -183,16 +223,10 @@ const ChatWindow = ({ isActive, nodeId }) => {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`mb-1 ${
-                    msg.user_id === user.id ? 'text-right' : ''
-                  }`}
+                  className="mb-1"
                 >
                   <div
-                    className={`hover:bg-stone-800 inline-block rounded-lg px-4 py-2 w-[100%] break-all overflow-wrap break-word hyphens-auto overflow-hidden whitespace-pre-wrap ${
-                      msg.user_id === user.id
-                        ? 'bg-teal-600 text-white'
-                        : 'text-white'
-                    }`}
+                    className="hover:bg-stone-800 inline-block rounded-lg px-4 py-2 w-[100%] break-all overflow-wrap break-word hyphens-auto overflow-hidden whitespace-pre-wrap relative text-white"
                     style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                   >
                     <div className="text-teal-400 flex font-medium text-s mb-1">
@@ -217,6 +251,22 @@ const ChatWindow = ({ isActive, nodeId }) => {
                           });
                         })()}
                       </div>
+                      
+                      {/* Admin controls - only show if user is admin */}
+                      {user?.is_admin && (
+                        <div className="ml-auto">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(msg.id);
+                            }}
+                            className="text-white opacity-50 hover:opacity-100 focus:outline-none"
+                            title="Delete message"
+                          >
+                            <Trash size={16} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div>{msg.message}</div>
                   </div>

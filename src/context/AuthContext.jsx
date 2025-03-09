@@ -26,7 +26,14 @@ export function AuthProvider({ children }) {
       const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROFILE}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUser(response.data);
+      
+      // If is_admin is not present in the response, default to false
+      const userData = {
+        ...response.data,
+        is_admin: response.data.is_admin || false
+      };
+      
+      setUser(userData);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch user profile:', err);
