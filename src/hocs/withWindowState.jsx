@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useEffect } from 'react';
 import { useWindowState } from '../context/WindowStateContext';
 
 /**
@@ -12,8 +12,18 @@ import { useWindowState } from '../context/WindowStateContext';
 const withWindowState = (WrappedComponent, windowType) => {
   return function WithWindowState({ 
     nodeId,
+    isActive,
     ...props
   }) {
+    // Create a ref for auto-focusing input elements
+    const focusRef = useRef(null);
+    
+    // Auto-focus when window becomes active
+    useEffect(() => {
+      if (isActive && focusRef.current) {
+        focusRef.current.focus();
+      }
+    }, [isActive]);
     // Access the window state context
     const { getWindowState, setWindowState } = useWindowState();
     
@@ -43,6 +53,8 @@ const withWindowState = (WrappedComponent, windowType) => {
         nodeId={nodeId}
         windowState={currentState}
         updateWindowState={updateWindowState}
+        isActive={isActive}
+        focusRef={focusRef}
       />
     );
   };

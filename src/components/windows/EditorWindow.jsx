@@ -37,11 +37,10 @@ const EditorWindow = ({ nodeId, onCommand, windowState, updateWindowState }) => 
           className="w-full h-full text-gray-800 resize-none focus:outline-none"
           value={text}
           onChange={handleTextChange}
-          autoFocus
         />
       </div>
 
-      {/* Command input */}
+      {/* Editor's own command input */}
       <div className="mt-2 flex items-center gap-2">
         <span className="text-gray-400">$</span>
         <input

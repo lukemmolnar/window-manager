@@ -20,17 +20,17 @@ const PreviewWindow = ({ nodeId, onCommand }) => {
       </div>
 
       {/* Command input */}
-      {/* <div className="mt-2 flex items-center gap-2">
-        <span className="mr-2">$</span>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-teal-400 mr-2">$</span>
         <input
           type="text"
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent outline-none text-teal-400"
+          className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
           placeholder="Type a command..."
         />
-      </div> */}
+      </div>
     </div>
   );
 };

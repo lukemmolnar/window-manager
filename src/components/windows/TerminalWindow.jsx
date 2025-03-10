@@ -2,13 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { WINDOW_TYPES } from '../../utils/windowTypes';
 import { useAuth } from '../../context/AuthContext';
 
-const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState }) => {
+const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState, focusRef }) => {
   // Get user authentication info
   const { user } = useAuth();
   
-  // Refs for managing focus and scrolling
+  // Ref for managing scrolling
   const terminalRef = useRef(null);
-  const inputRef = useRef(null);
 
   // Terminal state - use windowState if available
   const [history, setHistory] = useState(
@@ -18,12 +17,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   const [currentInput, setCurrentInput] = useState(windowState?.currentInput || '');
   const [historyIndex, setHistoryIndex] = useState(windowState?.historyIndex || -1);
 
-  // Auto-focus when terminal becomes active
-  useEffect(() => {
-    if (isActive) {
-      inputRef.current?.focus();
-    }
-  }, [isActive]);
+  // Auto-focus is now handled by the withWindowState HOC
 
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
@@ -45,7 +39,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   }, [history, commandHistory, currentInput, historyIndex, updateWindowState]);
 
   const handleTerminalClick = () => {
-    inputRef.current?.focus();
+    focusRef.current?.focus();
   };
 
   const executeCommand = (command) => {
@@ -142,7 +136,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       <div className="p-2 flex items-center gap-2 border-t border-stone-700">
         <span className="mr-2">$</span>
         <input
-          ref={inputRef}
+          ref={focusRef}
           type="text"
           value={currentInput}
           onChange={(e) => setCurrentInput(e.target.value)}

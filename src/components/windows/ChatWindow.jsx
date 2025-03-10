@@ -286,7 +286,6 @@ const ChatWindow = ({ isActive, nodeId }) => {
                   className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
                   maxLength={MAX_CHARS}
                 />
-
               </div>
             </form>
           </>

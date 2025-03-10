@@ -3,7 +3,7 @@ import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, Bo
 import showdown from 'showdown';
 import './ExplorerWindow.css';
 
-const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updateWindowState }) => {
+const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
   // Use state from windowState or initialize with defaults
   const [files, setFiles] = useState([]);
   const [currentPath, setCurrentPath] = useState(windowState?.currentPath || '/');
@@ -348,10 +348,10 @@ Provides a command interface for controlling the window manager.
       <div className="p-2 flex items-center gap-2 border-t border-stone-700">
         <span className="text-teal-400">$</span>
         <input
+          ref={focusRef}
           type="text"
           onKeyDown={handleCommand}
           className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
-          autoFocus
         />
       </div>
     </div>
