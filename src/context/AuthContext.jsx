@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import API_CONFIG from '../config/api';
+import { useWindowState } from './WindowStateContext';
+import { useWorkspace } from './WorkspaceContext';
 
 // Create the authentication context
 const AuthContext = createContext();
 
+// Internal context for window state access
+const InternalAuthContext = createContext();
+
+// Main Auth Provider that doesn't depend on WindowStateContext
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +72,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Logout function
+  // Logout function (without window state clearing)
   const logout = () => {
     localStorage.removeItem('auth_token');
     setUser(null);
@@ -90,7 +96,48 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <InternalAuthContext.Provider value={value}>
+      {children}
+    </InternalAuthContext.Provider>
+  );
+}
+
+// Wrapper component that connects AuthContext with WindowStateContext
+export function AuthProviderWithWindowState({ children }) {
+  // Get the window state context
+  const { clearWindowStates } = useWindowState();
+  
+  // Get the workspace context
+  const { setWorkspaces } = useWorkspace();
+  
+  // Initial workspaces state
+  const initialWorkspaces = [
+    { id: 1, name: 'Main', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 2, name: 'Code', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 3, name: 'Terminal', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 4, name: 'Preview', root: null, activeNodeId: null, terminalStates: {} }
+  ];
+  
+  // Get the internal auth context
+  const auth = useContext(InternalAuthContext);
+  
+  // Create a new logout function that also clears window states and workspaces
+  const logoutWithClear = () => {
+    auth.logout();
+    clearWindowStates();
+    
+    // Reset workspaces to initial state
+    setWorkspaces(initialWorkspaces);
+  };
+  
+  // Create a new context value with the enhanced logout function
+  const enhancedValue = {
+    ...auth,
+    logout: logoutWithClear
+  };
+  
+  return (
+    <AuthContext.Provider value={enhancedValue}>
       {children}
     </AuthContext.Provider>
   );
@@ -100,7 +147,7 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProviderWithWindowState');
   }
   return context;
 }

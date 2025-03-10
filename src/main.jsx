@@ -4,13 +4,18 @@ import App from './App'
 import './styles.css'
 import './App.css'
 import { WindowStateProvider } from './context/WindowStateContext'
-import { AuthProvider } from './context/AuthContext'
+import { WorkspaceProvider } from './context/WorkspaceContext'
+import { AuthProvider, AuthProviderWithWindowState } from './context/AuthContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider>
       <WindowStateProvider>
-        <App />
+        <WorkspaceProvider>
+          <AuthProviderWithWindowState>
+            <App />
+          </AuthProviderWithWindowState>
+        </WorkspaceProvider>
       </WindowStateProvider>
     </AuthProvider>
   </React.StrictMode>,

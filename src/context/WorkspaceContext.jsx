@@ -1,10 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  saveWorkspace, 
-  getWorkspace, 
-  getAllWorkspaces, 
-  saveAllWorkspaces 
-} from '../services/indexedDBService';
+import axios from 'axios';
+import API_CONFIG from '../config/api';
 
 // Create context
 const WorkspaceContext = createContext();
@@ -26,21 +22,34 @@ export function WorkspaceProvider({ children }) {
   const [currentWorkspaceIndex, setCurrentWorkspaceIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Load workspaces from IndexedDB on mount
+  // Load workspaces from server API on mount
   useEffect(() => {
     const loadWorkspaces = async () => {
       try {
         setIsLoading(true);
-        const savedWorkspaces = await getAllWorkspaces();
         
-        if (savedWorkspaces && savedWorkspaces.length > 0) {
-          console.log('Loaded workspaces from IndexedDB:', savedWorkspaces);
-          setWorkspaces(savedWorkspaces);
+        // Get auth token
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          console.log('No auth token found, using initial workspaces');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Fetch workspaces from server
+        const response = await axios.get(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKSPACES}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.data && response.data.workspaces) {
+          console.log('Loaded workspaces from server:', response.data.workspaces);
+          setWorkspaces(response.data.workspaces);
         } else {
           console.log('No saved workspaces found, using initial workspaces');
         }
       } catch (error) {
-        console.error('Failed to load workspaces from IndexedDB:', error);
+        console.error('Failed to load workspaces from server:', error);
       } finally {
         setIsLoading(false);
       }
@@ -49,12 +58,16 @@ export function WorkspaceProvider({ children }) {
     loadWorkspaces();
   }, []);
   
-  // Save workspaces to IndexedDB whenever they change
+  // Save workspaces to server API whenever they change
   useEffect(() => {
     if (isLoading) return; // Skip saving during initial load
     
     const saveWorkspaces = async () => {
       try {
+        // Get auth token
+        const token = localStorage.getItem('auth_token');
+        if (!token) return; // Don't save if not authenticated
+        
         // Ensure we're only saving the array of workspaces
         // Create a clean copy without any non-array properties
         const workspacesToSave = [...workspaces].map(workspace => ({
@@ -65,10 +78,16 @@ export function WorkspaceProvider({ children }) {
           terminalStates: workspace.terminalStates || {}
         }));
         
-        console.log('Saving workspaces to IndexedDB:', workspacesToSave);
-        await saveAllWorkspaces(workspacesToSave);
+        console.log('Saving workspaces to server:', workspacesToSave);
+        
+        // Save workspaces to server
+        await axios.post(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKSPACES}`,
+          { workspaces: workspacesToSave },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
       } catch (error) {
-        console.error('Failed to save workspaces to IndexedDB:', error);
+        console.error('Failed to save workspaces to server:', error);
       }
     };
     
@@ -112,12 +131,13 @@ export function WorkspaceProvider({ children }) {
   // Context value
   const value = useMemo(() => ({
     workspaces,
+    setWorkspaces,
     currentWorkspaceIndex,
     currentWorkspace: workspaces[currentWorkspaceIndex],
     updateWorkspace,
     switchWorkspace,
     isLoading
-  }), [workspaces, currentWorkspaceIndex, updateWorkspace, switchWorkspace, isLoading]);
+  }), [workspaces, setWorkspaces, currentWorkspaceIndex, updateWorkspace, switchWorkspace, isLoading]);
   
   return (
     <WorkspaceContext.Provider value={value}>

@@ -14,7 +14,11 @@ const API_CONFIG = {
     CHAT_JOIN: '/chat/rooms/:id/join',
     CHAT_DELETE_MESSAGE: '/chat/messages/:id',
     // Admin endpoints
-    USERS: '/users'
+    USERS: '/users',
+    // Window state endpoints
+    WINDOW_STATES: '/window-states',
+    // Workspace endpoints
+    WORKSPACES: '/workspaces'
   }
 };
 

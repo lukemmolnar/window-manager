@@ -10,75 +10,38 @@ import {
 } from '../utils/treeUtils';
 import { getWindowBounds } from '../utils/windowUtils';
 import { useWindowState } from '../context/WindowStateContext';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   MIN_WINDOW_WIDTH_PX, 
   MIN_WINDOW_HEIGHT_PX 
 } from '../utils/windowSizeConstants';
 
 export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } = {}) => {
-  // Workspace state
-  const [workspaces, setWorkspaces] = useState([
-    { id: 1, name: 'Main', root: defaultLayout, activeNodeId: null, terminalStates: {} },
-    { id: 2, name: 'Code', root: null, activeNodeId: null, terminalStates: {} },
-    { id: 3, name: 'Terminal', root: null, activeNodeId: null, terminalStates: {} },
-    { id: 4, name: 'Preview', root: null, activeNodeId: null, terminalStates: {} }
-  ]);
-  const [currentWorkspaceIndex, setCurrentWorkspaceIndex] = useState(0);
+  // Use workspace context instead of internal state
+  const { 
+    workspaces,
+    currentWorkspaceIndex,
+    currentWorkspace,
+    updateWorkspace,
+    switchWorkspace
+  } = useWorkspace();
+  
+  // Get current workspace data
+  const rootNode = currentWorkspace.root;
+  const activeNodeId = currentWorkspace.activeNodeId;
+  const terminalStates = currentWorkspace.terminalStates;
+  
   const [isResizeMode, setIsResizeMode] = useState(false);
   const [isMoveMode, setIsMoveMode] = useState(false);
   const [moveSourceWindowId, setMoveSourceWindowId] = useState(null);
 
-  // Get current workspace data directly from workspaces array
-  const currentWorkspace = workspaces[currentWorkspaceIndex];
-  const rootNode = currentWorkspace.root;
-  const activeNodeId = currentWorkspace.activeNodeId;
-  const terminalStates = currentWorkspace.terminalStates;
-
   // Create setActiveNodeId function that updates the workspace
   const setActiveNodeId = useCallback((nodeId) => {
-    setWorkspaces(prev => {
-      const updated = [...prev];
-      updated[currentWorkspaceIndex] = {
-        ...updated[currentWorkspaceIndex],
-        activeNodeId: nodeId
-      };
-      return updated;
-    });
-  }, [currentWorkspaceIndex]);
-
-  // Update workspace state
-  const updateWorkspace = useCallback((updater) => {
-    setWorkspaces(prev => {
-      const updated = [...prev];
-      if (typeof updater === 'function') {
-        updated[currentWorkspaceIndex] = {
-          ...updated[currentWorkspaceIndex],
-          ...updater(updated[currentWorkspaceIndex])
-        };
-      } else {
-        updated[currentWorkspaceIndex] = {
-          ...updated[currentWorkspaceIndex],
-          ...updater
-        };
-      }
-      return updated;
-    });
-  }, [currentWorkspaceIndex]);
-
-  const switchWorkspace = useCallback((target) => {
-    console.log('Switching to:', target);
-    if (typeof target === 'number' && target >= 0 && target < 4) {
-      setCurrentWorkspaceIndex(target);
-    } else if (target === 'right' || target === 'left') {
-      setCurrentWorkspaceIndex(prev => {
-        const newIndex = target === 'right' 
-          ? (prev + 1) % 4 
-          : prev - 1 < 0 ? 3 : prev - 1;
-        console.log('New index:', newIndex);
-        return newIndex;
-      });
-    }
-  }, [setCurrentWorkspaceIndex]);
+    updateWorkspace(currentWorkspaceIndex, workspace => ({
+      ...workspace,
+      activeNodeId: nodeId
+    }));
+  }, [updateWorkspace, currentWorkspaceIndex]);
 
   useEffect(() => {
     const handleWorkspaceKeys = (e) => {
@@ -413,7 +376,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       setWindowState(newWindow.id, WINDOW_TYPES.TERMINAL, initialContent);
       
       // Also update the workspace terminal states
-      updateWorkspace(workspace => ({
+      updateWorkspace(currentWorkspaceIndex, workspace => ({
         ...workspace,
         terminalStates: {
           ...workspace.terminalStates,
@@ -452,11 +415,11 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       return;
     }
   
-    updateWorkspace(workspace => ({
-      ...workspace,
-      root: splitNodeById(workspace.root, nodeId, direction, newWindow)
-    }));
-  }, [updateWorkspace, getWindowState, setWindowState, rootNode, calculatePixelDimensions]);
+  updateWorkspace(currentWorkspaceIndex, workspace => ({
+    ...workspace,
+    root: splitNodeById(workspace.root, nodeId, direction, newWindow)
+  }));
+  }, [updateWorkspace, getWindowState, setWindowState, rootNode, calculatePixelDimensions, currentWorkspaceIndex]);
 
   const createNewWindow = useCallback((windowType) => {
     const newNode = Node.createWindow(Date.now(), windowType || WINDOW_TYPES.TERMINAL);
@@ -469,7 +432,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       initialContent.history = ['Welcome to the Terminal! Type "help" for available commands.'];
       initialContent.commandHistory = [];
       
-      updateWorkspace(workspace => ({
+      updateWorkspace(currentWorkspaceIndex, workspace => ({
         ...workspace,
         terminalStates: {
           ...workspace.terminalStates,
@@ -493,7 +456,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     
     if (!rootNode) {
       // First window, always allowed
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: newNode,
         activeNodeId: newNode.id
       });
@@ -526,7 +489,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
         return;
       }
       
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: newNode,
         activeNodeId: newNode.id
       });
@@ -536,14 +499,14 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     // Use splitWindow which already has minimum size checks
     splitWindow(activeNodeId, 'vertical', newNode);
     setActiveNodeId(newNode.id);
-  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState, calculatePixelDimensions, splitWindow]);
+  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState, calculatePixelDimensions, splitWindow, currentWorkspaceIndex]);
 
   const closeWindow = useCallback((nodeId) => {
     // Clean up window state when closing a window
     removeWindowState(nodeId);
     
     if (rootNode.type === 'window' && rootNode.id === nodeId) {
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: null,
         activeNodeId: null
       });
@@ -555,16 +518,16 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     
     if (activeNodeId === nodeId && result) {
       const nextWindowId = findAllWindowIds(result)[0] || null;
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: result,
         activeNodeId: nextWindowId
       });
     } else {
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: result
       });
     }
-  }, [rootNode, activeNodeId, updateWorkspace, removeWindowState]);
+  }, [rootNode, activeNodeId, updateWorkspace, removeWindowState, currentWorkspaceIndex]);
 
   const transformWindow = useCallback((nodeId, newType) => {
     const newRoot = JSON.parse(JSON.stringify(rootNode));
@@ -596,11 +559,11 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     
     const updated = updateNodeInTree(newRoot);
     if (updated) {
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: newRoot
       });
     }
-  }, [rootNode, updateWorkspace, getWindowState, setWindowState]);
+  }, [rootNode, updateWorkspace, getWindowState, setWindowState, currentWorkspaceIndex]);
 
   const handleCommand = useCallback((command) => {
     const parts = command.split(' ');
@@ -619,12 +582,12 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
         }
         break;
     }
-  }, [activeNodeId, splitWindow, closeWindow]);
+  }, [activeNodeId, splitWindow, closeWindow, currentWorkspaceIndex]);
 
   const resizeActiveWindow = useCallback((direction) => {
     if (!activeNodeId || !rootNode || !isResizeMode) return;
   
-    updateWorkspace(workspace => {
+    updateWorkspace(currentWorkspaceIndex, workspace => {
       const newRoot = JSON.parse(JSON.stringify(workspace.root));
       
       // Helper function to find all affected splits and determine if window is in second child
@@ -721,7 +684,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
   
       return { ...workspace, root: newRoot };
     });
-  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace, wouldViolateMinSize]);
+  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace, wouldViolateMinSize, currentWorkspaceIndex]);
   
   // Function to swap two windows in the tree
   const swapWindows = useCallback((sourceId, targetId) => {
@@ -729,7 +692,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
 
     console.log('Swapping windows:', sourceId, targetId);
 
-    updateWorkspace(workspace => {
+    updateWorkspace(currentWorkspaceIndex, workspace => {
       const newRoot = JSON.parse(JSON.stringify(workspace.root));
       
       // Find the nodes to swap
@@ -757,7 +720,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     // Exit move mode after swapping
     setIsMoveMode(false);
     setMoveSourceWindowId(null);
-  }, [updateWorkspace]);
+  }, [updateWorkspace, currentWorkspaceIndex]);
 
   // Add direct keyboard event listener for move mode
   useEffect(() => {
@@ -815,14 +778,14 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
 
   // Function to update terminal state
   const updateTerminalState = useCallback((terminalId, newState) => {
-    updateWorkspace(workspace => ({
+    updateWorkspace(currentWorkspaceIndex, workspace => ({
       ...workspace,
       terminalStates: {
         ...workspace.terminalStates,
         [terminalId]: newState
       }
     }));
-  }, [updateWorkspace]);
+  }, [updateWorkspace, currentWorkspaceIndex]);
 
   return {
     rootNode,

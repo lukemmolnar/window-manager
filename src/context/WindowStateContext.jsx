@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import axios from 'axios';
+import API_CONFIG from '../config/api';
 
 // Create context
 const WindowStateContext = createContext();
@@ -16,33 +18,47 @@ export function WindowStateProvider({ children }) {
   // Use useState just to trigger re-renders when needed
   const [, forceUpdate] = useState({});
   
-  // Add a ref to track if we should update localStorage
+  // Add a ref to track if we should update API
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef(null);
 
-  // Load initial state from localStorage once on mount
+  // Load initial state from API once on mount
   useEffect(() => {
-    try {
-      const savedState = localStorage.getItem('windowStates');
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-        if (parsedState && parsedState.windowStates) {
+    const fetchWindowStates = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          isInitialMount.current = false;
+          return; // No token, use default empty state
+        }
+        
+        const response = await axios.get(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WINDOW_STATES}`, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.data.windowStates) {
           // Update the state ref directly
-          stateRef.current = parsedState;
+          stateRef.current = {
+            windowStates: response.data.windowStates
+          };
           // Force a re-render
           forceUpdate({});
         }
+        
+        // Mark initial load as complete
+        isInitialMount.current = false;
+      } catch (error) {
+        console.error('Failed to load window states from API:', error);
+        isInitialMount.current = false;
       }
-      // Mark initial load as complete
-      isInitialMount.current = false;
-    } catch (error) {
-      console.error('Failed to load window states from localStorage:', error);
-      isInitialMount.current = false;
-    }
+    };
+    
+    fetchWindowStates();
   }, []); // Empty dependency array means this runs once on mount
 
-  // Save to localStorage with debounce
-  const saveToLocalStorage = useCallback(() => {
+  // Save to API with debounce
+  const saveToAPI = useCallback(() => {
     // Skip saving on initial load
     if (isInitialMount.current) {
       return;
@@ -54,13 +70,26 @@ export function WindowStateProvider({ children }) {
     }
     
     // Set a new timeout to save the state after a delay
-    saveTimeoutRef.current = setTimeout(() => {
+    saveTimeoutRef.current = setTimeout(async () => {
       try {
-        localStorage.setItem('windowStates', JSON.stringify(stateRef.current));
+        const token = localStorage.getItem('auth_token');
+        if (!token) return; // No token, don't save
+        
+        await axios.post(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WINDOW_STATES}`, 
+          { windowStates: stateRef.current.windowStates },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
       } catch (error) {
-        console.error('Failed to save window states to localStorage:', error);
+        console.error('Failed to save window states to API:', error);
       }
     }, 500); // 500ms debounce
+  }, []);
+
+  // Clear window states (used during logout)
+  const clearWindowStates = useCallback(() => {
+    stateRef.current = initialState;
+    forceUpdate({});
   }, []);
 
   // Action creators
@@ -77,12 +106,12 @@ export function WindowStateProvider({ children }) {
       }
     };
     
-    // Save to localStorage
-    saveToLocalStorage();
+    // Save to API
+    saveToAPI();
     
     // Force a re-render
     forceUpdate({});
-  }, [saveToLocalStorage]);
+  }, [saveToAPI]);
 
   const removeWindowState = useCallback((windowId) => {
     // Create a new state object
@@ -97,12 +126,12 @@ export function WindowStateProvider({ children }) {
     // Update the state ref
     stateRef.current = newState;
     
-    // Save to localStorage
-    saveToLocalStorage();
+    // Save to API
+    saveToAPI();
     
     // Force a re-render
     forceUpdate({});
-  }, [saveToLocalStorage]);
+  }, [saveToAPI]);
 
   const getWindowState = useCallback((windowId) => {
     return stateRef.current.windowStates[windowId] || null;
@@ -113,8 +142,9 @@ export function WindowStateProvider({ children }) {
     windowStates: stateRef.current.windowStates,
     setWindowState,
     removeWindowState,
-    getWindowState
-  }), [setWindowState, removeWindowState, getWindowState]);
+    getWindowState,
+    clearWindowStates
+  }), [setWindowState, removeWindowState, getWindowState, clearWindowStates]);
 
   return (
     <WindowStateContext.Provider value={contextValue}>
