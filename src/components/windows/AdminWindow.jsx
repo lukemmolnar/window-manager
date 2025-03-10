@@ -9,8 +9,15 @@ const AdminWindow = ({ isActive }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
+    password: '',
+    is_admin: false
+  });
+  const [createFormData, setCreateFormData] = useState({
+    username: '',
+    email: '',
     password: '',
     is_admin: false
   });
@@ -61,10 +68,19 @@ const AdminWindow = ({ isActive }) => {
     });
   };
 
-  // Handle form input changes
+  // Handle form input changes for editing
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // Handle form input changes for creating
+  const handleCreateChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setCreateFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
@@ -108,6 +124,59 @@ const AdminWindow = ({ isActive }) => {
     }
   };
 
+  // Create a new user
+  const handleCreateUser = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      
+      // Validate form data
+      if (!createFormData.username || !createFormData.email || !createFormData.password) {
+        setError('Username, email, and password are required.');
+        setLoading(false);
+        return;
+      }
+      
+      await axios.post(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`,
+        createFormData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Refresh the user list
+      await fetchUsers();
+      
+      // Reset form and hide it
+      setCreateFormData({
+        username: '',
+        email: '',
+        password: '',
+        is_admin: false
+      });
+      setShowCreateForm(false);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to create user:', err);
+      setError(err.response?.data?.message || 'Failed to create user. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Toggle create form visibility
+  const toggleCreateForm = () => {
+    setShowCreateForm(!showCreateForm);
+    if (!showCreateForm) {
+      // Reset form data when opening
+      setCreateFormData({
+        username: '',
+        email: '',
+        password: '',
+        is_admin: false
+      });
+    }
+  };
+
   // Render loading state
   if (loading && users.length === 0) {
     return (
@@ -139,10 +208,82 @@ const AdminWindow = ({ isActive }) => {
 
   return (
     <div className="bg-stone-900 text-white p-4 h-full overflow-auto">
-      <h2 className="text-xl mb-4 text-teal-400">User Management</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl text-teal-400">Admin Panel</h2>
+        <button
+          onClick={toggleCreateForm}
+          className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+        >
+          {showCreateForm ? 'Cancel' : 'Create User'}
+        </button>
+      </div>
       
       {error && <p className="text-red-500 mb-4">{error}</p>}
       
+      {/* Create User Form */}
+      {showCreateForm && (
+        <div className="mb-6 p-4 bg-stone-800 rounded">
+          <h3 className="text-lg mb-3 text-teal-400">Create New User</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Username:</label>
+              <input
+                type="text"
+                name="username"
+                value={createFormData.username}
+                onChange={handleCreateChange}
+                className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                placeholder="Enter username"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Email:</label>
+              <input
+                type="email"
+                name="email"
+                value={createFormData.email}
+                onChange={handleCreateChange}
+                className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                placeholder="Enter email"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Password:</label>
+              <input
+                type="password"
+                name="password"
+                value={createFormData.password}
+                onChange={handleCreateChange}
+                className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                placeholder="Enter password"
+              />
+            </div>
+            <div className="flex items-center">
+              <label className="flex items-center text-sm text-gray-400">
+                <input
+                  type="checkbox"
+                  name="is_admin"
+                  checked={createFormData.is_admin}
+                  onChange={handleCreateChange}
+                  className="form-checkbox h-5 w-5 text-teal-500 mr-2"
+                />
+                Admin User
+              </label>
+            </div>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={handleCreateUser}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+              disabled={loading}
+            >
+              {loading ? 'Creating...' : 'Create User'}
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Users Table */}
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-stone-700">
