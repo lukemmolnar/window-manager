@@ -12,6 +12,7 @@ const AdminWindow = ({ isActive }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
+    email: '',
     password: '',
     is_admin: false
   });
@@ -53,6 +54,7 @@ const AdminWindow = ({ isActive }) => {
     setEditingUser(user.id);
     setFormData({
       username: user.username,
+      email: user.email || '', // Include email for editing
       password: '', // Don't populate password for security
       is_admin: user.is_admin === 1 || user.is_admin === true
     });
@@ -63,6 +65,7 @@ const AdminWindow = ({ isActive }) => {
     setEditingUser(null);
     setFormData({
       username: '',
+      email: '',
       password: '',
       is_admin: false
     });
@@ -92,12 +95,14 @@ const AdminWindow = ({ isActive }) => {
       setLoading(true);
       const token = localStorage.getItem('auth_token');
       
-      // Only include password in the request if it was changed
+      // Include all editable fields
       const userData = {
         username: formData.username,
+        email: formData.email,
         is_admin: formData.is_admin
       };
       
+      // Only include password in the request if it was changed
       if (formData.password) {
         userData.password = formData.password;
       }
@@ -113,6 +118,7 @@ const AdminWindow = ({ isActive }) => {
       setEditingUser(null);
       setFormData({
         username: '',
+        email: '',
         password: '',
         is_admin: false
       });
@@ -130,9 +136,9 @@ const AdminWindow = ({ isActive }) => {
       setLoading(true);
       const token = localStorage.getItem('auth_token');
       
-      // Validate form data
-      if (!createFormData.username || !createFormData.email || !createFormData.password) {
-        setError('Username, email, and password are required.');
+      // Validate form data - email is now optional
+      if (!createFormData.username || !createFormData.password) {
+        setError('Username and password are required.');
         setLoading(false);
         return;
       }
@@ -226,7 +232,7 @@ const AdminWindow = ({ isActive }) => {
           <h3 className="text-lg mb-3 text-teal-400">Create New User</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Username:</label>
+              <label className="block text-sm text-gray-400 mb-1">Username: <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="username"
@@ -244,11 +250,11 @@ const AdminWindow = ({ isActive }) => {
                 value={createFormData.email}
                 onChange={handleCreateChange}
                 className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                placeholder="Enter email"
+                placeholder="Enter email (optional)"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Password:</label>
+              <label className="block text-sm text-gray-400 mb-1">Password: <span className="text-red-500">*</span></label>
               <input
                 type="password"
                 name="password"
@@ -309,7 +315,20 @@ const AdminWindow = ({ isActive }) => {
                   userItem.username
                 )}
               </td>
-              <td className="p-2">{userItem.email}</td>
+              <td className="p-2">
+                {editingUser === userItem.id ? (
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                    placeholder="Email (optional)"
+                  />
+                ) : (
+                  userItem.email || '-'
+                )}
+              </td>
               <td className="p-2">
                 {editingUser === userItem.id ? (
                   <input
@@ -325,7 +344,7 @@ const AdminWindow = ({ isActive }) => {
               </td>
               <td className="p-2">
                 {editingUser === userItem.id ? (
-                  <div className="flex space-x-2">
+                  <div className="flex flex-col space-y-2">
                     <div className="mb-2">
                       <label className="block text-sm text-gray-400">New Password:</label>
                       <input
@@ -337,18 +356,20 @@ const AdminWindow = ({ isActive }) => {
                         className="bg-stone-700 text-white px-2 py-1 rounded w-full"
                       />
                     </div>
-                    <button
-                      onClick={() => handleSave(userItem.id)}
-                      className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      className="px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm"
-                    >
-                      Cancel
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleSave(userItem.id)}
+                        className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        className="px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <button
