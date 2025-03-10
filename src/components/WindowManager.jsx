@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { WINDOW_CONTENT } from '../utils/windowTypes';
+import { WINDOW_CONTENT, WINDOW_TYPES } from '../utils/windowTypes';
 import { getWindowBounds } from '../utils/windowUtils';
 import { useWindowManager } from '../hooks/useWindowManager';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -268,7 +268,8 @@ export const WindowManager = ({ defaultLayout = null }) => {
             nodeState={node.state}
             nodeId={node.id}
             transformWindow={transformWindow}
-            onStateChange={(newState) => {
+            windowState={node.windowType === WINDOW_TYPES.TERMINAL ? terminalStates[node.id] : node.state}
+            updateWindowState={(newState) => {
               updateTerminalState(node.id, newState);
             }}
           />
