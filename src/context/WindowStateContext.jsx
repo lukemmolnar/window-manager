@@ -92,6 +92,33 @@ export function WindowStateProvider({ children }) {
     forceUpdate({});
   }, []);
 
+  // Reload window states from API (used after login)
+  const reloadWindowStates = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        return; // No token, use default empty state
+      }
+      
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WINDOW_STATES}`, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.windowStates) {
+        // Update the state ref directly
+        stateRef.current = {
+          windowStates: response.data.windowStates
+        };
+        // Force a re-render
+        forceUpdate({});
+        console.log('Window states reloaded after login');
+      }
+    } catch (error) {
+      console.error('Failed to reload window states from API:', error);
+    }
+  }, []);
+
   // Action creators
   const setWindowState = useCallback((windowId, windowType, content) => {
     // Update the state ref directly
@@ -143,8 +170,9 @@ export function WindowStateProvider({ children }) {
     setWindowState,
     removeWindowState,
     getWindowState,
-    clearWindowStates
-  }), [setWindowState, removeWindowState, getWindowState, clearWindowStates]);
+    clearWindowStates,
+    reloadWindowStates
+  }), [setWindowState, removeWindowState, getWindowState, clearWindowStates, reloadWindowStates]);
 
   return (
     <WindowStateContext.Provider value={contextValue}>

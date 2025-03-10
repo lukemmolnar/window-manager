@@ -105,10 +105,10 @@ export function AuthProvider({ children }) {
 // Wrapper component that connects AuthContext with WindowStateContext
 export function AuthProviderWithWindowState({ children }) {
   // Get the window state context
-  const { clearWindowStates } = useWindowState();
+  const { clearWindowStates, reloadWindowStates } = useWindowState();
   
   // Get the workspace context
-  const { setWorkspaces } = useWorkspace();
+  const { setWorkspaces, loadWorkspaces } = useWorkspace();
   
   // Initial workspaces state
   const initialWorkspaces = [
@@ -130,10 +130,27 @@ export function AuthProviderWithWindowState({ children }) {
     setWorkspaces(initialWorkspaces);
   };
   
-  // Create a new context value with the enhanced logout function
+  // Create a new login function that also reloads window states and workspaces
+  const loginWithReload = async (username, password) => {
+    const result = await auth.login(username, password);
+    
+    if (result.success) {
+      // Reload window states and workspaces after successful login
+      console.log('Login successful, reloading window states and workspaces');
+      await Promise.all([
+        reloadWindowStates(),
+        loadWorkspaces()
+      ]);
+    }
+    
+    return result;
+  };
+  
+  // Create a new context value with the enhanced functions
   const enhancedValue = {
     ...auth,
-    logout: logoutWithClear
+    logout: logoutWithClear,
+    login: loginWithReload
   };
   
   return (

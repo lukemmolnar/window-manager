@@ -22,41 +22,42 @@ export function WorkspaceProvider({ children }) {
   const [currentWorkspaceIndex, setCurrentWorkspaceIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Function to load workspaces from server
+  const loadWorkspaces = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get auth token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.log('No auth token found, using initial workspaces');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch workspaces from server
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKSPACES}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data && response.data.workspaces) {
+        console.log('Loaded workspaces from server:', response.data.workspaces);
+        setWorkspaces(response.data.workspaces);
+      } else {
+        console.log('No saved workspaces found, using initial workspaces');
+      }
+    } catch (error) {
+      console.error('Failed to load workspaces from server:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
   // Load workspaces from server API on mount
   useEffect(() => {
-    const loadWorkspaces = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Get auth token
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-          console.log('No auth token found, using initial workspaces');
-          setIsLoading(false);
-          return;
-        }
-        
-        // Fetch workspaces from server
-        const response = await axios.get(
-          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKSPACES}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        
-        if (response.data && response.data.workspaces) {
-          console.log('Loaded workspaces from server:', response.data.workspaces);
-          setWorkspaces(response.data.workspaces);
-        } else {
-          console.log('No saved workspaces found, using initial workspaces');
-        }
-      } catch (error) {
-        console.error('Failed to load workspaces from server:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     loadWorkspaces();
-  }, []);
+  }, [loadWorkspaces]);
   
   // Save workspaces to server API whenever they change
   useEffect(() => {
@@ -136,8 +137,9 @@ export function WorkspaceProvider({ children }) {
     currentWorkspace: workspaces[currentWorkspaceIndex],
     updateWorkspace,
     switchWorkspace,
-    isLoading
-  }), [workspaces, setWorkspaces, currentWorkspaceIndex, updateWorkspace, switchWorkspace, isLoading]);
+    isLoading,
+    loadWorkspaces
+  }), [workspaces, setWorkspaces, currentWorkspaceIndex, updateWorkspace, switchWorkspace, isLoading, loadWorkspaces]);
   
   return (
     <WorkspaceContext.Provider value={value}>
