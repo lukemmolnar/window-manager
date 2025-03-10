@@ -351,7 +351,7 @@ Provides a command interface for controlling the window manager.
           ref={focusRef}
           type="text"
           onKeyDown={handleCommand}
-          className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
         />
       </div>
     </div>
