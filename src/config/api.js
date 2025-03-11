@@ -18,7 +18,13 @@ const API_CONFIG = {
     // Window state endpoints
     WINDOW_STATES: '/window-states',
     // Workspace endpoints
-    WORKSPACES: '/workspaces'
+    WORKSPACES: '/workspaces',
+    // File endpoints
+    FILES_LIST: '/files',
+    FILE_CONTENT: '/files/content',
+    FILE_SAVE: '/files/content',
+    FILE_CREATE: '/files/create',
+    FILE_DELETE: '/files/delete'
   }
 };
 

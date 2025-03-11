@@ -3,6 +3,7 @@ import ExplorerWindow from './ExplorerWindow';
 import EditorWindow from './EditorWindow';
 import PreviewWindow from './PreviewWindow';
 import ImageWindow from './imageWindow';
+import MarkdownEditorWindow from './MarkdownEditorWindow';
 import withCommandHandling from '../../hocs/withCommandHandling';
 import withWindowState from '../../hocs/withWindowState';
 import withCommandInput from '../../hocs/withCommandInput';
@@ -23,6 +24,7 @@ export const EnhancedImageWindow = withWindowState(withCommandHandling(withComma
 export const EnhancedAudioWindow = withWindowState(withCommandHandling(withCommandInput(AudioWindow)), WINDOW_TYPES.AUDIO);
 export const EnhancedChatWindow = withWindowState(withCommandHandling(withCommandInput(ChatWindow)), WINDOW_TYPES.CHAT);
 export const EnhancedAdminWindow = withWindowState(withCommandHandling(withCommandInput(AdminWindow)), WINDOW_TYPES.ADMIN);
+export const EnhancedMarkdownEditorWindow = withWindowState(withCommandHandling(MarkdownEditorWindow), WINDOW_TYPES.MARKDOWN);
 
 // Also export the base components in case they're needed
-export { TerminalWindow, ExplorerWindow, EditorWindow, PreviewWindow, ChatWindow, AdminWindow };
+export { TerminalWindow, ExplorerWindow, EditorWindow, PreviewWindow, ChatWindow, AdminWindow, MarkdownEditorWindow };

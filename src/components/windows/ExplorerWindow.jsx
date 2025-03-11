@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen } from 'lucide-react';
 import showdown from 'showdown';
+import API_CONFIG from '../../config/api';
 import './ExplorerWindow.css';
 
 const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
@@ -28,55 +29,48 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       setIsLoading(true);
       setErrorMessage('');
       
-      // In a real implementation, we would call an API endpoint
-      // Since we can't do that directly in this example, I'll simulate a response
-      
-      // For development with Vite, we could use:
-      // const response = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
-      // const data = await response.json();
-      
-      // Simulate server response with a directory structure
-      setTimeout(() => {
-        // This simulates the files in your project root
-        // In a real implementation, this would come from your server
-        const projectFiles = [
-          {
-            name: 'docs',
-            type: 'directory',
-            path: '/docs',
-            children: [
-              { name: 'introduction.md', type: 'file', path: '/docs/introduction.md' },
-              { name: 'getting-started.md', type: 'file', path: '/docs/getting-started.md' },
-              { name: 'api-reference.md', type: 'file', path: '/docs/api-reference.md' }
-            ]
-          },
-          {
-            name: 'src',
-            type: 'directory',
-            path: '/src',
-            children: [
-              { name: 'App.jsx', type: 'file', path: '/src/App.jsx' },
-              { name: 'main.jsx', type: 'file', path: '/src/main.jsx' },
-              { name: 'styles.css', type: 'file', path: '/src/styles.css' },
-              { 
-                name: 'components', 
-                type: 'directory', 
-                path: '/src/components',
-                children: [
-                  { name: 'WindowManager.jsx', type: 'file', path: '/src/components/WindowManager.jsx' },
-                  { name: 'CommandBar.jsx', type: 'file', path: '/src/components/CommandBar.jsx' }
-                ]
-              }
-            ]
-          },
-          { name: 'README.md', type: 'file', path: '/README.md' },
-          { name: 'package.json', type: 'file', path: '/package.json' }
-        ];
-        
-        setFiles(projectFiles);
-        setCurrentPath(path);
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
         setIsLoading(false);
-      }, 300);
+        return;
+      }
+      
+      // Fetch directory contents from the server
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILES_LIST}?path=${encodeURIComponent(path)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        // If response is 403, it means the user doesn't have admin access
+        if (response.status === 403) {
+          setErrorMessage('Admin access required to view files.');
+        } else {
+          setErrorMessage(`Failed to load files: ${response.statusText}`);
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Transform the data to match our expected format
+      const transformedFiles = data.items.map(item => ({
+        name: item.name,
+        type: item.type,
+        path: item.path,
+        children: item.children || []
+      }));
+      
+      setFiles(transformedFiles);
+      setCurrentPath(path);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching directory contents:', error);
       setErrorMessage('Failed to load files. Please try again.');
@@ -90,76 +84,38 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       setIsLoading(true);
       setErrorMessage('');
       
-      // In a real implementation, we would call an API endpoint
-      // Since we can't do that directly in this example, I'll simulate content for markdown files
-      
-      setTimeout(() => {
-        // Sample content for markdown files
-        let content = '';
-        
-        if (filePath === '/README.md') {
-          content = `# SLUMTERM
-          
-## Overview
-i can render markdown now nerd
-
-its over`;
-        } 
-        else if (filePath === '/docs/introduction.md') {
-          content = `# Introduction to Window Manager
-          
-The Window Manager is a React-based system for creating flexible, multi-pane layouts.
-
-## Core Concepts
-- **Windows**: Individual content panes
-- **Splits**: Divisions between windows
-- **Workspaces**: Collections of window arrangements
-
-## Architecture
-The system uses a binary tree structure to represent the layout hierarchy.`;
-        }
-        else if (filePath === '/docs/getting-started.md') {
-          content = `# Getting Started
-          
-## Installation
-\`\`\`bash
-npm install
-npm run dev
-\`\`\`
-
-## Basic Usage
-- **Ctrl+Enter**: Create new window or split vertically
-- **Ctrl+Shift+Enter**: Split horizontally
-- **Ctrl+Backspace**: Close window
-- **Ctrl+Q**: Toggle resize mode`;
-        }
-        else if (filePath === '/docs/api-reference.md') {
-          content = `# API Reference
-          
-## Components
-
-### WindowManager
-The main component that manages the window hierarchy.
-
-\`\`\`jsx
-<WindowManager defaultLayout={layout} />
-\`\`\`
-
-### CommandBar
-Provides a command interface for controlling the window manager.
-
-\`\`\`jsx
-<CommandBar onCommand={handleCommand} />
-\`\`\``;
-        }
-        else {
-          // For non-markdown files, show a placeholder message
-          content = `Content for ${filePath} would be displayed here.`;
-        }
-        
-        setFileContent(content);
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
         setIsLoading(false);
-      }, 300);
+        return;
+      }
+      
+      // Fetch file content from the server
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_CONTENT}?path=${encodeURIComponent(filePath)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        // If response is 403, it means the user doesn't have admin access
+        if (response.status === 403) {
+          setErrorMessage('Admin access required to view file content.');
+        } else {
+          setErrorMessage(`Failed to load file content: ${response.statusText}`);
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      setFileContent(data.content);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching file content:', error);
       setErrorMessage('Failed to load file content. Please try again.');
