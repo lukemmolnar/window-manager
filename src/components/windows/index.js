@@ -1,9 +1,6 @@
 import TerminalWindow from './TerminalWindow';
 import ExplorerWindow from './ExplorerWindow';
 import EditorWindow from './EditorWindow';
-import PreviewWindow from './PreviewWindow';
-import ImageWindow from './imageWindow';
-import MarkdownEditorWindow from './MarkdownEditorWindow';
 import withCommandHandling from '../../hocs/withCommandHandling';
 import withWindowState from '../../hocs/withWindowState';
 import withCommandInput from '../../hocs/withCommandInput';
@@ -19,12 +16,9 @@ export const EnhancedExplorerWindow = withWindowState(withCommandHandling(Explor
 
 // For other windows, add the command input
 export const EnhancedEditorWindow = withWindowState(withCommandHandling(withCommandInput(EditorWindow)), WINDOW_TYPES.EDITOR);
-export const EnhancedPreviewWindow = withWindowState(withCommandHandling(withCommandInput(PreviewWindow)), WINDOW_TYPES.CHART);
-export const EnhancedImageWindow = withWindowState(withCommandHandling(withCommandInput(ImageWindow)), WINDOW_TYPES.IMAGE);
 export const EnhancedAudioWindow = withWindowState(withCommandHandling(withCommandInput(AudioWindow)), WINDOW_TYPES.AUDIO);
 export const EnhancedChatWindow = withWindowState(withCommandHandling(withCommandInput(ChatWindow)), WINDOW_TYPES.CHAT);
 export const EnhancedAdminWindow = withWindowState(withCommandHandling(withCommandInput(AdminWindow)), WINDOW_TYPES.ADMIN);
-export const EnhancedMarkdownEditorWindow = withWindowState(withCommandHandling(MarkdownEditorWindow), WINDOW_TYPES.MARKDOWN);
 
 // Also export the base components in case they're needed
-export { TerminalWindow, ExplorerWindow, EditorWindow, PreviewWindow, ChatWindow, AdminWindow, MarkdownEditorWindow };
+export { TerminalWindow, ExplorerWindow, EditorWindow, ChatWindow, AdminWindow };
