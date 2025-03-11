@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye } from 'lucide-react';
 import showdown from 'showdown';
 import API_CONFIG from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 import './ExplorerWindow.css';
 
 const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
+  // Get auth context to check if user is admin
+  const { user } = useAuth();
+  const isAdmin = user?.is_admin || false;
+  
   // Use state from windowState or initialize with defaults
   const [files, setFiles] = useState([]);
   const [currentPath, setCurrentPath] = useState(windowState?.currentPath || '/');
@@ -14,6 +19,13 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
   const [fileContent, setFileContent] = useState(windowState?.fileContent || '');
   const [errorMessage, setErrorMessage] = useState('');
   const [showPreview, setShowPreview] = useState(windowState?.showPreview || false);
+  
+  // Additional state for markdown editing
+  const [editMode, setEditMode] = useState(windowState?.editMode || false);
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+  
+  // For auto-save functionality
+  const saveTimeoutRef = useRef(null);
   
   // Initialize Showdown converter for Markdown
   const converter = new showdown.Converter({
@@ -116,17 +128,86 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       const data = await response.json();
       setFileContent(data.content);
       setIsLoading(false);
+      setSaveStatus('saved');
     } catch (error) {
       console.error('Error fetching file content:', error);
-      setErrorMessage('Failed to load file content. Please try again.');
+      setErrorMessage(`Error loading file: ${error.message}`);
+      setSaveStatus('error');
       setIsLoading(false);
     }
+  };
+  
+  // Function to save file content
+  const saveFileContent = async () => {
+    try {
+      // Check if filePath is valid
+      if (!selectedFile || !selectedFile.path || selectedFile.path.trim() === '') {
+        setErrorMessage('No file selected. Please select a file first.');
+        setSaveStatus('error');
+        return;
+      }
+      
+      setSaveStatus('saving');
+      
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_SAVE}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          path: selectedFile.path,
+          content: fileContent
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to save file: ${response.statusText}`);
+      }
+      
+      setSaveStatus('saved');
+      setErrorMessage('');
+    } catch (error) {
+      console.error('Error saving file:', error);
+      setErrorMessage(`Error saving file: ${error.message}`);
+      setSaveStatus('error');
+    }
+  };
+  
+  // Handle markdown content change
+  const handleMarkdownChange = (e) => {
+    setFileContent(e.target.value);
   };
 
   // Load initial directory contents
   useEffect(() => {
     fetchDirectoryContents();
   }, []);
+
+  // Auto-save functionality with debounce
+  useEffect(() => {
+    // Only auto-save if in edit mode, user is admin, and we have a markdown file selected
+    if (editMode && isAdmin && selectedFile && selectedFile.name.endsWith('.md') && fileContent) {
+      // Clear any existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Set status to saving
+      setSaveStatus('saving');
+      
+      // Set a new timeout for auto-save
+      saveTimeoutRef.current = setTimeout(() => {
+        saveFileContent();
+      }, 1000); // 1 second debounce
+    }
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [fileContent, editMode, isAdmin, selectedFile]);
 
   // Update window state when relevant state changes
   useEffect(() => {
@@ -136,10 +217,12 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         selectedFile,
         expandedFolders,
         fileContent,
-        showPreview
+        showPreview,
+        editMode,
+        saveStatus
       });
     }
-  }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, updateWindowState]);
+  }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, editMode, saveStatus, updateWindowState]);
 
   // Toggle folder expansion
   const toggleFolder = (folderPath) => {
@@ -152,6 +235,11 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
   // Handle file selection
   const handleFileSelect = (file) => {
     setSelectedFile(file);
+    
+    // Reset edit mode when selecting a new file
+    if (editMode) {
+      setEditMode(false);
+    }
     
     // If it's a markdown file, fetch its content and show preview
     if (file.name.endsWith('.md')) {
@@ -211,6 +299,25 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
     });
   };
 
+  // Toggle edit mode
+  const toggleEditMode = () => {
+    if (!isAdmin) {
+      setErrorMessage('Admin access required to edit files.');
+      return;
+    }
+    
+    if (!selectedFile || !selectedFile.name.endsWith('.md')) {
+      setErrorMessage('Only markdown files can be edited.');
+      return;
+    }
+    
+    setEditMode(!editMode);
+    // When switching to preview mode, ensure preview is shown
+    if (editMode) {
+      setShowPreview(true);
+    }
+  };
+
   // Handle command input
   const handleCommand = (e) => {
     if (e.key === 'Enter' && e.target.value.trim()) {
@@ -218,13 +325,22 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       onCommand(cmd);
       e.target.value = '';
       
-      // Example commands:
+      // Commands:
       // - refresh: refresh file list
       // - preview: toggle markdown preview
+      // - edit: toggle edit mode (admin only)
+      // - save: manually save the current file
       if (cmd === 'refresh') {
         fetchDirectoryContents(currentPath);
       } else if (cmd === 'preview' && selectedFile?.name.endsWith('.md')) {
         setShowPreview(!showPreview);
+        if (editMode) {
+          setEditMode(false); // Exit edit mode when switching to preview
+        }
+      } else if (cmd === 'edit' && selectedFile?.name.endsWith('.md')) {
+        toggleEditMode();
+      } else if (cmd === 'save' && editMode && selectedFile?.name.endsWith('.md')) {
+        saveFileContent();
       }
     }
   };
@@ -257,20 +373,69 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
           </div>
         </div>
         
-        {/* File preview panel - only shown for markdown files */}
+        {/* File content panel (preview or edit) */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {selectedFile && showPreview ? (
+          {selectedFile ? (
             <>
-              <div className="p-2 border-b border-stone-700 font-mono text-sm">
-                <span>{selectedFile.name}</span>
+              {/* Header with file name, status, and controls */}
+              <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="mr-2">{selectedFile.name}</span>
+                  {saveStatus === 'saving' && <span className="text-yellow-400 text-xs ml-2">Saving...</span>}
+                  {saveStatus === 'saved' && <span className="text-green-400 text-xs ml-2">Saved</span>}
+                  {saveStatus === 'error' && <span className="text-red-400 text-xs ml-2">Error!</span>}
+                </div>
+                
+                {/* Only show edit/preview toggle for markdown files and admin users */}
+                {selectedFile.name.endsWith('.md') && isAdmin && (
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={toggleEditMode}
+                      className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${editMode ? 'bg-teal-700 text-teal-100' : 'bg-stone-800 hover:bg-stone-700'}`}
+                      title={editMode ? "Switch to preview mode" : "Switch to edit mode"}
+                    >
+                      {editMode ? <Eye size={14} /> : <Edit size={14} />}
+                      {editMode ? 'Preview' : 'Edit'}
+                    </button>
+                    
+                    {editMode && (
+                      <button 
+                        onClick={saveFileContent}
+                        className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
+                        title="Save file"
+                      >
+                        Save
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               
-              <div className="flex-1 overflow-auto p-4">
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <span className="text-teal-300">Loading content...</span>
-                  </div>
-                ) : (
+              {/* Error message */}
+              {errorMessage && (
+                <div className="p-2 bg-red-900 text-red-200 text-sm">
+                  {errorMessage}
+                </div>
+              )}
+              
+              {/* Content area - either editor or preview */}
+              {isLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <span className="text-teal-300">Loading content...</span>
+                </div>
+              ) : editMode && selectedFile.name.endsWith('.md') && isAdmin ? (
+                // Editor mode - only for markdown files and admin users
+                <div className="flex-1 p-2">
+                  <textarea
+                    className="w-full h-full bg-stone-800 text-teal-50 p-4 resize-none focus:outline-none font-mono"
+                    value={fileContent}
+                    onChange={handleMarkdownChange}
+                    placeholder="# Start typing your markdown here..."
+                  />
+                </div>
+              ) : showPreview ? (
+                // Preview mode
+                <div className="flex-1 overflow-auto p-4">
                   <div className="markdown-preview text-teal-50">
                     {selectedFile.name.endsWith('.md') ? (
                       <div 
@@ -285,15 +450,17 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
                       </pre>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              ) : null}
             </>
           ) : (
+            // No file selected
             <div className="flex items-center justify-center h-full text-stone-600">
               <div className="text-center">
                 <FileText size={48} className="mx-auto mb-4" />
                 <p>Select a markdown file to preview</p>
                 <p className="text-xs mt-2">Use the 'preview' command to toggle preview mode</p>
+                {isAdmin && <p className="text-xs mt-1">Admin users can use the 'edit' command to edit markdown files</p>}
               </div>
             </div>
           )}
@@ -308,6 +475,7 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
           type="text"
           onKeyDown={handleCommand}
           className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+          placeholder="Commands: refresh, preview, edit, save"
         />
       </div>
     </div>
