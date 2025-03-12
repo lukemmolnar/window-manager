@@ -20,7 +20,7 @@ export const CommandBar = ({
     
     if (isOverflowing) {
       // Set up animation for scrolling text
-      element.style.animation = 'scroll-text 15s linear infinite';
+      element.style.animation = 'scroll-text 30s linear infinite';
     } else {
       element.style.animation = 'none';
     }
