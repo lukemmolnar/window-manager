@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X } from 'lucide-react';
+import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X, Globe, Lock } from 'lucide-react';
 import showdown from 'showdown';
 import path from 'path-browserify';
 import API_CONFIG from '../../config/api';
@@ -13,6 +13,7 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
   
   // Use state from windowState or initialize with defaults
   const [files, setFiles] = useState([]);
+  const [publicFiles, setPublicFiles] = useState([]);
   const [currentPath, setCurrentPath] = useState(windowState?.currentPath || '/');
   const [selectedFile, setSelectedFile] = useState(windowState?.selectedFile || null);
   const [expandedFolders, setExpandedFolders] = useState(windowState?.expandedFolders || {});
@@ -20,6 +21,7 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
   const [fileContent, setFileContent] = useState(windowState?.fileContent || '');
   const [errorMessage, setErrorMessage] = useState('');
   const [showPreview, setShowPreview] = useState(windowState?.showPreview || false);
+  const [activeTab, setActiveTab] = useState(windowState?.activeTab || 'public'); // 'public' or 'private'
   
   // Additional state for markdown editing
   const [editMode, setEditMode] = useState(windowState?.editMode || false);
@@ -43,7 +45,100 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
     emoji: true
   });
 
-  // Function to fetch directory contents from the server
+  // Function to fetch public directory contents
+  const fetchPublicDirectoryContents = async (publicPath = '/') => {
+    try {
+      setIsLoading(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch public directory contents from the server
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILES_LIST}?path=${encodeURIComponent(publicPath)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        setErrorMessage(`Failed to load public files: ${response.statusText}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Transform the data to match our expected format
+      const transformedFiles = data.items.map(item => ({
+        name: item.name,
+        type: item.type,
+        path: item.path,
+        children: item.children || [],
+        isPublic: true
+      }));
+      
+      setPublicFiles(transformedFiles);
+      setCurrentPath(publicPath);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching public directory contents:', error);
+      setErrorMessage('Failed to load public files. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  // Function to fetch public file content
+  const fetchPublicFileContent = async (filePath) => {
+    try {
+      setIsLoading(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch public file content from the server
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILE_CONTENT}?path=${encodeURIComponent(filePath)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        setErrorMessage(`Failed to load file content: ${response.statusText}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      setFileContent(data.content);
+      setIsLoading(false);
+      setSaveStatus('saved');
+    } catch (error) {
+      console.error('Error fetching public file content:', error);
+      setErrorMessage(`Error loading file: ${error.message}`);
+      setSaveStatus('error');
+      setIsLoading(false);
+    }
+  };
+
+  // Function to fetch private directory contents from the server (admin only)
   const fetchDirectoryContents = async (path = '/') => {
     try {
       setIsLoading(true);
@@ -189,8 +284,14 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
 
   // Load initial directory contents
   useEffect(() => {
-    fetchDirectoryContents();
-  }, []);
+    // Load public files for all users
+    fetchPublicDirectoryContents();
+    
+    // Load private files for admin users
+    if (isAdmin) {
+      fetchDirectoryContents();
+    }
+  }, [isAdmin]);
 
   // Auto-save functionality with debounce
   useEffect(() => {
@@ -227,10 +328,11 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         fileContent,
         showPreview,
         editMode,
-        saveStatus
+        saveStatus,
+        activeTab
       });
     }
-  }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, editMode, saveStatus, updateWindowState]);
+  }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, editMode, saveStatus, activeTab, updateWindowState]);
   
   // Focus the input field when the create dialog is shown
   useEffect(() => {
@@ -266,8 +368,18 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         return;
       }
       
+      // Determine if we're creating in the public folder or private folder
+      const isPublicFolder = activeTab === 'public';
+      
       // Construct the full path for the new item
-      const newItemPath = path.join(currentPath, newItemName.trim()).replace(/\\/g, '/');
+      let newItemPath;
+      if (isPublicFolder) {
+        // For public folder, prefix with /public
+        newItemPath = path.join('/public', currentPath, newItemName.trim()).replace(/\\/g, '/');
+      } else {
+        // For private folder (admin only)
+        newItemPath = path.join(currentPath, newItemName.trim()).replace(/\\/g, '/');
+      }
       
       // Create the new file or folder
       const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_CREATE}`, {
@@ -292,8 +404,12 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       setShowCreateDialog(false);
       setNewItemName('');
       
-      // Refresh the file list
-      fetchDirectoryContents(currentPath);
+      // Refresh the appropriate file list
+      if (isPublicFolder) {
+        fetchPublicDirectoryContents(currentPath);
+      } else {
+        fetchDirectoryContents(currentPath);
+      }
       
       // If it's a directory, expand it
       if (createType === 'directory') {
@@ -347,7 +463,13 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
     
     // If it's a markdown file, fetch its content and show preview
     if (file.name.endsWith('.md')) {
-      fetchFileContent(file.path);
+      if (file.isPublic) {
+        // Fetch public file content
+        fetchPublicFileContent(file.path);
+      } else {
+        // Fetch private file content (admin only)
+        fetchFileContent(file.path);
+      }
       setShowPreview(true);
     } else {
       setFileContent('');
@@ -436,8 +558,15 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       // - save: manually save the current file
       // - new-file: create a new file (admin only)
       // - new-folder: create a new folder (admin only)
+      // - public: switch to public files tab
+      // - private: switch to private files tab (admin only)
       if (cmd === 'refresh') {
-        fetchDirectoryContents(currentPath);
+        // Refresh the appropriate file list based on the active tab
+        if (activeTab === 'public') {
+          fetchPublicDirectoryContents(currentPath);
+        } else {
+          fetchDirectoryContents(currentPath);
+        }
       } else if (cmd === 'preview' && selectedFile?.name.endsWith('.md')) {
         setShowPreview(!showPreview);
         if (editMode) {
@@ -451,6 +580,10 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         openCreateDialog('file');
       } else if (cmd === 'new-folder' && isAdmin) {
         openCreateDialog('directory');
+      } else if (cmd === 'public') {
+        setActiveTab('public');
+      } else if (cmd === 'private' && isAdmin) {
+        setActiveTab('private');
       }
     }
   };
@@ -461,7 +594,40 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         {/* File tree panel */}
         <div className="w-1/3 border-r border-stone-700 flex flex-col overflow-hidden">
           <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
-            <span>PROJECT FILES</span>
+            <div className="flex items-center">
+              <span>FILES</span>
+              
+              {/* Tabs for switching between public and private files */}
+              <div className="flex ml-4">
+                <button
+                  onClick={() => setActiveTab('public')}
+                  className={`px-2 py-1 rounded-t text-xs flex items-center gap-1 ${
+                    activeTab === 'public' 
+                      ? 'bg-stone-700 text-teal-300' 
+                      : 'bg-stone-800 hover:bg-stone-700'
+                  }`}
+                  title="Public files (readable by all users)"
+                >
+                  <Globe size={14} />
+                  <span>Public</span>
+                </button>
+                
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveTab('private')}
+                    className={`px-2 py-1 rounded-t text-xs flex items-center gap-1 ml-1 ${
+                      activeTab === 'private' 
+                        ? 'bg-stone-700 text-teal-300' 
+                        : 'bg-stone-800 hover:bg-stone-700'
+                    }`}
+                    title="Private files (admin only)"
+                  >
+                    <Lock size={14} />
+                    <span>Private</span>
+                  </button>
+                )}
+              </div>
+            </div>
             
             {/* Admin-only file creation buttons */}
             {isAdmin && (
@@ -493,7 +659,33 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
               <div className="p-2 text-red-400">{errorMessage}</div>
             ) : (
               <div className="p-2 font-mono">
-                {renderFileTree(files)}
+                {activeTab === 'public' ? (
+                  // Show public files to all users
+                  <>
+                    <div className="flex items-center py-1 px-1 text-teal-300">
+                      <Globe size={16} className="mr-2" />
+                      <span className="text-sm font-bold">Public Files</span>
+                    </div>
+                    {publicFiles.length > 0 ? (
+                      renderFileTree(publicFiles)
+                    ) : (
+                      <div className="ml-4 text-stone-500 text-sm">No public files available</div>
+                    )}
+                  </>
+                ) : (
+                  // Show private files to admin users
+                  <>
+                    <div className="flex items-center py-1 px-1 text-teal-300">
+                      <Lock size={16} className="mr-2" />
+                      <span className="text-sm font-bold">Private Files (Admin Only)</span>
+                    </div>
+                    {files.length > 0 ? (
+                      renderFileTree(files)
+                    ) : (
+                      <div className="ml-4 text-stone-500 text-sm">No private files available</div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -645,7 +837,7 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
           type="text"
           onKeyDown={handleCommand}
           className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
-          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder" : "Commands: refresh, preview"}
+          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder, public, private" : "Commands: refresh, preview, public"}
         />
       </div>
     </div>

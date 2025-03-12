@@ -1,49 +1,65 @@
+# Public Markdown Files
 
-### README.md
-```markdown
-# Window Manager Project
-
-## Overview
-This project implements a flexible window management system inspired by terminal multiplexers like tmux.
+This is a demonstration of the public markdown files feature. This file is stored in the public folder and can be read by all users, but only edited by administrators.
 
 ## Features
-- Split windows horizontally and vertically
-- Multiple workspace support
-- Keyboard shortcuts for navigation
-- Customizable window types
 
-## Getting Started
-Check the docs folder for more information on how to use this project.
+- **Public Access**: All users can read markdown files in this folder
+- **Admin Editing**: Only administrators can edit these files
+- **Markdown Support**: Full markdown formatting is supported
+
+## How to Use
+
+1. Open the Explorer window
+2. Navigate to the Public tab
+3. Select a markdown file to view
+4. If you're an admin, you can click the "Edit" button to make changes
+
+## Markdown Examples
+
+### Text Formatting
+
+You can use **bold**, *italic*, or ~~strikethrough~~ text.
+
+### Lists
+
+Unordered list:
+- Item 1
+- Item 2
+- Item 3
+
+Ordered list:
+1. First item
+2. Second item
+3. Third item
+
+### Code
+
+Inline code: `const example = "Hello World";`
+
+Code block:
+```javascript
+function greet(name) {
+  return `Hello, ${name}!`;
+}
+
+console.log(greet("User"));
 ```
 
-### introduction.md
-```markdown
-# Introduction to Window Manager
+### Tables
 
-The Window Manager is a React-based system for creating flexible, multi-pane layouts.
+| Name | Role | Department |
+|------|------|------------|
+| John | Developer | Engineering |
+| Sarah | Designer | UX/UI |
+| Mike | Manager | Operations |
 
-## Core Concepts
-- **Windows**: Individual content panes
-- **Splits**: Divisions between windows
-- **Workspaces**: Collections of window arrangements
+### Links and Images
 
-## Architecture
-The system uses a binary tree structure to represent the layout hierarchy.
-```
+[Link to documentation](https://www.markdownguide.org/)
 
-### getting-started.md
-```markdown
-# Getting Started
+![Image placeholder](https://via.placeholder.com/150)
 
-## Installation
-```bash
-npm install
-npm run dev
-```
+## Contributing
 
-## Basic Usage
-- **Ctrl+Enter**: Create new window or split vertically
-- **Ctrl+Shift+Enter**: Split horizontally
-- **Ctrl+Backspace**: Close window
-- **Ctrl+Q**: Toggle resize mode
-```
+If you're an administrator, you can edit this file to add more information or create new markdown files in the public folder.
