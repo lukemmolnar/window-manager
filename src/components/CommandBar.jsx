@@ -40,7 +40,7 @@ export const CommandBar = ({
         {announcement ? (
           <div 
             ref={announcementRef}
-            className="text-yellow-300 text-sm font-mono whitespace-nowrap overflow-hidden"
+            className="text-teal-300 text-sm font-mono whitespace-nowrap overflow-hidden"
           >
             {announcement}
           </div>
