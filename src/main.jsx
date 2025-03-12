@@ -6,6 +6,7 @@ import './App.css'
 import { WindowStateProvider } from './context/WindowStateContext'
 import { WorkspaceProvider } from './context/WorkspaceContext'
 import { AuthProvider, AuthProviderWithWindowState } from './context/AuthContext'
+import { AnnouncementProvider } from './context/AnnouncementContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <WindowStateProvider>
         <WorkspaceProvider>
           <AuthProviderWithWindowState>
-            <App />
+            <AnnouncementProvider>
+              <App />
+            </AnnouncementProvider>
           </AuthProviderWithWindowState>
         </WorkspaceProvider>
       </WindowStateProvider>

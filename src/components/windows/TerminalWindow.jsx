@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { WINDOW_TYPES } from '../../utils/windowTypes';
 import { useAuth } from '../../context/AuthContext';
+import { useAnnouncement } from '../../context/AnnouncementContext';
 
 const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState, focusRef }) => {
   // Get user authentication info
   const { user } = useAuth();
+  // Get announcement context
+  const { updateAnnouncement } = useAnnouncement();
   
   // Ref for managing scrolling
   const terminalRef = useRef(null);
@@ -42,15 +45,45 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     focusRef.current?.focus();
   };
 
-  const executeCommand = (command) => {
+  const executeCommand = async (command) => {
     setHistory(prev => [...prev, `$ ${command}`]);
     setCommandHistory(prev => [...prev, command]);
   
-    const cmd = command.toLowerCase();
+    const parts = command.split(' ');
+    const cmd = parts[0].toLowerCase();
   
     if (Object.keys(WINDOW_TYPES).some(type => type.toLowerCase() === cmd)) {
       const requestedType = WINDOW_TYPES[cmd.toUpperCase()];
       transformWindow(nodeId, requestedType);
+      return;
+    }
+  
+    // Handle the announcement command
+    if (cmd === 'announcement') {
+      // Check if user is admin
+      if (!user?.is_admin) {
+        setHistory(prev => [...prev, 'Access denied: Admin privileges required']);
+        return;
+      }
+
+      // Extract the announcement text from quotes
+      const match = command.match(/"([^"]*)"|'([^']*)'|`([^`]*)`/);
+      if (!match) {
+        setHistory(prev => [...prev, 'Usage: announcement "Your announcement text here"']);
+        return;
+      }
+
+      // Get the matched text from whichever group captured it
+      const announcementText = match[1] || match[2] || match[3];
+      
+      // Update the announcement via the API
+      const success = await updateAnnouncement(announcementText);
+      
+      if (success) {
+        setHistory(prev => [...prev, `Announcement set: "${announcementText}"`]);
+      } else {
+        setHistory(prev => [...prev, 'Failed to set announcement. Please try again.']);
+      }
       return;
     }
   
@@ -67,12 +100,14 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         break;
         
       case 'help':
-        const adminCommand = user?.is_admin ? '  admin        - Access admin panel\n' : '';
+        const adminCommands = user?.is_admin ? 
+          '  admin        - Access admin panel\n  announcement "text" - Set a system-wide announcement\n' : 
+          '';
         response = [
           'Commands:',
           '  explorer     - Transform window into file explorer',
           '  terminal     - Transform into terminal',
-          adminCommand,
+          adminCommands,
           '  help         - Show this help message',
           '  clear        - Clear terminal output',
           '',

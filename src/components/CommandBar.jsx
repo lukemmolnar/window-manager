@@ -1,34 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useAnnouncement } from '../context/AnnouncementContext';
 
 export const CommandBar = ({ 
-  onCommand, 
   currentWorkspaceIndex = 0,
   switchWorkspace,
   user,
   onLogout
 }) => {
   console.log('CommandBar render, currentWorkspaceIndex:', currentWorkspaceIndex);
-  const [command, setCommand] = useState('');
-  const inputRef = useRef(null);
+  const { announcement } = useAnnouncement();
+  const announcementRef = useRef(null);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && command.trim()) {
-      onCommand(command.trim());
-      setCommand('');
-    }
-  };
-
+  // Carousel effect for long announcements
   useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (e.key === '/' && document.activeElement !== inputRef.current) {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+    if (!announcement || !announcementRef.current) return;
+    
+    const element = announcementRef.current;
+    const isOverflowing = element.scrollWidth > element.clientWidth;
+    
+    if (isOverflowing) {
+      // Set up animation for scrolling text
+      element.style.animation = 'scroll-text 15s linear infinite';
+    } else {
+      element.style.animation = 'none';
+    }
+  }, [announcement]);
 
   return (
     <div className="w-full bg-stone-800 p-2 flex items-center gap-2">
@@ -38,16 +34,20 @@ export const CommandBar = ({
         <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 2 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(2)} />
         <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 3 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(3)} />
       </div>
-      <span className="text-gray-400 text-sm font-mono">$</span>
-      <input
-        ref={inputRef}
-        type="text"
-        value={command}
-        onChange={(e) => setCommand(e.target.value)} 
-        onKeyDown={handleKeyDown}
-        placeholder="Press '/' to focus"
-        className="flex-1 bg-stone-700 text-white px-4 py-1 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      
+      {/* Announcement section */}
+      <div className="flex-1 overflow-hidden">
+        {announcement ? (
+          <div 
+            ref={announcementRef}
+            className="text-yellow-300 text-sm font-mono whitespace-nowrap overflow-hidden"
+          >
+            {announcement}
+          </div>
+        ) : (
+          <div className="text-gray-500 text-sm font-mono italic">No announcements</div>
+        )}
+      </div>
       
       {/* User info and logout */}
       {user && (
