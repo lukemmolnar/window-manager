@@ -10,19 +10,21 @@ export const CommandBar = ({
   console.log('CommandBar render, currentWorkspaceIndex:', currentWorkspaceIndex);
   const { announcement } = useAnnouncement();
   const announcementRef = useRef(null);
+  const containerRef = useRef(null);
 
-  // Carousel effect for long announcements
+  // Carousel effect for long announcements with consistent speed
   useEffect(() => {
-    if (!announcement || !announcementRef.current) return;
+    if (!announcement || !announcementRef.current || !containerRef.current) return;
     
-    const element = announcementRef.current;
-    const isOverflowing = element.scrollWidth > element.clientWidth;
+    const textElement = announcementRef.current;
+    const containerElement = containerRef.current;
+    const isOverflowing = textElement.scrollWidth > containerElement.clientWidth;
     
     if (isOverflowing) {
-      // Set up animation for scrolling text
-      element.style.animation = 'scroll-text 30s linear infinite';
+      // Fixed animation duration of 15 seconds
+      textElement.style.animation = 'scroll-text 30s linear infinite';
     } else {
-      element.style.animation = 'none';
+      textElement.style.animation = 'none';
     }
   }, [announcement]);
 
@@ -35,12 +37,12 @@ export const CommandBar = ({
         <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 3 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(3)} />
       </div>
       
-      {/* Announcement section */}
-      <div className="flex-1 overflow-hidden">
+      {/* Announcement section with improved container */}
+      <div ref={containerRef} className="flex-1 announcement-container">
         {announcement ? (
           <div 
             ref={announcementRef}
-            className="text-teal-300 text-sm font-mono whitespace-nowrap overflow-hidden"
+            className="announcement-text text-teal-300 text-sm font-mono"
           >
             {announcement}
           </div>

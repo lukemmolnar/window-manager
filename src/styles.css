@@ -78,8 +78,22 @@ html, body, #root {
   height: 4px;
 }
 
-/* Announcement carousel animation */
+/* Announcement carousel animation - simple and consistent */
 @keyframes scroll-text {
   0% { transform: translateX(100%); }
   100% { transform: translateX(-100%); }
+}
+
+/* Container for announcement text */
+.announcement-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Wrapper for scrolling text with padding */
+.announcement-text {
+  display: inline-block;
+  padding-right: 50px; /* Add space between end and beginning when looping */
+  white-space: nowrap;
 }
