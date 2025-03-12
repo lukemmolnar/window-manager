@@ -6,7 +6,7 @@ import { AuthScreen } from './components/auth';
 import { useWindowManager } from './hooks/useWindowManager';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAuth } from './context/AuthContext';
-import { WINDOW_CONTENT } from './utils/windowTypes';
+import { WINDOW_CONTENT, WINDOW_TYPES } from './utils/windowTypes';
 
 /**
  * Main application component that composes our window management system.
@@ -157,6 +157,41 @@ const WindowTreeRenderer = ({
 }) => {
   if (node.type === 'window') {
     const windowContent = WINDOW_CONTENT[node.windowType];
+    
+    // Check if window content exists (window type might have been removed)
+    if (!windowContent) {
+      console.warn(`Window type "${node.windowType}" is no longer supported`);
+      return (
+        <div
+          className="absolute overflow-hidden border-2 border-red-500"
+          style={{
+            left: `${available.x}%`,
+            top: `${available.y}%`,
+            width: `${available.width}%`,
+            height: `${available.height}%`,
+          }}
+          onClick={() => setActiveNodeId(node.id)}
+        >
+          <div className="flex h-full items-center justify-center bg-stone-800 text-red-400 p-4 text-center">
+            <div>
+              <p className="font-bold mb-2">Unsupported Window Type</p>
+              <p className="text-sm">Window type "{node.windowType}" is no longer available</p>
+              <button 
+                className="mt-4 px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs text-teal-400"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Convert to terminal window
+                  transformWindow(node.id, WINDOW_TYPES.TERMINAL);
+                }}
+              >
+                Convert to Terminal
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     const Component = windowContent.component;
     const isActive = node.id === activeNodeId;
     // Check if this is the first selected window in move mode
