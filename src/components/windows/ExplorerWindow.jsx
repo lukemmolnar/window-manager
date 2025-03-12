@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X, Globe, Lock } from 'lucide-react';
+import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X, Globe, Lock, FileEdit } from 'lucide-react';
 import showdown from 'showdown';
 import path from 'path-browserify';
 import API_CONFIG from '../../config/api';
@@ -33,9 +33,16 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
   const [newItemName, setNewItemName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   
+  // State for file/folder renaming
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [itemToRename, setItemToRename] = useState(null);
+  const [newName, setNewName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  
   // For auto-save functionality
   const saveTimeoutRef = useRef(null);
   const createInputRef = useRef(null);
+  const renameInputRef = useRef(null);
   
   // Initialize Showdown converter for Markdown
   const converter = new showdown.Converter({
@@ -334,12 +341,15 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
     }
   }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, editMode, saveStatus, activeTab, updateWindowState]);
   
-  // Focus the input field when the create dialog is shown
+  // Focus the input field when the create or rename dialog is shown
   useEffect(() => {
     if (showCreateDialog && createInputRef.current) {
       createInputRef.current.focus();
     }
-  }, [showCreateDialog]);
+    if (showRenameDialog && renameInputRef.current) {
+      renameInputRef.current.focus();
+    }
+  }, [showCreateDialog, showRenameDialog]);
 
   // Toggle folder expansion
   const toggleFolder = (folderPath) => {
@@ -452,6 +462,104 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
     }
   };
 
+  // Open the rename dialog for a file or folder
+  const openRenameDialog = (item) => {
+    if (!isAdmin) {
+      setErrorMessage('Admin access required to rename files.');
+      return;
+    }
+    
+    setItemToRename(item);
+    setNewName(item.name);
+    setErrorMessage('');
+    setShowRenameDialog(true);
+  };
+  
+  // Close the rename dialog
+  const closeRenameDialog = () => {
+    setShowRenameDialog(false);
+    setItemToRename(null);
+    setNewName('');
+    setErrorMessage('');
+  };
+  
+  // Handle key press in the rename dialog
+  const handleRenameKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      renameItem();
+    } else if (e.key === 'Escape') {
+      closeRenameDialog();
+    }
+  };
+  
+  // Rename a file or folder
+  const renameItem = async () => {
+    if (!newName.trim()) {
+      setErrorMessage('Name cannot be empty');
+      return;
+    }
+    
+    if (!itemToRename) {
+      setErrorMessage('No item selected for renaming');
+      return;
+    }
+    
+    try {
+      setIsRenaming(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsRenaming(false);
+        return;
+      }
+      
+      // Rename the file or folder
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_RENAME}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          oldPath: itemToRename.path,
+          newName: newName.trim()
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to rename ${itemToRename.type}: ${response.statusText}`);
+      }
+      
+      // Close the dialog and reset the form
+      setShowRenameDialog(false);
+      setItemToRename(null);
+      setNewName('');
+      
+      // If the renamed item was selected, update the selected file
+      if (selectedFile && selectedFile.path === itemToRename.path) {
+        setSelectedFile(null);
+      }
+      
+      // Refresh the appropriate file list
+      if (itemToRename.isPublic) {
+        fetchPublicDirectoryContents(currentPath);
+      } else {
+        fetchDirectoryContents(currentPath);
+      }
+      
+      setIsRenaming(false);
+    } catch (error) {
+      console.error(`Error renaming ${itemToRename.type}:`, error);
+      setErrorMessage(`Failed to rename ${itemToRename.type}: ${error.message}`);
+      setIsRenaming(false);
+    }
+  };
+  
   // Handle file selection
   const handleFileSelect = (file) => {
     setSelectedFile(file);
@@ -494,12 +602,27 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         return (
           <div key={item.path} className="ml-2">
             <div 
-              className={`flex items-center py-1 px-1 rounded hover:bg-stone-700 cursor-pointer ${isExpanded ? 'text-teal-300' : 'text-teal-400'}`}
-              onClick={() => toggleFolder(item.path)}
+              className={`flex items-center justify-between py-1 px-1 rounded hover:bg-stone-700 cursor-pointer group ${isExpanded ? 'text-teal-300' : 'text-teal-400'}`}
             >
-              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              <FolderOpen size={16} className="ml-1 mr-2" />
-              <span className="text-sm">{item.name}</span>
+              <div className="flex items-center" onClick={() => toggleFolder(item.path)}>
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <FolderOpen size={16} className="ml-1 mr-2" />
+                <span className="text-sm">{item.name}</span>
+              </div>
+              
+              {/* Admin-only rename button */}
+              {isAdmin && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openRenameDialog(item);
+                  }}
+                  className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-teal-300 opacity-0 group-hover:opacity-100"
+                  title="Rename folder"
+                >
+                  <FileEdit size={14} />
+                </button>
+              )}
             </div>
             
             {isExpanded && item.children && (
@@ -514,11 +637,26 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         return (
           <div 
             key={item.path} 
-            className={`flex items-center py-1 px-1 ml-4 rounded cursor-pointer hover:bg-stone-700 ${isSelected ? 'bg-stone-700 text-teal-300' : 'text-teal-50'}`}
-            onClick={() => handleFileSelect(item)}
+            className={`flex items-center justify-between py-1 px-1 ml-4 rounded cursor-pointer hover:bg-stone-700 group ${isSelected ? 'bg-stone-700 text-teal-300' : 'text-teal-50'}`}
           >
-            {getFileIcon(item.name)}
-            <span className="text-sm">{item.name}</span>
+            <div className="flex items-center" onClick={() => handleFileSelect(item)}>
+              {getFileIcon(item.name)}
+              <span className="text-sm">{item.name}</span>
+            </div>
+            
+            {/* Admin-only rename button */}
+            {isAdmin && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openRenameDialog(item);
+                }}
+                className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-teal-300 opacity-0 group-hover:opacity-100"
+                title="Rename file"
+              >
+                <FileEdit size={14} />
+              </button>
+            )}
           </div>
         );
       }
@@ -558,6 +696,7 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       // - save: manually save the current file
       // - new-file: create a new file (admin only)
       // - new-folder: create a new folder (admin only)
+      // - rename: rename selected file or folder (admin only)
       // - public: switch to public files tab
       // - private: switch to private files tab (admin only)
       if (cmd === 'refresh') {
@@ -580,6 +719,8 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         openCreateDialog('file');
       } else if (cmd === 'new-folder' && isAdmin) {
         openCreateDialog('directory');
+      } else if (cmd === 'rename' && isAdmin && selectedFile) {
+        openRenameDialog(selectedFile);
       } else if (cmd === 'public') {
         setActiveTab('public');
       } else if (cmd === 'private' && isAdmin) {
@@ -730,6 +871,46 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
             </div>
           )}
           
+          {/* Rename file/folder dialog */}
+          {showRenameDialog && itemToRename && (
+            <div className="p-2 border-t border-stone-700 bg-stone-800">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-bold">
+                  Rename {itemToRename.type === 'directory' ? 'Folder' : 'File'}
+                </span>
+                <button
+                  onClick={closeRenameDialog}
+                  className="p-1 rounded hover:bg-stone-700 text-stone-400"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={renameInputRef}
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={handleRenameKeyPress}
+                  placeholder="New name"
+                  className="flex-1 bg-stone-700 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+                  disabled={isRenaming}
+                />
+                <button
+                  onClick={renameItem}
+                  disabled={isRenaming || !newName.trim() || newName === itemToRename.name}
+                  className={`px-2 py-1 rounded text-xs ${
+                    isRenaming || !newName.trim() || newName === itemToRename.name
+                      ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                      : 'bg-teal-700 text-teal-100 hover:bg-teal-600'
+                  }`}
+                >
+                  {isRenaming ? 'Renaming...' : 'Rename'}
+                </button>
+              </div>
+            </div>
+          )}
+          
           <div className="p-2 border-t border-stone-700 text-xs">
             {selectedFile ? selectedFile.path : currentPath}
           </div>
@@ -837,7 +1018,7 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
           type="text"
           onKeyDown={handleCommand}
           className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
-          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder, public, private" : "Commands: refresh, preview, public"}
+          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder, rename, public, private" : "Commands: refresh, preview, public"}
         />
       </div>
     </div>

@@ -27,6 +27,7 @@ const API_CONFIG = {
     FILE_SAVE: '/files/content',
     FILE_CREATE: '/files/create',
     FILE_DELETE: '/files/delete',
+    FILE_RENAME: '/files/rename',
     // Public file endpoints
     PUBLIC_FILES_LIST: '/public-files',
     PUBLIC_FILE_CONTENT: '/public-files/content'
