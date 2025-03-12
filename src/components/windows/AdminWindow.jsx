@@ -30,6 +30,7 @@ const AdminWindow = ({ isActive }) => {
   const [channelLoading, setChannelLoading] = useState(false);
   const [channelError, setChannelError] = useState(null);
   const [newChannelName, setNewChannelName] = useState('');
+  const [showCreateChannelForm, setShowCreateChannelForm] = useState(false);
 
   // Fetch users when component mounts or becomes active
   useEffect(() => {
@@ -44,6 +45,13 @@ const AdminWindow = ({ isActive }) => {
       fetchChannels();
     }
   }, [isActive, activeTab]);
+  
+  // Reset form visibility when switching tabs
+  useEffect(() => {
+    // Hide forms when switching tabs
+    setShowCreateForm(false);
+    setShowCreateChannelForm(false);
+  }, [activeTab]);
 
   // Fetch all users from the API
   const fetchUsers = async () => {
@@ -197,6 +205,15 @@ const AdminWindow = ({ isActive }) => {
       });
     }
   };
+  
+  // Toggle create channel form visibility
+  const toggleCreateChannelForm = () => {
+    setShowCreateChannelForm(!showCreateChannelForm);
+    if (!showCreateChannelForm) {
+      // Reset channel name when opening the form
+      setNewChannelName('');
+    }
+  };
 
   // Render loading state
   if (loading && users.length === 0) {
@@ -262,7 +279,10 @@ const AdminWindow = ({ isActive }) => {
       
       // Refresh the channel list
       await fetchChannels();
+      
+      // Reset form and hide it
       setNewChannelName('');
+      setShowCreateChannelForm(false);
       setChannelError(null);
     } catch (err) {
       console.error('Failed to create channel:', err);
@@ -325,7 +345,7 @@ const AdminWindow = ({ isActive }) => {
         </div>
       </div>
       
-      {/* Create User Button - Only shown when Users tab is active */}
+      {/* Create User/Channel Button - Only shown when respective tab is active */}
       {activeTab === 'users' && (
         <div className="p-2 border-b border-stone-700 flex justify-end">
           <button
@@ -333,6 +353,17 @@ const AdminWindow = ({ isActive }) => {
             className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
           >
             {showCreateForm ? 'Cancel' : 'Create User'}
+          </button>
+        </div>
+      )}
+      
+      {activeTab === 'channels' && (
+        <div className="p-2 border-b border-stone-700 flex justify-end">
+          <button
+            onClick={toggleCreateChannelForm}
+            className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+          >
+            {showCreateChannelForm ? 'Cancel' : 'Create Channel'}
           </button>
         </div>
       )}
@@ -516,29 +547,31 @@ const AdminWindow = ({ isActive }) => {
         {/* Show channels tab content */}
         {activeTab === 'channels' && (
           <>
-            {/* Create Channel Form */}
-            <div className="mb-6 p-4 bg-stone-800 rounded">
-              <h3 className="text-lg mb-3 text-teal-400">Create New Channel</h3>
-              <form onSubmit={handleCreateChannel} className="flex items-end gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm text-gray-400 mb-1">Channel Name:</label>
-                  <input
-                    type="text"
-                    value={newChannelName}
-                    onChange={(e) => setNewChannelName(e.target.value)}
-                    className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                    placeholder="Enter channel name"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="px-4 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
-                  disabled={channelLoading}
-                >
-                  {channelLoading ? 'Creating...' : 'Create Channel'}
-                </button>
-              </form>
-            </div>
+            {/* Create Channel Form - Only shown when showCreateChannelForm is true */}
+            {showCreateChannelForm && (
+              <div className="mb-6 p-4 bg-stone-800 rounded">
+                <h3 className="text-lg mb-3 text-teal-400">Create New Channel</h3>
+                <form onSubmit={handleCreateChannel} className="flex items-end gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-400 mb-1">Channel Name:</label>
+                    <input
+                      type="text"
+                      value={newChannelName}
+                      onChange={(e) => setNewChannelName(e.target.value)}
+                      className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                      placeholder="Enter channel name"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                    disabled={channelLoading}
+                  >
+                    {channelLoading ? 'Creating...' : 'Create Channel'}
+                  </button>
+                </form>
+              </div>
+            )}
             
             {/* Channels Table */}
             <table className="w-full border-collapse">
