@@ -29,7 +29,13 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     }
   }, [history]);
   
-  // Clear input when window becomes active (e.g., after transforming back from another window type)
+  // Clear input when window becomes active or when transformed back to terminal
+  useEffect(() => {
+    // Always clear the input when the component mounts or is transformed back to terminal
+    setCurrentInput('');
+  }, []);
+  
+  // Also clear input when window becomes active
   useEffect(() => {
     if (isActive) {
       setCurrentInput('');
