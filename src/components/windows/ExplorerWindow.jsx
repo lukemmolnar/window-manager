@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye } from 'lucide-react';
+import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X } from 'lucide-react';
 import showdown from 'showdown';
+import path from 'path-browserify';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import './ExplorerWindow.css';
@@ -24,8 +25,15 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
   const [editMode, setEditMode] = useState(windowState?.editMode || false);
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
   
+  // State for file/folder creation
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createType, setCreateType] = useState('file'); // 'file' or 'directory'
+  const [newItemName, setNewItemName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  
   // For auto-save functionality
   const saveTimeoutRef = useRef(null);
+  const createInputRef = useRef(null);
   
   // Initialize Showdown converter for Markdown
   const converter = new showdown.Converter({
@@ -223,6 +231,13 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       });
     }
   }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, editMode, saveStatus, updateWindowState]);
+  
+  // Focus the input field when the create dialog is shown
+  useEffect(() => {
+    if (showCreateDialog && createInputRef.current) {
+      createInputRef.current.focus();
+    }
+  }, [showCreateDialog]);
 
   // Toggle folder expansion
   const toggleFolder = (folderPath) => {
@@ -230,6 +245,95 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       ...prev,
       [folderPath]: !prev[folderPath]
     }));
+  };
+  
+  // Create a new file or folder
+  const createNewItem = async () => {
+    if (!newItemName.trim()) {
+      setErrorMessage('Name cannot be empty');
+      return;
+    }
+    
+    try {
+      setIsCreating(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsCreating(false);
+        return;
+      }
+      
+      // Construct the full path for the new item
+      const newItemPath = path.join(currentPath, newItemName.trim()).replace(/\\/g, '/');
+      
+      // Create the new file or folder
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_CREATE}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          path: newItemPath,
+          type: createType,
+          content: createType === 'file' ? '' : undefined
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to create ${createType}: ${response.statusText}`);
+      }
+      
+      // Close the dialog and reset the form
+      setShowCreateDialog(false);
+      setNewItemName('');
+      
+      // Refresh the file list
+      fetchDirectoryContents(currentPath);
+      
+      // If it's a directory, expand it
+      if (createType === 'directory') {
+        setExpandedFolders(prev => ({
+          ...prev,
+          [newItemPath]: true
+        }));
+      }
+      
+      setIsCreating(false);
+    } catch (error) {
+      console.error(`Error creating ${createType}:`, error);
+      setErrorMessage(`Failed to create ${createType}: ${error.message}`);
+      setIsCreating(false);
+    }
+  };
+  
+  // Open the create dialog
+  const openCreateDialog = (type) => {
+    setCreateType(type);
+    setNewItemName('');
+    setErrorMessage('');
+    setShowCreateDialog(true);
+  };
+  
+  // Close the create dialog
+  const closeCreateDialog = () => {
+    setShowCreateDialog(false);
+    setNewItemName('');
+    setErrorMessage('');
+  };
+  
+  // Handle key press in the create dialog
+  const handleCreateKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      createNewItem();
+    } else if (e.key === 'Escape') {
+      closeCreateDialog();
+    }
   };
 
   // Handle file selection
@@ -330,6 +434,8 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       // - preview: toggle markdown preview
       // - edit: toggle edit mode (admin only)
       // - save: manually save the current file
+      // - new-file: create a new file (admin only)
+      // - new-folder: create a new folder (admin only)
       if (cmd === 'refresh') {
         fetchDirectoryContents(currentPath);
       } else if (cmd === 'preview' && selectedFile?.name.endsWith('.md')) {
@@ -341,6 +447,10 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
         toggleEditMode();
       } else if (cmd === 'save' && editMode && selectedFile?.name.endsWith('.md')) {
         saveFileContent();
+      } else if (cmd === 'new-file' && isAdmin) {
+        openCreateDialog('file');
+      } else if (cmd === 'new-folder' && isAdmin) {
+        openCreateDialog('directory');
       }
     }
   };
@@ -350,8 +460,28 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       <div className="flex flex-1 overflow-hidden">
         {/* File tree panel */}
         <div className="w-1/3 border-r border-stone-700 flex flex-col overflow-hidden">
-          <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center">
+          <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
             <span>PROJECT FILES</span>
+            
+            {/* Admin-only file creation buttons */}
+            {isAdmin && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => openCreateDialog('file')}
+                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                  title="Create new file"
+                >
+                  <Plus size={16} />
+                </button>
+                <button
+                  onClick={() => openCreateDialog('directory')}
+                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                  title="Create new folder"
+                >
+                  <FolderPlus size={16} />
+                </button>
+              </div>
+            )}
           </div>
           
           <div className="flex-1 overflow-auto">
@@ -367,6 +497,46 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
               </div>
             )}
           </div>
+          
+          {/* Create file/folder dialog */}
+          {showCreateDialog && (
+            <div className="p-2 border-t border-stone-700 bg-stone-800">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-bold">
+                  {createType === 'file' ? 'New File' : 'New Folder'}
+                </span>
+                <button
+                  onClick={closeCreateDialog}
+                  className="p-1 rounded hover:bg-stone-700 text-stone-400"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={createInputRef}
+                  type="text"
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  onKeyDown={handleCreateKeyPress}
+                  placeholder={createType === 'file' ? 'filename.ext' : 'folder name'}
+                  className="flex-1 bg-stone-700 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+                  disabled={isCreating}
+                />
+                <button
+                  onClick={createNewItem}
+                  disabled={isCreating || !newItemName.trim()}
+                  className={`px-2 py-1 rounded text-xs ${
+                    isCreating || !newItemName.trim()
+                      ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                      : 'bg-teal-700 text-teal-100 hover:bg-teal-600'
+                  }`}
+                >
+                  {isCreating ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          )}
           
           <div className="p-2 border-t border-stone-700 text-xs">
             {selectedFile ? selectedFile.path : currentPath}
@@ -475,7 +645,7 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
           type="text"
           onKeyDown={handleCommand}
           className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
-          placeholder="Commands: refresh, preview, edit, save"
+          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder" : "Commands: refresh, preview"}
         />
       </div>
     </div>
