@@ -58,7 +58,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       return;
     }
   
-    // Handle the announcement command
+  // Handle the announcement command
     if (cmd === 'announcement') {
       // Check if user is admin
       if (!user?.is_admin) {
@@ -76,13 +76,21 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       // Get the matched text from whichever group captured it
       const announcementText = match[1] || match[2] || match[3];
       
-      // Update the announcement via the API
-      const success = await updateAnnouncement(announcementText);
+      setHistory(prev => [...prev, `Setting announcement: "${announcementText}"...`]);
       
-      if (success) {
-        setHistory(prev => [...prev, `Announcement set: "${announcementText}"`]);
-      } else {
-        setHistory(prev => [...prev, 'Failed to set announcement. Please try again.']);
+      try {
+        // Update the announcement via the API
+        const success = await updateAnnouncement(announcementText);
+        
+        if (success) {
+          setHistory(prev => [...prev, `Announcement set: "${announcementText}"`]);
+          setHistory(prev => [...prev, 'Announcement has been broadcast to all connected users.']);
+        } else {
+          setHistory(prev => [...prev, 'Failed to set announcement. Please try again.']);
+        }
+      } catch (error) {
+        console.error('Error setting announcement:', error);
+        setHistory(prev => [...prev, 'Error setting announcement. Please try again.']);
       }
       return;
     }

@@ -23,14 +23,28 @@ export function AnnouncementProvider({ children }) {
     
     fetchAnnouncement();
     
-    // Set up Socket.IO listener for real-time updates
-    const socket = io(API_CONFIG.BASE_URL);
+    // Improved Socket.IO connection
+    const socket = io(API_CONFIG.BASE_URL, {
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      transports: ['websocket', 'polling']
+    });
+    
+    socket.on('connect', () => {
+      console.log('Socket.IO connected, ID:', socket.id);
+    });
+    
+    socket.on('connect_error', (err) => {
+      console.error('Socket.IO connection error:', err);
+    });
     
     socket.on('announcement_update', (data) => {
+      console.log('Received announcement update:', data);
       setAnnouncement(data.announcement);
     });
     
     return () => {
+      console.log('Disconnecting Socket.IO');
       socket.off('announcement_update');
       socket.disconnect();
     };
