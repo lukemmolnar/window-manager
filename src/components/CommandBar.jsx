@@ -22,7 +22,7 @@ export const CommandBar = ({
     
     if (isOverflowing) {
       // Fixed animation duration of 15 seconds
-      textElement.style.animation = 'scroll-text 30s linear infinite';
+      textElement.style.animation = 'scroll-text 40s linear infinite';
     } else {
       textElement.style.animation = 'none';
     }
