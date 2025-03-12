@@ -544,7 +544,16 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
         
         // Update the window state with the new type but preserve content
         if (currentWindowState) {
-          setWindowState(nodeId, newType, currentWindowState.content);
+          // If transforming to a terminal window, clear the currentInput field
+          if (newType === WINDOW_TYPES.TERMINAL) {
+            const updatedContent = { 
+              ...currentWindowState.content,
+              currentInput: '' // Clear the input field
+            };
+            setWindowState(nodeId, newType, updatedContent);
+          } else {
+            setWindowState(nodeId, newType, currentWindowState.content);
+          }
         }
         
         return true;
