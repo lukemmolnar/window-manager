@@ -624,7 +624,7 @@ const AdminWindow = ({ isActive }) => {
                           </button>
                           <button
                             onClick={() => handleDeleteUser(userItem.id)}
-                            className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm"
+                            className="px-3 py-1 hover:bg-stone-600 rounded text-sm"
                             disabled={loading}
                             title="Delete user"
                           >
