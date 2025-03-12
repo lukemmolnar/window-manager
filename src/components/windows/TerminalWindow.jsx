@@ -28,6 +28,13 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [history]);
+  
+  // Clear input when window becomes active (e.g., after transforming back from another window type)
+  useEffect(() => {
+    if (isActive) {
+      setCurrentInput('');
+    }
+  }, [isActive]);
 
   // Update window state when terminal state changes
   useEffect(() => {

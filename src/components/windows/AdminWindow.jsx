@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { Trash } from 'lucide-react'; // Import Trash icon
 
 const AdminWindow = ({ isActive }) => {
   const { user } = useAuth();
@@ -22,6 +23,13 @@ const AdminWindow = ({ isActive }) => {
     password: '',
     is_admin: false
   });
+  
+  // Chat channels state
+  const [activeTab, setActiveTab] = useState('users'); // 'users' or 'channels'
+  const [channels, setChannels] = useState([]);
+  const [channelLoading, setChannelLoading] = useState(false);
+  const [channelError, setChannelError] = useState(null);
+  const [newChannelName, setNewChannelName] = useState('');
 
   // Fetch users when component mounts or becomes active
   useEffect(() => {
@@ -29,6 +37,13 @@ const AdminWindow = ({ isActive }) => {
       fetchUsers();
     }
   }, [isActive]);
+  
+  // Load channels when tab changes to channels
+  useEffect(() => {
+    if (isActive && activeTab === 'channels') {
+      fetchChannels();
+    }
+  }, [isActive, activeTab]);
 
   // Fetch all users from the API
   const fetchUsers = async () => {
@@ -212,184 +227,360 @@ const AdminWindow = ({ isActive }) => {
     );
   }
 
+  // Fetch chat channels
+  const fetchChannels = async () => {
+    try {
+      setChannelLoading(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_ROOMS}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setChannels(response.data);
+      setChannelError(null);
+    } catch (err) {
+      console.error('Failed to fetch channels:', err);
+      setChannelError('Failed to load chat channels. Please try again.');
+    } finally {
+      setChannelLoading(false);
+    }
+  };
+
+  // Create a new chat channel
+  const handleCreateChannel = async (e) => {
+    e.preventDefault();
+    if (!newChannelName.trim()) return;
+
+    try {
+      setChannelLoading(true);
+      const token = localStorage.getItem('auth_token');
+      await axios.post(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_ROOMS}`,
+        { name: newChannelName },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Refresh the channel list
+      await fetchChannels();
+      setNewChannelName('');
+      setChannelError(null);
+    } catch (err) {
+      console.error('Failed to create channel:', err);
+      setChannelError('Failed to create channel. Please try again.');
+    } finally {
+      setChannelLoading(false);
+    }
+  };
+
+  // Delete a chat channel
+  const handleDeleteChannel = async (channelId) => {
+    try {
+      setChannelLoading(true);
+      const token = localStorage.getItem('auth_token');
+      const endpoint = API_CONFIG.ENDPOINTS.CHAT_DELETE_ROOM.replace(':id', channelId);
+      await axios.delete(
+        `${API_CONFIG.BASE_URL}${endpoint}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Refresh the channel list
+      await fetchChannels();
+      setChannelError(null);
+    } catch (err) {
+      console.error('Failed to delete channel:', err);
+      setChannelError('Failed to delete channel. Please try again.');
+    } finally {
+      setChannelLoading(false);
+    }
+  };
+
   return (
     <div className="bg-stone-900 text-white p-4 h-full overflow-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl text-teal-400">Admin Panel</h2>
+        <div className="flex space-x-2">
+          {activeTab === 'users' && (
+            <button
+              onClick={toggleCreateForm}
+              className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+            >
+              {showCreateForm ? 'Cancel' : 'Create User'}
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* Tab Navigation */}
+      <div className="flex border-b border-stone-700 mb-4">
         <button
-          onClick={toggleCreateForm}
-          className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+          className={`px-4 py-2 ${
+            activeTab === 'users'
+              ? 'bg-stone-800 text-teal-400 border-t border-l border-r border-stone-700'
+              : 'text-stone-400 hover:text-white'
+          }`}
+          onClick={() => setActiveTab('users')}
         >
-          {showCreateForm ? 'Cancel' : 'Create User'}
+          Users
+        </button>
+        <button
+          className={`px-4 py-2 ${
+            activeTab === 'channels'
+              ? 'bg-stone-800 text-teal-400 border-t border-l border-r border-stone-700'
+              : 'text-stone-400 hover:text-white'
+          }`}
+          onClick={() => setActiveTab('channels')}
+        >
+          Chat Channels
         </button>
       </div>
       
-      {error && <p className="text-red-500 mb-4">{error}</p>}
+      {activeTab === 'users' && error && <p className="text-red-500 mb-4">{error}</p>}
+      {activeTab === 'channels' && channelError && <p className="text-red-500 mb-4">{channelError}</p>}
       
-      {/* Create User Form */}
-      {showCreateForm && (
-        <div className="mb-6 p-4 bg-stone-800 rounded">
-          <h3 className="text-lg mb-3 text-teal-400">Create New User</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Username: <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                name="username"
-                value={createFormData.username}
-                onChange={handleCreateChange}
-                className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                placeholder="Enter username"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Email:</label>
-              <input
-                type="email"
-                name="email"
-                value={createFormData.email}
-                onChange={handleCreateChange}
-                className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                placeholder="Enter email (optional)"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Password: <span className="text-red-500">*</span></label>
-              <input
-                type="password"
-                name="password"
-                value={createFormData.password}
-                onChange={handleCreateChange}
-                className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                placeholder="Enter password"
-              />
-            </div>
-            <div className="flex items-center">
-              <label className="flex items-center text-sm text-gray-400">
-                <input
-                  type="checkbox"
-                  name="is_admin"
-                  checked={createFormData.is_admin}
-                  onChange={handleCreateChange}
-                  className="form-checkbox h-5 w-5 text-teal-500 mr-2"
-                />
-                Admin User
-              </label>
-            </div>
-          </div>
-          <div className="mt-4">
-            <button
-              onClick={handleCreateUser}
-              className="px-4 py-2 bg-teal-600 hover:bg-teal-500 rounded text-sm"
-              disabled={loading}
-            >
-              {loading ? 'Creating...' : 'Create User'}
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {/* Users Table */}
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="border-b border-stone-700">
-            <th className="text-left p-2">Username</th>
-            <th className="text-left p-2">Email</th>
-            <th className="text-left p-2">Admin</th>
-            <th className="text-left p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(userItem => (
-            <tr key={userItem.id} className="border-b border-stone-800 hover:bg-stone-800">
-              <td className="p-2">
-                {editingUser === userItem.id ? (
+      {/* Show users tab content */}
+      {activeTab === 'users' && (
+        <>
+          {/* Create User Form */}
+          {showCreateForm && (
+            <div className="mb-6 p-4 bg-stone-800 rounded">
+              <h3 className="text-lg mb-3 text-teal-400">Create New User</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Username: <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     name="username"
-                    value={formData.username}
-                    onChange={handleChange}
+                    value={createFormData.username}
+                    onChange={handleCreateChange}
                     className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                    placeholder="Enter username"
                   />
-                ) : (
-                  userItem.username
-                )}
-              </td>
-              <td className="p-2">
-                {editingUser === userItem.id ? (
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Email:</label>
                   <input
                     type="email"
                     name="email"
-                    value={formData.email}
-                    onChange={handleChange}
+                    value={createFormData.email}
+                    onChange={handleCreateChange}
                     className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                    placeholder="Email (optional)"
+                    placeholder="Enter email (optional)"
                   />
-                ) : (
-                  userItem.email || '-'
-                )}
-              </td>
-              <td className="p-2">
-                {editingUser === userItem.id ? (
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Password: <span className="text-red-500">*</span></label>
                   <input
-                    type="checkbox"
-                    name="is_admin"
-                    checked={formData.is_admin}
-                    onChange={handleChange}
-                    className="form-checkbox h-5 w-5 text-teal-500"
+                    type="password"
+                    name="password"
+                    value={createFormData.password}
+                    onChange={handleCreateChange}
+                    className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                    placeholder="Enter password"
                   />
-                ) : (
-                  userItem.is_admin === 1 || userItem.is_admin === true ? 'Yes' : 'No'
-                )}
-              </td>
-              <td className="p-2">
-                {editingUser === userItem.id ? (
-                  <div className="flex flex-col space-y-2">
-                    <div className="mb-2">
-                      <label className="block text-sm text-gray-400">New Password:</label>
+                </div>
+                <div className="flex items-center">
+                  <label className="flex items-center text-sm text-gray-400">
+                    <input
+                      type="checkbox"
+                      name="is_admin"
+                      checked={createFormData.is_admin}
+                      onChange={handleCreateChange}
+                      className="form-checkbox h-5 w-5 text-teal-500 mr-2"
+                    />
+                    Admin User
+                  </label>
+                </div>
+              </div>
+              <div className="mt-4">
+                <button
+                  onClick={handleCreateUser}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                  disabled={loading}
+                >
+                  {loading ? 'Creating...' : 'Create User'}
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Users Table */}
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-stone-700">
+                <th className="text-left p-2">Username</th>
+                <th className="text-left p-2">Email</th>
+                <th className="text-left p-2">Admin</th>
+                <th className="text-left p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(userItem => (
+                <tr key={userItem.id} className="border-b border-stone-800 hover:bg-stone-800">
+                  <td className="p-2">
+                    {editingUser === userItem.id ? (
                       <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
+                        type="text"
+                        name="username"
+                        value={formData.username}
                         onChange={handleChange}
-                        placeholder="Leave blank to keep current"
                         className="bg-stone-700 text-white px-2 py-1 rounded w-full"
                       />
-                    </div>
-                    <div className="flex space-x-2">
+                    ) : (
+                      userItem.username
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {editingUser === userItem.id ? (
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                        placeholder="Email (optional)"
+                      />
+                    ) : (
+                      userItem.email || '-'
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {editingUser === userItem.id ? (
+                      <input
+                        type="checkbox"
+                        name="is_admin"
+                        checked={formData.is_admin}
+                        onChange={handleChange}
+                        className="form-checkbox h-5 w-5 text-teal-500"
+                      />
+                    ) : (
+                      userItem.is_admin === 1 || userItem.is_admin === true ? 'Yes' : 'No'
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {editingUser === userItem.id ? (
+                      <div className="flex flex-col space-y-2">
+                        <div className="mb-2">
+                          <label className="block text-sm text-gray-400">New Password:</label>
+                          <input
+                            type="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            placeholder="Leave blank to keep current"
+                            className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                          />
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleSave(userItem.id)}
+                            className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={handleCancel}
+                            className="px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => handleSave(userItem.id)}
-                        className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                        onClick={() => handleEdit(userItem)}
+                        className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm"
+                        disabled={loading}
                       >
-                        Save
+                        Edit
                       </button>
-                      <button
-                        onClick={handleCancel}
-                        className="px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleEdit(userItem)}
-                    className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm"
-                    disabled={loading}
-                  >
-                    Edit
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {loading && users.length > 0 && (
+            <div className="mt-4 text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-teal-500 mx-auto"></div>
+            </div>
+          )}
+        </>
+      )}
       
-      {loading && users.length > 0 && (
-        <div className="mt-4 text-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-teal-500 mx-auto"></div>
-        </div>
+      {/* Show channels tab content */}
+      {activeTab === 'channels' && (
+        <>
+          {/* Create Channel Form */}
+          <div className="mb-6 p-4 bg-stone-800 rounded">
+            <h3 className="text-lg mb-3 text-teal-400">Create New Channel</h3>
+            <form onSubmit={handleCreateChannel} className="flex items-end gap-4">
+              <div className="flex-1">
+                <label className="block text-sm text-gray-400 mb-1">Channel Name:</label>
+                <input
+                  type="text"
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                  placeholder="Enter channel name"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                disabled={channelLoading}
+              >
+                {channelLoading ? 'Creating...' : 'Create Channel'}
+              </button>
+            </form>
+          </div>
+          
+          {/* Channels Table */}
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-stone-700">
+                <th className="text-left p-2">Channel Name</th>
+                <th className="text-left p-2">Created By</th>
+                <th className="text-left p-2">Created At</th>
+                <th className="text-left p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {channels.map(channel => (
+                <tr key={channel.id} className="border-b border-stone-800 hover:bg-stone-800">
+                  <td className="p-2">{channel.name}</td>
+                  <td className="p-2">{channel.created_by || '-'}</td>
+                  <td className="p-2">
+                    {new Date(channel.created_at).toLocaleString()}
+                  </td>
+                  <td className="p-2">
+                    <button
+                      onClick={() => handleDeleteChannel(channel.id)}
+                      className="text-red-400 hover:text-red-300 focus:outline-none"
+                      title="Delete channel"
+                      disabled={channelLoading}
+                    >
+                      <Trash size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {channels.length === 0 && !channelLoading && (
+                <tr>
+                  <td colSpan="4" className="p-4 text-center text-stone-500">
+                    No channels found. Create one above.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          
+          {channelLoading && (
+            <div className="mt-4 text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-teal-500 mx-auto"></div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

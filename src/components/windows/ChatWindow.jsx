@@ -31,7 +31,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
     };
   }, []);
   
-  // Add a new effect to listen for message_deleted events
+  // Add effects to listen for message_deleted and room_deleted events
   useEffect(() => {
     if (!socket) return;
     
@@ -39,12 +39,24 @@ const ChatWindow = ({ isActive, nodeId }) => {
       setMessages(prev => prev.filter(msg => msg.id !== data.id));
     };
     
+    const handleRoomDeleted = (data) => {
+      // If the active room was deleted, set activeRoom to null
+      if (activeRoom && activeRoom.id === data.id) {
+        setActiveRoom(null);
+      }
+      
+      // Remove the deleted room from the rooms list
+      setRooms(prev => prev.filter(room => room.id !== data.id));
+    };
+    
     socket.on('message_deleted', handleMessageDeleted);
+    socket.on('room_deleted', handleRoomDeleted);
     
     return () => {
       socket.off('message_deleted', handleMessageDeleted);
+      socket.off('room_deleted', handleRoomDeleted);
     };
-  }, [socket]);
+  }, [socket, activeRoom]);
 
   // Fetch available rooms
   useEffect(() => {
