@@ -222,6 +222,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
       if (activeVoiceChannel && 
           activeVoiceChannel.id === data.channelId && 
           localStream && 
+          localStream.active && // Check that stream is active
           data.userId !== user.id) {
         
         console.log('Creating new peer connection to user:', data.userId);
@@ -232,11 +233,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
           stream: localStream,
           config: {
             iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' },
-              { urls: 'stun:stun2.l.google.com:19302' },
-              { urls: 'stun:stun3.l.google.com:19302' },
-              { urls: 'stun:stun4.l.google.com:19302' }
+              { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
             ]
           }
         });
@@ -326,6 +323,12 @@ const ChatWindow = ({ isActive, nodeId }) => {
           console.log('Signaling existing peer for user:', data.fromUserId);
           peers[data.fromUserId].signal(data.signal);
         } else {
+          // Check if we have a valid stream
+          if (!localStream || !localStream.active) {
+            console.error('Cannot create peer connection: localStream is not available or not active');
+            return;
+          }
+          
           // Create a new peer
           console.log('Creating new non-initiator peer for user:', data.fromUserId);
           const peer = new SimplePeer({
@@ -334,11 +337,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
             stream: localStream,
             config: {
               iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' }
+                { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
               ]
             }
           });
@@ -525,6 +524,13 @@ const ChatWindow = ({ isActive, nodeId }) => {
     try {
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Verify we have an active stream with audio tracks
+      if (!stream || !stream.active || stream.getAudioTracks().length === 0) {
+        console.error('Failed to get active audio stream');
+        alert('Could not access microphone. Please check your permissions.');
+        return;
+      }
       
       // Set initial mute state
       stream.getAudioTracks()[0].enabled = !isMuted;
