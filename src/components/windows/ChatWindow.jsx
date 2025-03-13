@@ -696,37 +696,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
         {/* Voice channels */}
         {activeRoom && (
           <>
-            <div className="p-2 border-t border-b border-stone-700 flex justify-between items-center">
-              <h3 className="text-teal-400 font-medium text-sm">Voice Channels</h3>
-              <button 
-                onClick={() => document.getElementById('voice-channel-form').classList.toggle('hidden')}
-                className="text-teal-400 hover:text-teal-300"
-                title="Create voice channel"
-              >
-                <Plus size={16} />
-              </button>
-            </div>
-            
-            {/* Voice channel creation form */}
-            <div id="voice-channel-form" className="p-2 border-b border-stone-700 hidden">
-              <form onSubmit={createVoiceChannel} className="flex flex-col">
-                <input
-                  type="text"
-                  value={newVoiceChannelName}
-                  onChange={(e) => setNewVoiceChannelName(e.target.value)}
-                  placeholder="Voice channel name"
-                  className="bg-stone-800 text-teal-400 px-2 py-1 rounded text-sm mb-1"
-                />
-                <button
-                  type="submit"
-                  className="bg-teal-600 text-white px-2 py-1 rounded text-sm"
-                >
-                  Create
-                </button>
-              </form>
-            </div>
-            
-            <div className="overflow-y-auto">
+            <div className="overflow-y-auto border-t border-stone-700">
               {voiceChannels.map((channel) => (
                 <div
                   key={channel.id}
