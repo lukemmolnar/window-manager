@@ -6,6 +6,48 @@ import { useAuth } from '../../context/AuthContext';
 import { MoreVertical, Trash, Mic, MicOff, Phone, PhoneOff, Plus } from 'lucide-react'; // Import additional icons
 import SimplePeer from 'simple-peer';
 
+// Helper function to safely destroy a peer connection
+const safelyDestroyPeer = (peer) => {
+  if (!peer) return;
+  
+  try {
+    // Remove all listeners first
+    if (peer._events) {
+      for (const event in peer._events) {
+        peer.removeAllListeners(event);
+      }
+    }
+    
+    // If the peer has a stream, remove all tracks and set it to null
+    if (peer._pc && peer._pc.getLocalStreams) {
+      const streams = peer._pc.getLocalStreams();
+      streams.forEach(stream => {
+        if (stream && stream.getTracks) {
+          stream.getTracks().forEach(track => {
+            track.stop();
+          });
+        }
+      });
+    }
+    
+    // If the peer has a stream property, set it to null
+    if (peer._localStream) {
+      peer._localStream = null;
+    }
+    
+    // Destroy the peer with a small delay to allow cleanup
+    setTimeout(() => {
+      try {
+        if (peer.destroy) peer.destroy();
+      } catch (err) {
+        console.error('Error during delayed peer destruction:', err);
+      }
+    }, 100);
+  } catch (err) {
+    console.error('Error safely destroying peer:', err);
+  }
+};
+
 const ChatWindow = ({ isActive, nodeId }) => {
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
@@ -77,22 +119,10 @@ const ChatWindow = ({ isActive, nodeId }) => {
         }
       }
       
-      // Clean up peer connections safely
+      // Clean up peer connections safely using our helper function
       try {
         Object.values(peers).forEach(peer => {
-          try {
-            // Remove all listeners first to prevent callbacks during destruction
-            if (peer._events) {
-              for (const event in peer._events) {
-                peer.removeAllListeners(event);
-              }
-            }
-            
-            // Then destroy the peer
-            if (peer.destroy) peer.destroy();
-          } catch (err) {
-            console.error('Error destroying peer connection on unmount:', err);
-          }
+          safelyDestroyPeer(peer);
         });
       } catch (err) {
         console.error('Error cleaning up peer connections on unmount:', err);
@@ -314,35 +344,27 @@ const ChatWindow = ({ isActive, nodeId }) => {
       
       // If we have a peer connection to this user, clean it up
       if (peers[data.userId]) {
-        try {
-          // Safely destroy the peer connection
-          const peer = peers[data.userId];
-          
-          // Remove all listeners first to prevent callbacks during destruction
-          if (peer._events) {
-            for (const event in peer._events) {
-              peer.removeAllListeners(event);
-            }
-          }
-          
-          // Then destroy the peer
-          peer.destroy();
-        } catch (err) {
-          console.error('Error destroying peer connection:', err);
-        }
+        // Use our helper function to safely destroy the peer
+        safelyDestroyPeer(peers[data.userId]);
         
         // Remove the audio element
         const audioElement = document.getElementById(`remote-audio-${data.userId}`);
         if (audioElement) {
-          audioElement.remove();
+          try {
+            audioElement.remove();
+          } catch (err) {
+            console.error('Error removing audio element:', err);
+          }
         }
         
-        // Remove from peers state
-        setPeers(prev => {
-          const newPeers = { ...prev };
-          delete newPeers[data.userId];
-          return newPeers;
-        });
+        // Remove from peers state with a small delay to allow cleanup
+        setTimeout(() => {
+          setPeers(prev => {
+            const newPeers = { ...prev };
+            delete newPeers[data.userId];
+            return newPeers;
+          });
+        }, 200);
       }
     };
     
@@ -609,27 +631,19 @@ const ChatWindow = ({ isActive, nodeId }) => {
     // Notify server
     socket.emit('leave_voice', activeVoiceChannel.id);
     
-    // Clean up peer connections safely
+    // Clean up peer connections safely using our helper function
     try {
       Object.values(peers).forEach(peer => {
-        try {
-          // Remove all listeners first to prevent callbacks during destruction
-          if (peer._events) {
-            for (const event in peer._events) {
-              peer.removeAllListeners(event);
-            }
-          }
-          
-          // Then destroy the peer
-          if (peer.destroy) peer.destroy();
-        } catch (err) {
-          console.error('Error destroying peer connection during leave:', err);
-        }
+        safelyDestroyPeer(peer);
       });
     } catch (err) {
       console.error('Error cleaning up peer connections:', err);
     }
-    setPeers({});
+    
+    // Delay setting peers to empty to allow cleanup to complete
+    setTimeout(() => {
+      setPeers({});
+    }, 300);
     
     // Remove remote audio elements
     document.querySelectorAll('[id^="remote-audio-"]').forEach(el => {
