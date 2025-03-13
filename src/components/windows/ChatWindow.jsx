@@ -11,38 +11,19 @@ const safelyDestroyPeer = (peer) => {
   if (!peer) return;
   
   try {
-    // Remove all listeners first
-    if (peer._events) {
-      for (const event in peer._events) {
-        peer.removeAllListeners(event);
-      }
-    }
-    
-    // If the peer has a stream, remove all tracks and set it to null
-    if (peer._pc && peer._pc.getLocalStreams) {
-      const streams = peer._pc.getLocalStreams();
-      streams.forEach(stream => {
-        if (stream && stream.getTracks) {
-          stream.getTracks().forEach(track => {
-            track.stop();
-          });
-        }
-      });
-    }
-    
-    // If the peer has a stream property, set it to null
+    // Stop any tracks in the peer's stream
     if (peer._localStream) {
-      peer._localStream = null;
+      try {
+        peer._localStream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.error('Error stopping local stream tracks:', err);
+      }
     }
     
-    // Destroy the peer with a small delay to allow cleanup
-    setTimeout(() => {
-      try {
-        if (peer.destroy) peer.destroy();
-      } catch (err) {
-        console.error('Error during delayed peer destruction:', err);
-      }
-    }, 100);
+    // Destroy the peer
+    if (peer.destroy) {
+      peer.destroy();
+    }
   } catch (err) {
     console.error('Error safely destroying peer:', err);
   }

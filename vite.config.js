@@ -14,7 +14,9 @@ export default defineConfig({
     extensions: ['.js', '.jsx', '.json'],
     alias: {
       // Provide Node.js polyfills for browser environment
-      buffer: 'buffer'
+      buffer: 'buffer',
+      // Use vite-compatible-readable-stream for SimplePeer
+      'readable-stream': 'vite-compatible-readable-stream'
     }
   },
   define: {
@@ -24,7 +26,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Include Node.js modules that need to be pre-bundled
-    include: ['buffer', 'simple-peer']
+    include: ['buffer', 'simple-peer', 'vite-compatible-readable-stream']
   },
   build: {
     // Configure Rollup to handle Node.js modules
