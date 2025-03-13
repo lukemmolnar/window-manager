@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
+
 
 // This configuration sets up Vite with both React and Tailwind CSS support
 export default defineConfig({
@@ -9,14 +11,23 @@ export default defineConfig({
     react(),
     // The Tailwind plugin handles utility class generation
     tailwindcss(),
+    // Configure Node.js polyfills for SimplePeer
+    nodePolyfills({
+      // Whether to polyfill specific Node.js globals
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
+      // Whether to polyfill Node.js builtins
+      protocolImports: true,
+    }),
   ],
   resolve: {
     extensions: ['.js', '.jsx', '.json'],
     alias: {
       // Provide Node.js polyfills for browser environment
-      buffer: 'buffer',
-      // Use vite-compatible-readable-stream for SimplePeer
-      'readable-stream': 'vite-compatible-readable-stream'
+      buffer: 'buffer'
     }
   },
   define: {
@@ -26,7 +37,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Include Node.js modules that need to be pre-bundled
-    include: ['buffer', 'simple-peer', 'vite-compatible-readable-stream']
+    include: ['buffer', 'simple-peer']
   },
   build: {
     // Configure Rollup to handle Node.js modules
