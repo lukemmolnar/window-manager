@@ -5,6 +5,9 @@ window.global = window;
 window.process = window.process || {};
 window.process.env = window.process.env || {};
 window.process.browser = true;
+window.process.nextTick = function(callback) {
+  setTimeout(callback, 0);
+};
 
 // Import and use the buffer package for a complete Buffer polyfill
 import { Buffer as BufferPolyfill } from 'buffer';
