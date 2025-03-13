@@ -70,13 +70,33 @@ const ChatWindow = ({ isActive, nodeId }) => {
     return () => {
       // Clean up voice chat if active
       if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
+        try {
+          localStream.getTracks().forEach(track => track.stop());
+        } catch (err) {
+          console.error('Error stopping local stream tracks on unmount:', err);
+        }
       }
       
-      // Clean up peer connections
-      Object.values(peers).forEach(peer => {
-        if (peer.destroy) peer.destroy();
-      });
+      // Clean up peer connections safely
+      try {
+        Object.values(peers).forEach(peer => {
+          try {
+            // Remove all listeners first to prevent callbacks during destruction
+            if (peer._events) {
+              for (const event in peer._events) {
+                peer.removeAllListeners(event);
+              }
+            }
+            
+            // Then destroy the peer
+            if (peer.destroy) peer.destroy();
+          } catch (err) {
+            console.error('Error destroying peer connection on unmount:', err);
+          }
+        });
+      } catch (err) {
+        console.error('Error cleaning up peer connections on unmount:', err);
+      }
       
       socketInstance.disconnect();
     };
@@ -294,7 +314,22 @@ const ChatWindow = ({ isActive, nodeId }) => {
       
       // If we have a peer connection to this user, clean it up
       if (peers[data.userId]) {
-        peers[data.userId].destroy();
+        try {
+          // Safely destroy the peer connection
+          const peer = peers[data.userId];
+          
+          // Remove all listeners first to prevent callbacks during destruction
+          if (peer._events) {
+            for (const event in peer._events) {
+              peer.removeAllListeners(event);
+            }
+          }
+          
+          // Then destroy the peer
+          peer.destroy();
+        } catch (err) {
+          console.error('Error destroying peer connection:', err);
+        }
         
         // Remove the audio element
         const audioElement = document.getElementById(`remote-audio-${data.userId}`);
@@ -574,18 +609,44 @@ const ChatWindow = ({ isActive, nodeId }) => {
     // Notify server
     socket.emit('leave_voice', activeVoiceChannel.id);
     
-    // Clean up peer connections
-    Object.values(peers).forEach(peer => {
-      if (peer.destroy) peer.destroy();
-    });
+    // Clean up peer connections safely
+    try {
+      Object.values(peers).forEach(peer => {
+        try {
+          // Remove all listeners first to prevent callbacks during destruction
+          if (peer._events) {
+            for (const event in peer._events) {
+              peer.removeAllListeners(event);
+            }
+          }
+          
+          // Then destroy the peer
+          if (peer.destroy) peer.destroy();
+        } catch (err) {
+          console.error('Error destroying peer connection during leave:', err);
+        }
+      });
+    } catch (err) {
+      console.error('Error cleaning up peer connections:', err);
+    }
     setPeers({});
     
     // Remove remote audio elements
-    document.querySelectorAll('[id^="remote-audio-"]').forEach(el => el.remove());
+    document.querySelectorAll('[id^="remote-audio-"]').forEach(el => {
+      try {
+        el.remove();
+      } catch (err) {
+        console.error('Error removing audio element:', err);
+      }
+    });
     
     // Stop local stream
     if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+      try {
+        localStream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.error('Error stopping local stream tracks:', err);
+      }
       setLocalStream(null);
     }
     

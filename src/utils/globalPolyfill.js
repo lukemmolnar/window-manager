@@ -13,13 +13,24 @@ window.process.nextTick = function(callback) {
 import { Buffer as BufferPolyfill } from 'buffer';
 window.Buffer = BufferPolyfill;
 
-// Basic stream polyfill
+// Enhanced stream polyfill
 if (typeof window.stream === 'undefined') {
   window.stream = {
     Readable: class Readable {
       constructor() {
         this.readableFlowing = null;
         this.listeners = {};
+        this._readableState = { 
+          flowing: null,
+          ended: false,
+          endEmitted: false,
+          reading: false,
+          sync: true,
+          needReadable: false,
+          emittedReadable: false,
+          length: 0,
+          buffer: []
+        };
       }
       on(event, callback) {
         this.listeners[event] = callback;
@@ -32,6 +43,12 @@ if (typeof window.stream === 'undefined') {
     Writable: class Writable {
       constructor() {
         this.listeners = {};
+        this._writableState = {
+          ended: false,
+          ending: false,
+          finished: false,
+          destroyed: false
+        };
       }
       on(event, callback) {
         this.listeners[event] = callback;
@@ -45,6 +62,23 @@ if (typeof window.stream === 'undefined') {
     Duplex: class Duplex {
       constructor() {
         this.listeners = {};
+        this._readableState = { 
+          flowing: null,
+          ended: false,
+          endEmitted: false,
+          reading: false,
+          sync: true,
+          needReadable: false,
+          emittedReadable: false,
+          length: 0,
+          buffer: []
+        };
+        this._writableState = {
+          ended: false,
+          ending: false,
+          finished: false,
+          destroyed: false
+        };
       }
       on(event, callback) {
         this.listeners[event] = callback;
