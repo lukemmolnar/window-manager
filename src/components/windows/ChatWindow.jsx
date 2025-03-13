@@ -48,6 +48,10 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const [localStream, setLocalStream] = useState(null);
   const [peers, setPeers] = useState({});
   const [newVoiceChannelName, setNewVoiceChannelName] = useState('');
+  const [speakingUsers, setSpeakingUsers] = useState(new Set());
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const speakingTimeoutRef = useRef(null);
   
   // Helper function to create audio elements for remote streams
   const createAudioElement = (userId, stream) => {
@@ -226,9 +230,139 @@ const ChatWindow = ({ isActive, nodeId }) => {
     };
   }, [activeRoom, socket]);
 
+  // Set up voice activity detection
+  useEffect(() => {
+    if (!localStream || !socket || !activeVoiceChannel) return;
+    
+    // Create audio context and analyzer
+    try {
+      // Clean up any existing audio context
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      
+      // Create analyzer node
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      analyserRef.current = analyser;
+      
+      // Connect the stream to the analyzer
+      const source = audioContext.createMediaStreamSource(localStream);
+      source.connect(analyser);
+      
+      // Set up the buffer for the analyzer
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      
+      // Function to check if user is speaking
+      const checkSpeaking = () => {
+        if (!analyser || !socket || !activeVoiceChannel || isMuted) return;
+        
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Calculate average volume
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        
+        // Threshold for speaking detection
+        const threshold = 20; // Adjust as needed
+        
+        // Check if speaking
+        const isSpeaking = average > threshold;
+        
+        // If speaking state changed, emit event
+        if (isSpeaking && !speakingUsers.has(user.id)) {
+          // User started speaking
+          socket.emit('voice_speaking_start', {
+            channelId: activeVoiceChannel.id
+          });
+          
+          // Update local state
+          setSpeakingUsers(prev => {
+            const newSet = new Set(prev);
+            newSet.add(user.id);
+            return newSet;
+          });
+          
+          // Clear any existing timeout
+          if (speakingTimeoutRef.current) {
+            clearTimeout(speakingTimeoutRef.current);
+          }
+        } else if (!isSpeaking && speakingUsers.has(user.id)) {
+          // Set a timeout to stop speaking status after a short delay
+          // This prevents the speaking status from flickering
+          if (!speakingTimeoutRef.current) {
+            speakingTimeoutRef.current = setTimeout(() => {
+              socket.emit('voice_speaking_stop', {
+                channelId: activeVoiceChannel.id
+              });
+              
+              // Update local state
+              setSpeakingUsers(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(user.id);
+                return newSet;
+              });
+              
+              speakingTimeoutRef.current = null;
+            }, 300); // 300ms delay
+          }
+        }
+      };
+      
+      // Set up interval to check speaking
+      const intervalId = setInterval(checkSpeaking, 100); // Check every 100ms
+      
+      return () => {
+        clearInterval(intervalId);
+        if (speakingTimeoutRef.current) {
+          clearTimeout(speakingTimeoutRef.current);
+        }
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+          audioContextRef.current = null;
+        }
+        analyserRef.current = null;
+      };
+    } catch (error) {
+      console.error('Error setting up voice activity detection:', error);
+    }
+  }, [localStream, socket, activeVoiceChannel, isMuted, user.id, speakingUsers]);
+  
   // Voice chat socket event handlers
   useEffect(() => {
     if (!socket) return;
+    
+    // Handle speaking events
+    const handleUserSpeakingStart = (data) => {
+      if (data.channelId === activeVoiceChannel?.id && data.userId !== user.id) {
+        setSpeakingUsers(prev => {
+          const newSet = new Set(prev);
+          newSet.add(data.userId);
+          return newSet;
+        });
+      }
+    };
+    
+    const handleUserSpeakingStop = (data) => {
+      if (data.channelId === activeVoiceChannel?.id && data.userId !== user.id) {
+        setSpeakingUsers(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(data.userId);
+          return newSet;
+        });
+      }
+    };
+    
+    socket.on('user_speaking_start', handleUserSpeakingStart);
+    socket.on('user_speaking_stop', handleUserSpeakingStop);
     
     // Handle when a user joins a voice channel
     const handleUserJoinedVoice = (data) => {
@@ -696,7 +830,37 @@ const ChatWindow = ({ isActive, nodeId }) => {
         {/* Voice channels */}
         {activeRoom && (
           <>
-            <div className="overflow-y-auto border-t border-stone-700">
+            <div className="p-2 border-t border-b border-stone-700 flex justify-between items-center">
+              <h3 className="text-teal-400 font-medium text-sm">Voice Channels</h3>
+              <button 
+                onClick={() => document.getElementById('voice-channel-form').classList.toggle('hidden')}
+                className="text-teal-400 hover:text-teal-300"
+                title="Create voice channel"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            
+            {/* Voice channel creation form */}
+            <div id="voice-channel-form" className="p-2 border-b border-stone-700 hidden">
+              <form onSubmit={createVoiceChannel} className="flex flex-col">
+                <input
+                  type="text"
+                  value={newVoiceChannelName}
+                  onChange={(e) => setNewVoiceChannelName(e.target.value)}
+                  placeholder="Voice channel name"
+                  className="bg-stone-800 text-teal-400 px-2 py-1 rounded text-sm mb-1"
+                />
+                <button
+                  type="submit"
+                  className="bg-teal-600 text-white px-2 py-1 rounded text-sm"
+                >
+                  Create
+                </button>
+              </form>
+            </div>
+            
+            <div className="overflow-y-auto">
               {voiceChannels.map((channel) => (
                 <div
                   key={channel.id}
@@ -724,9 +888,16 @@ const ChatWindow = ({ isActive, nodeId }) => {
                           {participant.is_muted ? (
                             <MicOff size={12} className="mr-1 text-red-500" />
                           ) : (
-                            <Mic size={12} className="mr-1 text-green-500" />
+                            <Mic size={12} className={`mr-1 ${speakingUsers.has(participant.user_id) ? 'text-teal-400 animate-pulse' : 'text-green-500'}`} />
                           )}
-                          <span>{participant.username}</span>
+                          <span 
+                            className={`${speakingUsers.has(participant.user_id) && !participant.is_muted ? 'text-teal-400 font-medium animate-pulse' : ''}`}
+                            style={{
+                              textShadow: speakingUsers.has(participant.user_id) && !participant.is_muted ? '0 0 10px rgba(20, 184, 166, 0.5)' : 'none'
+                            }}
+                          >
+                            {participant.username}
+                          </span>
                           {participant.user_id === user.id && (
                             <button 
                               onClick={(e) => {
