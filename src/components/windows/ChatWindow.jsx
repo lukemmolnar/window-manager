@@ -26,6 +26,31 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const [peers, setPeers] = useState({});
   const [newVoiceChannelName, setNewVoiceChannelName] = useState('');
   
+  // Helper function to create audio elements for remote streams
+  const createAudioElement = (userId, stream) => {
+    console.log('Creating audio element for user:', userId);
+    const existingAudio = document.getElementById(`remote-audio-${userId}`);
+    if (existingAudio) {
+      console.log('Audio element already exists, removing it first');
+      existingAudio.remove();
+    }
+    
+    const audio = document.createElement('audio');
+    audio.id = `remote-audio-${userId}`;
+    audio.srcObject = stream;
+    audio.autoplay = true;
+    audio.controls = false; // Hide controls
+    audio.volume = 1.0; // Full volume
+    document.body.appendChild(audio);
+    
+    // Verify the audio element was created and is working
+    console.log('Audio element created:', audio);
+    console.log('Audio element autoplay:', audio.autoplay);
+    console.log('Audio element srcObject:', audio.srcObject);
+    
+    return audio;
+  };
+  
   const MAX_CHARS = 500; // Maximum character limit
 
   // New state for tracking which message's menu is open
@@ -199,13 +224,25 @@ const ChatWindow = ({ isActive, nodeId }) => {
           localStream && 
           data.userId !== user.id) {
         
+        console.log('Creating new peer connection to user:', data.userId);
+        
         const peer = new SimplePeer({
           initiator: true,
           trickle: false,
-          stream: localStream
+          stream: localStream,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' },
+              { urls: 'stun:stun3.l.google.com:19302' },
+              { urls: 'stun:stun4.l.google.com:19302' }
+            ]
+          }
         });
         
         peer.on('signal', signal => {
+          console.log('Generated signal for user:', data.userId, signal);
           socket.emit('voice_signal', {
             channelId: activeVoiceChannel.id,
             targetUserId: data.userId,
@@ -214,12 +251,24 @@ const ChatWindow = ({ isActive, nodeId }) => {
         });
         
         peer.on('stream', stream => {
+          console.log('Received stream from user:', data.userId, stream);
           // Create audio element for the remote stream
-          const audio = document.createElement('audio');
-          audio.id = `remote-audio-${data.userId}`;
-          audio.srcObject = stream;
-          audio.autoplay = true;
-          document.body.appendChild(audio);
+          createAudioElement(data.userId, stream);
+        });
+        
+        // Add error handling
+        peer.on('error', err => {
+          console.error('Peer connection error (initiator):', err);
+        });
+        
+        // Monitor ICE connection state
+        peer.on('iceStateChange', state => {
+          console.log('ICE state change (initiator):', state);
+        });
+        
+        // Monitor connection state
+        peer.on('connect', () => {
+          console.log('Peer connection established (initiator) with user:', data.userId);
         });
         
         // Add to peers state
@@ -274,16 +323,28 @@ const ChatWindow = ({ isActive, nodeId }) => {
         
         // If we already have a peer for this user
         if (peers[data.fromUserId]) {
+          console.log('Signaling existing peer for user:', data.fromUserId);
           peers[data.fromUserId].signal(data.signal);
         } else {
           // Create a new peer
+          console.log('Creating new non-initiator peer for user:', data.fromUserId);
           const peer = new SimplePeer({
             initiator: false,
             trickle: false,
-            stream: localStream
+            stream: localStream,
+            config: {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+              ]
+            }
           });
           
           peer.on('signal', signal => {
+            console.log('Generated response signal for user:', data.fromUserId, signal);
             socket.emit('voice_signal', {
               channelId: activeVoiceChannel.id,
               targetUserId: data.fromUserId,
@@ -292,12 +353,24 @@ const ChatWindow = ({ isActive, nodeId }) => {
           });
           
           peer.on('stream', stream => {
+            console.log('Received stream from user:', data.fromUserId, stream);
             // Create audio element for the remote stream
-            const audio = document.createElement('audio');
-            audio.id = `remote-audio-${data.fromUserId}`;
-            audio.srcObject = stream;
-            audio.autoplay = true;
-            document.body.appendChild(audio);
+            createAudioElement(data.fromUserId, stream);
+          });
+          
+          // Add error handling
+          peer.on('error', err => {
+            console.error('Peer connection error (non-initiator):', err);
+          });
+          
+          // Monitor ICE connection state
+          peer.on('iceStateChange', state => {
+            console.log('ICE state change (non-initiator):', state);
+          });
+          
+          // Monitor connection state
+          peer.on('connect', () => {
+            console.log('Peer connection established (non-initiator) with user:', data.fromUserId);
           });
           
           // Signal with the received data
