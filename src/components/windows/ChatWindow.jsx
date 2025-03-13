@@ -52,6 +52,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const speakingTimeoutRef = useRef(null);
+  const joinSoundRef = useRef(null);
   
   // Helper function to create audio elements for remote streams
   const createAudioElement = (userId, stream) => {
@@ -83,6 +84,22 @@ const ChatWindow = ({ isActive, nodeId }) => {
   // New state for tracking which message's menu is open
   const [activeMenu, setActiveMenu] = useState(null);
 
+  // Initialize join sound
+  useEffect(() => {
+    // Create the audio element for the join sound
+    const joinSound = new Audio('/audio/vine-boom.mp3');
+    joinSound.volume = 0.5; // Set volume to 50%
+    joinSoundRef.current = joinSound;
+    
+    return () => {
+      // Clean up
+      if (joinSoundRef.current) {
+        joinSoundRef.current.pause();
+        joinSoundRef.current.src = '';
+      }
+    };
+  }, []);
+  
   // Connect to WebSocket server
   useEffect(() => {
     const socketInstance = io(API_CONFIG.BASE_URL.replace('/api', ''));
@@ -374,6 +391,19 @@ const ChatWindow = ({ isActive, nodeId }) => {
         if (prev.some(p => p.user_id === data.userId)) {
           return prev;
         }
+        
+        // Play join sound if this is our active channel and we're not the one joining
+        if (activeVoiceChannel && 
+            activeVoiceChannel.id === data.channelId && 
+            data.userId !== user.id &&
+            joinSoundRef.current) {
+          // Reset the audio to the beginning and play it
+          joinSoundRef.current.currentTime = 0;
+          joinSoundRef.current.play().catch(err => {
+            console.error('Error playing join sound:', err);
+          });
+        }
+        
         return [...prev, {
           user_id: data.userId,
           username: data.username,
@@ -832,34 +862,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
           <>
             <div className="p-2 border-t border-b border-stone-700 flex justify-between items-center">
               <h3 className="text-teal-400 font-medium text-sm">Voice Channels</h3>
-              <button 
-                onClick={() => document.getElementById('voice-channel-form').classList.toggle('hidden')}
-                className="text-teal-400 hover:text-teal-300"
-                title="Create voice channel"
-              >
-                <Plus size={16} />
-              </button>
-            </div>
-            
-            {/* Voice channel creation form */}
-            <div id="voice-channel-form" className="p-2 border-b border-stone-700 hidden">
-              <form onSubmit={createVoiceChannel} className="flex flex-col">
-                <input
-                  type="text"
-                  value={newVoiceChannelName}
-                  onChange={(e) => setNewVoiceChannelName(e.target.value)}
-                  placeholder="Voice channel name"
-                  className="bg-stone-800 text-teal-400 px-2 py-1 rounded text-sm mb-1"
-                />
-                <button
-                  type="submit"
-                  className="bg-teal-600 text-white px-2 py-1 rounded text-sm"
-                >
-                  Create
-                </button>
-              </form>
-            </div>
-            
+            </div>   
             <div className="overflow-y-auto">
               {voiceChannels.map((channel) => (
                 <div
