@@ -227,52 +227,60 @@ const ChatWindow = ({ isActive, nodeId }) => {
         
         console.log('Creating new peer connection to user:', data.userId);
         
-        const peer = new SimplePeer({
-          initiator: true,
-          trickle: false,
-          stream: localStream,
-          config: {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
-            ]
+        // Delay peer creation slightly to ensure browser WebRTC is ready
+        setTimeout(() => {
+          try {
+            const peer = new SimplePeer({
+              initiator: true,
+              trickle: false,
+              stream: localStream,
+              wrtc: undefined, // Force use of browser's WebRTC implementation
+              config: {
+                iceServers: [
+                  { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
+                ]
+              }
+            });
+            
+            peer.on('signal', signal => {
+              console.log('Generated signal for user:', data.userId, signal);
+              socket.emit('voice_signal', {
+                channelId: activeVoiceChannel.id,
+                targetUserId: data.userId,
+                signal
+              });
+            });
+            
+            peer.on('stream', stream => {
+              console.log('Received stream from user:', data.userId, stream);
+              // Create audio element for the remote stream
+              createAudioElement(data.userId, stream);
+            });
+            
+            // Add error handling
+            peer.on('error', err => {
+              console.error('Peer connection error (initiator):', err);
+            });
+            
+            // Monitor ICE connection state
+            peer.on('iceStateChange', state => {
+              console.log('ICE state change (initiator):', state);
+            });
+            
+            // Monitor connection state
+            peer.on('connect', () => {
+              console.log('Peer connection established (initiator) with user:', data.userId);
+            });
+            
+            // Add to peers state
+            setPeers(prev => ({
+              ...prev,
+              [data.userId]: peer
+            }));
+          } catch (err) {
+            console.error('Error creating peer connection (initiator):', err);
           }
-        });
-        
-        peer.on('signal', signal => {
-          console.log('Generated signal for user:', data.userId, signal);
-          socket.emit('voice_signal', {
-            channelId: activeVoiceChannel.id,
-            targetUserId: data.userId,
-            signal
-          });
-        });
-        
-        peer.on('stream', stream => {
-          console.log('Received stream from user:', data.userId, stream);
-          // Create audio element for the remote stream
-          createAudioElement(data.userId, stream);
-        });
-        
-        // Add error handling
-        peer.on('error', err => {
-          console.error('Peer connection error (initiator):', err);
-        });
-        
-        // Monitor ICE connection state
-        peer.on('iceStateChange', state => {
-          console.log('ICE state change (initiator):', state);
-        });
-        
-        // Monitor connection state
-        peer.on('connect', () => {
-          console.log('Peer connection established (initiator) with user:', data.userId);
-        });
-        
-        // Add to peers state
-        setPeers(prev => ({
-          ...prev,
-          [data.userId]: peer
-        }));
+        }, 500); // 500ms delay
       }
     };
     
@@ -329,57 +337,65 @@ const ChatWindow = ({ isActive, nodeId }) => {
             return;
           }
           
-          // Create a new peer
+          // Create a new peer with delay to ensure browser WebRTC is ready
           console.log('Creating new non-initiator peer for user:', data.fromUserId);
-          const peer = new SimplePeer({
-            initiator: false,
-            trickle: false,
-            stream: localStream,
-            config: {
-              iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
-              ]
+          
+          setTimeout(() => {
+            try {
+              const peer = new SimplePeer({
+                initiator: false,
+                trickle: false,
+                stream: localStream,
+                wrtc: undefined, // Force use of browser's WebRTC implementation
+                config: {
+                  iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
+                  ]
+                }
+              });
+              
+              peer.on('signal', signal => {
+                console.log('Generated response signal for user:', data.fromUserId, signal);
+                socket.emit('voice_signal', {
+                  channelId: activeVoiceChannel.id,
+                  targetUserId: data.fromUserId,
+                  signal
+                });
+              });
+              
+              peer.on('stream', stream => {
+                console.log('Received stream from user:', data.fromUserId, stream);
+                // Create audio element for the remote stream
+                createAudioElement(data.fromUserId, stream);
+              });
+              
+              // Add error handling
+              peer.on('error', err => {
+                console.error('Peer connection error (non-initiator):', err);
+              });
+              
+              // Monitor ICE connection state
+              peer.on('iceStateChange', state => {
+                console.log('ICE state change (non-initiator):', state);
+              });
+              
+              // Monitor connection state
+              peer.on('connect', () => {
+                console.log('Peer connection established (non-initiator) with user:', data.fromUserId);
+              });
+              
+              // Signal with the received data
+              peer.signal(data.signal);
+              
+              // Add to peers state
+              setPeers(prev => ({
+                ...prev,
+                [data.fromUserId]: peer
+              }));
+            } catch (err) {
+              console.error('Error creating peer connection (non-initiator):', err);
             }
-          });
-          
-          peer.on('signal', signal => {
-            console.log('Generated response signal for user:', data.fromUserId, signal);
-            socket.emit('voice_signal', {
-              channelId: activeVoiceChannel.id,
-              targetUserId: data.fromUserId,
-              signal
-            });
-          });
-          
-          peer.on('stream', stream => {
-            console.log('Received stream from user:', data.fromUserId, stream);
-            // Create audio element for the remote stream
-            createAudioElement(data.fromUserId, stream);
-          });
-          
-          // Add error handling
-          peer.on('error', err => {
-            console.error('Peer connection error (non-initiator):', err);
-          });
-          
-          // Monitor ICE connection state
-          peer.on('iceStateChange', state => {
-            console.log('ICE state change (non-initiator):', state);
-          });
-          
-          // Monitor connection state
-          peer.on('connect', () => {
-            console.log('Peer connection established (non-initiator) with user:', data.fromUserId);
-          });
-          
-          // Signal with the received data
-          peer.signal(data.signal);
-          
-          // Add to peers state
-          setPeers(prev => ({
-            ...prev,
-            [data.fromUserId]: peer
-          }));
+          }, 500); // 500ms delay
         }
       }
     };
