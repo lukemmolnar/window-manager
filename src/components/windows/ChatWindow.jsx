@@ -234,7 +234,6 @@ const ChatWindow = ({ isActive, nodeId }) => {
               initiator: true,
               trickle: false,
               stream: localStream,
-              wrtc: undefined, // Force use of browser's WebRTC implementation
               config: {
                 iceServers: [
                   { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
@@ -346,7 +345,6 @@ const ChatWindow = ({ isActive, nodeId }) => {
                 initiator: false,
                 trickle: false,
                 stream: localStream,
-                wrtc: undefined, // Force use of browser's WebRTC implementation
                 config: {
                   iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
