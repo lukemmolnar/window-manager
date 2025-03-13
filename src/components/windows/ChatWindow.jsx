@@ -187,7 +187,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
     };
 
     socket.on('new_message', handleNewMessage);
-
+//test
     return () => {
       // Leave the room when component unmounts or room changes
       socket.emit('leave_room', activeRoom.id);
