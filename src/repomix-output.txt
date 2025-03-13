@@ -56,26 +56,34 @@ components/auth/Register.jsx
 components/CommandBar.jsx
 components/EmptyState.jsx
 components/WindowManager.jsx
+components/windows/AdminWindow.jsx
 components/windows/AudioWindow.jsx
 components/windows/ChatWindow.jsx
 components/windows/EditorWindow.jsx
 components/windows/ExplorerWindow.css
 components/windows/ExplorerWindow.jsx
-components/windows/imageWindow.jsx
 components/windows/index.js
-components/windows/PreviewWindow.jsx
 components/windows/TerminalWindow.jsx
 config/api.js
+context/AnnouncementContext.jsx
 context/AuthContext.jsx
 context/WindowStateContext.jsx
+context/WorkspaceContext.jsx
+db/db-config.js
+db/db-operations.js
+db/db.js
 hocs/withCommandHandling.jsx
+hocs/withCommandInput.jsx
 hocs/withWindowState.jsx
+hooks/swapWindows.js
 hooks/useForceUpdate.js
 hooks/useKeyboardShortcuts.js
 hooks/useWindowManager.js
+hooks/useWindowManagerCompletion.js
 index.html
 main.jsx
 models/Node.js
+services/indexedDBService.js
 styles.css
 styles/main.css
 utils/constants.js
@@ -111,7 +119,7 @@ html, body {
 ================
 File: App.jsx
 ================
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { WindowManager } from './components/WindowManager';
 import { CommandBar } from './components/CommandBar';
 import { EmptyState } from './components/EmptyState';
@@ -119,7 +127,7 @@ import { AuthScreen } from './components/auth';
 import { useWindowManager } from './hooks/useWindowManager';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAuth } from './context/AuthContext';
-import { WINDOW_CONTENT } from './utils/windowTypes';
+import { WINDOW_CONTENT, WINDOW_TYPES } from './utils/windowTypes';
 
 /**
  * Main application component that composes our window management system.
@@ -128,6 +136,27 @@ import { WINDOW_CONTENT } from './utils/windowTypes';
  */
 function App() {
   const { isAuthenticated, loading, user, logout } = useAuth();
+  
+  // State for tracking which windows are currently flashing
+  const [flashingWindowIds, setFlashingWindowIds] = useState(new Set());
+  
+  // Function to flash a window's border red
+  const flashWindowBorder = useCallback((windowId) => {
+    setFlashingWindowIds(prev => {
+      const newSet = new Set(prev);
+      newSet.add(windowId);
+      return newSet;
+    });
+    
+    // Remove the window from flashing state after 500ms
+    setTimeout(() => {
+      setFlashingWindowIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(windowId);
+        return newSet;
+      });
+    }, 200);
+  }, []);
   
   // Call all hooks at the top level, before any conditional returns
   const {
@@ -149,8 +178,11 @@ function App() {
     isResizeMode,
     isMoveMode,
     setIsResizeMode,
-    resizeActiveWindow
-  } = useWindowManager();
+    resizeActiveWindow,
+    moveSourceWindowId
+  } = useWindowManager({
+    onFlashBorder: flashWindowBorder
+  });
 
   // Set up keyboard shortcuts - always call this hook, even if we'll return early
   // But don't include move mode props to avoid conflicts with WindowManager
@@ -200,6 +232,8 @@ function App() {
         onResizeEnd={handleResizeEnd}
         isResizeMode={isResizeMode} // Pass isResizeMode to WindowTreeRenderer
         isMoveMode={isMoveMode}
+        moveSourceWindowId={moveSourceWindowId} // Pass moveSourceWindowId to WindowTreeRenderer
+        flashingWindowIds={flashingWindowIds} // Pass flashingWindowIds to WindowTreeRenderer
       />
     );
   };
@@ -238,24 +272,68 @@ const WindowTreeRenderer = ({
   onResizeMove,
   onResizeEnd,
   isResizeMode, // Add isResizeMode prop
-  isMoveMode
+  isMoveMode,
+  moveSourceWindowId,
+  flashingWindowIds
 }) => {
   if (node.type === 'window') {
     const windowContent = WINDOW_CONTENT[node.windowType];
+    
+    // Check if window content exists (window type might have been removed)
+    if (!windowContent) {
+      console.warn(`Window type "${node.windowType}" is no longer supported`);
+      return (
+        <div
+          className="absolute overflow-hidden border-2 border-red-500"
+          style={{
+            left: `${available.x}%`,
+            top: `${available.y}%`,
+            width: `${available.width}%`,
+            height: `${available.height}%`,
+          }}
+          onClick={() => setActiveNodeId(node.id)}
+        >
+          <div className="flex h-full items-center justify-center bg-stone-800 text-red-400 p-4 text-center">
+            <div>
+              <p className="font-bold mb-2">Unsupported Window Type</p>
+              <p className="text-sm">Window type "{node.windowType}" is no longer available</p>
+              <button 
+                className="mt-4 px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs text-teal-400"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Convert to terminal window
+                  transformWindow(node.id, WINDOW_TYPES.TERMINAL);
+                }}
+              >
+                Convert to Terminal
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     const Component = windowContent.component;
     const isActive = node.id === activeNodeId;
+    // Check if this is the first selected window in move mode
+    const isFirstSelectedWindow = isMoveMode && moveSourceWindowId === node.id;
+    // Check if this window is currently flashing
+    const isFlashing = flashingWindowIds.has(node.id);
 
     return (
       <div
         className={`absolute overflow-hidden border-2 ${
-          isActive 
-            ? isResizeMode 
-              ? 'border-yellow-500'
-              : isMoveMode
-                ? 'border-blue-500'
-                : 'border-teal-500'
-            : 'border-stone-600'
-        }`}
+          isFlashing ? 'border-red-600' : 
+          isFirstSelectedWindow 
+            ? 'border-blue-300' 
+            : isActive 
+              ? isResizeMode 
+                ? 'border-yellow-500'
+                : isMoveMode
+                  ? 'border-blue-500'
+                  : 'border-teal-500'
+              : 'border-stone-600'
+        } $`}
         style={{
           left: `${available.x}%`,
           top: `${available.y}%`,
@@ -318,6 +396,8 @@ const WindowTreeRenderer = ({
         onResizeEnd={onResizeEnd}
         isResizeMode={isResizeMode} // Pass down isResizeMode
         isMoveMode={isMoveMode} // Pass down isMoveMode
+        moveSourceWindowId={moveSourceWindowId} // Pass down moveSourceWindowId
+        flashingWindowIds={flashingWindowIds} // Pass down flashingWindowIds
       />
       
       <div
@@ -347,6 +427,8 @@ const WindowTreeRenderer = ({
         onResizeEnd={onResizeEnd}
         isResizeMode={isResizeMode} // Pass down isResizeMode
         isMoveMode={isMoveMode} // Pass down isMoveMode
+        moveSourceWindowId={moveSourceWindowId} // Pass down moveSourceWindowId
+        flashingWindowIds={flashingWindowIds} // Pass down flashingWindowIds
       />
     </>
   );
@@ -415,6 +497,7 @@ File: components/auth/Login.jsx
 ================
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import emptyStateSvg from '../../assets/SVG/emptyState.svg';
 
 export function Login() {
   const { login, error, clearError, loading } = useAuth();
@@ -428,9 +511,16 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-900">
-      <div className="bg-stone-800 p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">Login to SLUMTERM</h2>
+    <div className="min-h-screen flex items-center justify-center bg-stone-950">
+      <div className="bg-stone-950 p-8 rounded-lg w-full max-w-md">
+      <div className="flex justify-center mb-4">
+          <img 
+            src={emptyStateSvg} 
+            alt="Empty State" 
+            className="h-auto"
+          />
+        </div>
+        <h2 className="text-2xl font-bold text-teal-500 mb-6 text-center">SLUMNET</h2>
         
         {error && (
           <div className="bg-red-900 text-white p-3 rounded mb-4">
@@ -447,7 +537,7 @@ export function Login() {
             <input
               id="username"
               type="text"
-              className="w-full p-2 rounded bg-stone-700 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
+              className="w-full p-2 rounded bg-stone-800 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -461,7 +551,7 @@ export function Login() {
             <input
               id="password"
               type="password"
-              className="w-full p-2 rounded bg-stone-700 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
+              className="w-full p-2 rounded bg-stone-800 text-white border border-stone-600 focus:border-teal-500 focus:outline-none font-mono text-sm"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -479,7 +569,7 @@ export function Login() {
         
         <div className="mt-4 text-center">
           <p className="text-stone-400 text-sm font-mono">
-            Contact administrator if you need an account
+            Are ya in the know?
           </p>
         </div>
       </div>
@@ -636,37 +726,35 @@ export function Register({ onSwitchToLogin }) {
 ================
 File: components/CommandBar.jsx
 ================
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useAnnouncement } from '../context/AnnouncementContext';
 
 export const CommandBar = ({ 
-  onCommand, 
   currentWorkspaceIndex = 0,
   switchWorkspace,
   user,
   onLogout
 }) => {
   console.log('CommandBar render, currentWorkspaceIndex:', currentWorkspaceIndex);
-  const [command, setCommand] = useState('');
-  const inputRef = useRef(null);
+  const { announcement } = useAnnouncement();
+  const announcementRef = useRef(null);
+  const containerRef = useRef(null);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && command.trim()) {
-      onCommand(command.trim());
-      setCommand('');
-    }
-  };
-
+  // Carousel effect for long announcements with consistent speed
   useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (e.key === '/' && document.activeElement !== inputRef.current) {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+    if (!announcement || !announcementRef.current || !containerRef.current) return;
+    
+    const textElement = announcementRef.current;
+    const containerElement = containerRef.current;
+    const isOverflowing = textElement.scrollWidth > containerElement.clientWidth;
+    
+    if (isOverflowing) {
+      // Fixed animation duration of 15 seconds
+      textElement.style.animation = 'scroll-text 40s linear infinite';
+    } else {
+      textElement.style.animation = 'none';
+    }
+  }, [announcement]);
 
   return (
     <div className="w-full bg-stone-800 p-2 flex items-center gap-2">
@@ -676,16 +764,20 @@ export const CommandBar = ({
         <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 2 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(2)} />
         <div className={`rounded-full cursor-pointer ${currentWorkspaceIndex === 3 ? 'w-3 h-3 bg-teal-400' : 'w-2 h-2 bg-stone-600 hover:bg-stone-500'}`} onClick={() => typeof switchWorkspace === 'function' && switchWorkspace(3)} />
       </div>
-      <span className="text-gray-400 text-sm font-mono">$</span>
-      <input
-        ref={inputRef}
-        type="text"
-        value={command}
-        onChange={(e) => setCommand(e.target.value)} 
-        onKeyDown={handleKeyDown}
-        placeholder="Press '/' to focus"
-        className="flex-1 bg-stone-700 text-white px-4 py-1 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      
+      {/* Announcement section with improved container */}
+      <div ref={containerRef} className="flex-1 announcement-container">
+        {announcement ? (
+          <div 
+            ref={announcementRef}
+            className="announcement-text text-teal-300 text-sm font-mono"
+          >
+            {announcement}
+          </div>
+        ) : (
+          <div className="text-gray-500 text-sm font-mono italic">No announcements</div>
+        )}
+      </div>
       
       {/* User info and logout */}
       {user && (
@@ -730,7 +822,7 @@ export default EmptyState;
 File: components/WindowManager.jsx
 ================
 import React, { useState, useCallback, useEffect } from 'react';
-import { WINDOW_CONTENT } from '../utils/windowTypes';
+import { WINDOW_CONTENT, WINDOW_TYPES } from '../utils/windowTypes';
 import { getWindowBounds } from '../utils/windowUtils';
 import { useWindowManager } from '../hooks/useWindowManager';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -757,7 +849,7 @@ export const WindowManager = ({ defaultLayout = null }) => {
         newSet.delete(windowId);
         return newSet;
       });
-    }, 500);
+    }, 200);
   }, []);
 
   const {
@@ -976,7 +1068,7 @@ export const WindowManager = ({ defaultLayout = null }) => {
         <div
           className={`absolute overflow-hidden border-2 ${
             isFlashing ? 'border-red-600' : 
-            isFirstSelectedWindow ? 'border-blue-500' :
+            isFirstSelectedWindow ? 'border-blue-300' :
             isActive ? (
               isMoveMode ? 'border-green-500' : 
               isResizeMode ? 'border-yellow-500' : 
@@ -999,7 +1091,8 @@ export const WindowManager = ({ defaultLayout = null }) => {
             nodeState={node.state}
             nodeId={node.id}
             transformWindow={transformWindow}
-            onStateChange={(newState) => {
+            windowState={node.windowType === WINDOW_TYPES.TERMINAL ? terminalStates[node.id] : node.state}
+            updateWindowState={(newState) => {
               updateTerminalState(node.id, newState);
             }}
           />
@@ -1099,6 +1192,740 @@ export const WindowManager = ({ defaultLayout = null }) => {
 };
 
 export default WindowManager;
+
+================
+File: components/windows/AdminWindow.jsx
+================
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import API_CONFIG from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
+import { Trash } from 'lucide-react'; // Import Trash icon
+
+const AdminWindow = ({ isActive }) => {
+  const { user } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    is_admin: false
+  });
+  const [createFormData, setCreateFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    is_admin: false
+  });
+  
+  // Chat channels state
+  const [activeTab, setActiveTab] = useState('users'); // 'users' or 'channels'
+  const [channels, setChannels] = useState([]);
+  const [channelLoading, setChannelLoading] = useState(false);
+  const [channelError, setChannelError] = useState(null);
+  const [newChannelName, setNewChannelName] = useState('');
+  const [showCreateChannelForm, setShowCreateChannelForm] = useState(false);
+
+  // Fetch users when component mounts or becomes active
+  useEffect(() => {
+    if (isActive) {
+      fetchUsers();
+    }
+  }, [isActive]);
+  
+  // Load channels when tab changes to channels
+  useEffect(() => {
+    if (isActive && activeTab === 'channels') {
+      fetchChannels();
+    }
+  }, [isActive, activeTab]);
+  
+  // Reset form visibility when switching tabs
+  useEffect(() => {
+    // Hide forms when switching tabs
+    setShowCreateForm(false);
+    setShowCreateChannelForm(false);
+  }, [activeTab]);
+
+  // Fetch all users from the API
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setUsers(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
+      setError('Failed to load users. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Start editing a user
+  const handleEdit = (user) => {
+    setEditingUser(user.id);
+    setFormData({
+      username: user.username,
+      email: user.email || '', // Include email for editing
+      password: '', // Don't populate password for security
+      is_admin: user.is_admin === 1 || user.is_admin === true
+    });
+  };
+
+  // Cancel editing
+  const handleCancel = () => {
+    setEditingUser(null);
+    setFormData({
+      username: '',
+      email: '',
+      password: '',
+      is_admin: false
+    });
+  };
+
+  // Handle form input changes for editing
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // Handle form input changes for creating
+  const handleCreateChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setCreateFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // Save user changes
+  const handleSave = async (userId) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      
+      // Include all editable fields
+      const userData = {
+        username: formData.username,
+        email: formData.email,
+        is_admin: formData.is_admin
+      };
+      
+      // Only include password in the request if it was changed
+      if (formData.password) {
+        userData.password = formData.password;
+      }
+      
+      await axios.put(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${userId}`,
+        userData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Refresh the user list
+      await fetchUsers();
+      setEditingUser(null);
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        is_admin: false
+      });
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      setError('Failed to update user. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Create a new user
+  const handleCreateUser = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      
+      // Validate form data - only username and password are required
+      if (!createFormData.username || !createFormData.password) {
+        setError('Username and password are required.');
+        setLoading(false);
+        return;
+      }
+      
+      // Use the register endpoint instead of users endpoint
+      // If email is not provided, use a default placeholder
+      const email = createFormData.email || `${createFormData.username}@example.com`;
+      
+      await axios.post(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REGISTER}`,
+        {
+          username: createFormData.username,
+          email: email, // Use the email or placeholder
+          password: createFormData.password
+        }
+      );
+      
+      // If admin status needs to be set, we need to do that in a separate request
+      if (createFormData.is_admin) {
+        try {
+          // Get the newly created user
+          const usersResponse = await axios.get(
+            `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          
+          const newUser = usersResponse.data.find(u => u.username === createFormData.username);
+          
+          if (newUser) {
+            // Update the user to make them an admin
+            await axios.put(
+              `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${newUser.id}`,
+              { is_admin: true },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          }
+        } catch (adminErr) {
+          console.error('Failed to set admin status:', adminErr);
+          // Don't fail the whole operation if just the admin part fails
+        }
+      }
+      
+      // Refresh the user list
+      await fetchUsers();
+      
+      // Reset form and hide it
+      setCreateFormData({
+        username: '',
+        email: '',
+        password: '',
+        is_admin: false
+      });
+      setShowCreateForm(false);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to create user:', err);
+      setError(err.response?.data?.message || 'Failed to create user. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Toggle create form visibility
+  const toggleCreateForm = () => {
+    setShowCreateForm(!showCreateForm);
+    if (!showCreateForm) {
+      // Reset form data when opening
+      setCreateFormData({
+        username: '',
+        email: '',
+        password: '',
+        is_admin: false
+      });
+    }
+  };
+  
+  // Toggle create channel form visibility
+  const toggleCreateChannelForm = () => {
+    setShowCreateChannelForm(!showCreateChannelForm);
+    if (!showCreateChannelForm) {
+      // Reset channel name when opening the form
+      setNewChannelName('');
+    }
+  };
+
+  // Render loading state
+  if (loading && users.length === 0) {
+    return (
+      <div className="bg-stone-900 text-white p-4 h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-500 mx-auto mb-4"></div>
+          <p>Loading users...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render error state
+  if (error && users.length === 0) {
+    return (
+      <div className="bg-stone-900 text-white p-4 h-full flex items-center justify-center">
+        <div className="text-center text-red-500">
+          <p>{error}</p>
+          <button 
+            onClick={fetchUsers}
+            className="mt-4 px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Fetch chat channels
+  const fetchChannels = async () => {
+    try {
+      setChannelLoading(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_ROOMS}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setChannels(response.data);
+      setChannelError(null);
+    } catch (err) {
+      console.error('Failed to fetch channels:', err);
+      setChannelError('Failed to load chat channels. Please try again.');
+    } finally {
+      setChannelLoading(false);
+    }
+  };
+
+  // Create a new chat channel
+  const handleCreateChannel = async (e) => {
+    e.preventDefault();
+    if (!newChannelName.trim()) return;
+
+    try {
+      setChannelLoading(true);
+      const token = localStorage.getItem('auth_token');
+      await axios.post(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_ROOMS}`,
+        { name: newChannelName },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Refresh the channel list
+      await fetchChannels();
+      
+      // Reset form and hide it
+      setNewChannelName('');
+      setShowCreateChannelForm(false);
+      setChannelError(null);
+    } catch (err) {
+      console.error('Failed to create channel:', err);
+      setChannelError('Failed to create channel. Please try again.');
+    } finally {
+      setChannelLoading(false);
+    }
+  };
+
+  // Delete a chat channel
+  const handleDeleteChannel = async (channelId) => {
+    try {
+      setChannelLoading(true);
+      const token = localStorage.getItem('auth_token');
+      const endpoint = API_CONFIG.ENDPOINTS.CHAT_DELETE_ROOM.replace(':id', channelId);
+      await axios.delete(
+        `${API_CONFIG.BASE_URL}${endpoint}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Refresh the channel list
+      await fetchChannels();
+      setChannelError(null);
+    } catch (err) {
+      console.error('Failed to delete channel:', err);
+      setChannelError('Failed to delete channel. Please try again.');
+    } finally {
+      setChannelLoading(false);
+    }
+  };
+  
+  // Delete a user (or deactivate if delete endpoint is not available)
+  const handleDeleteUser = async (userId) => {
+    // Confirm deletion
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      
+      // First try the DELETE endpoint
+      try {
+        await axios.delete(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${userId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (deleteErr) {
+        // If DELETE fails, try to "deactivate" the user using PUT instead
+        // This is a workaround since the DELETE endpoint might not be available
+        console.log('Delete endpoint failed, trying deactivation via PUT instead');
+        
+        // Find the user to get their current data
+        const userToDeactivate = users.find(u => u.id === userId);
+        if (!userToDeactivate) {
+          throw new Error('User not found');
+        }
+        
+        // Update the user with a deactivated flag or similar
+        // We'll prepend "DEACTIVATED_" to the username to mark it as deleted
+        await axios.put(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${userId}`,
+          {
+            username: `DEACTIVATED_${userToDeactivate.username}`,
+            is_admin: false // Remove admin privileges
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+      
+      // Refresh the user list
+      await fetchUsers();
+      setError(null);
+    } catch (err) {
+      console.error('Failed to delete/deactivate user:', err);
+      setError(err.response?.data?.message || 'Failed to delete user. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-stone-900 text-white h-full overflow-auto flex flex-col">
+      {/* Header Bar */}
+      <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
+        <h2 className="text-teal-400 font-medium">ADMIN PANEL</h2>
+        
+        {/* Tab Navigation */}
+        <div className="flex">
+          <button
+            className={`px-3 py-1 rounded-t text-xs flex items-center ${
+              activeTab === 'users'
+                ? 'bg-stone-800 text-teal-300'
+                : 'text-stone-400 hover:text-white'
+            }`}
+            onClick={() => setActiveTab('users')}
+          >
+            Users
+          </button>
+          <button
+            className={`px-3 py-1 rounded-t text-xs flex items-center ml-1 ${
+              activeTab === 'channels'
+                ? 'bg-stone-800 text-teal-300'
+                : 'text-stone-400 hover:text-white'
+            }`}
+            onClick={() => setActiveTab('channels')}
+          >
+            Chat Channels
+          </button>
+        </div>
+      </div>
+      
+      {/* Create User/Channel Button - Only shown when respective tab is active */}
+      {activeTab === 'users' && (
+        <div className="p-2 border-b border-stone-700 flex justify-end">
+          <button
+            onClick={toggleCreateForm}
+            className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+          >
+            {showCreateForm ? 'Cancel' : 'Create User'}
+          </button>
+        </div>
+      )}
+      
+      {activeTab === 'channels' && (
+        <div className="p-2 border-b border-stone-700 flex justify-end">
+          <button
+            onClick={toggleCreateChannelForm}
+            className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+          >
+            {showCreateChannelForm ? 'Cancel' : 'Create Channel'}
+          </button>
+        </div>
+      )}
+      
+      {/* Main Content Area */}
+      <div className="p-4 flex-1 overflow-auto">
+        {activeTab === 'users' && error && <p className="text-red-500 mb-4">{error}</p>}
+        {activeTab === 'channels' && channelError && <p className="text-red-500 mb-4">{channelError}</p>}
+        
+        {/* Show users tab content */}
+        {activeTab === 'users' && (
+          <>
+            {/* Create User Form */}
+            {showCreateForm && (
+              <div className="mb-6 p-4 bg-stone-800 rounded">
+                <h3 className="text-lg mb-3 text-teal-400">Create New User</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Username: <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      name="username"
+                      value={createFormData.username}
+                      onChange={handleCreateChange}
+                      className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                      placeholder="Enter username"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Email:</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={createFormData.email}
+                      onChange={handleCreateChange}
+                      className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                      placeholder="Enter email (optional)"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Password: <span className="text-red-500">*</span></label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={createFormData.password}
+                      onChange={handleCreateChange}
+                      className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                      placeholder="Enter password"
+                    />
+                  </div>
+                  <div className="flex items-center">
+                    <label className="flex items-center text-sm text-gray-400">
+                      <input
+                        type="checkbox"
+                        name="is_admin"
+                        checked={createFormData.is_admin}
+                        onChange={handleCreateChange}
+                        className="form-checkbox h-5 w-5 text-teal-500 mr-2"
+                      />
+                      Admin User
+                    </label>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={handleCreateUser}
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                    disabled={loading}
+                  >
+                    {loading ? 'Creating...' : 'Create User'}
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Users Table */}
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-stone-700">
+                  <th className="text-left p-2">Username</th>
+                  <th className="text-left p-2">Email</th>
+                  <th className="text-left p-2">Admin</th>
+                  <th className="text-left p-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(userItem => (
+                  <tr key={userItem.id} className="border-b border-stone-800 hover:bg-stone-800">
+                    <td className="p-2">
+                      {editingUser === userItem.id ? (
+                        <input
+                          type="text"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleChange}
+                          className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                        />
+                      ) : (
+                        userItem.username
+                      )}
+                    </td>
+                    <td className="p-2">
+                      {editingUser === userItem.id ? (
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                          placeholder="Email (optional)"
+                        />
+                      ) : (
+                        userItem.email || '-'
+                      )}
+                    </td>
+                    <td className="p-2">
+                      {editingUser === userItem.id ? (
+                        <input
+                          type="checkbox"
+                          name="is_admin"
+                          checked={formData.is_admin}
+                          onChange={handleChange}
+                          className="form-checkbox h-5 w-5 text-teal-500"
+                        />
+                      ) : (
+                        userItem.is_admin === 1 || userItem.is_admin === true ? 'Yes' : 'No'
+                      )}
+                    </td>
+                    <td className="p-2">
+                      {editingUser === userItem.id ? (
+                        <div className="flex flex-col space-y-2">
+                          <div className="mb-2">
+                            <label className="block text-sm text-gray-400">New Password:</label>
+                            <input
+                              type="password"
+                              name="password"
+                              value={formData.password}
+                              onChange={handleChange}
+                              placeholder="Leave blank to keep current"
+                              className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                            />
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleSave(userItem.id)}
+                              className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={handleCancel}
+                              className="px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleCancel();
+                                handleDeleteUser(userItem.id);
+                              }}
+                              className="px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm text-red-400 hover:text-red-300"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEdit(userItem)}
+                            className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm"
+                            disabled={loading}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(userItem.id)}
+                            className="px-3 py-1 hover:bg-stone-600 rounded text-sm"
+                            disabled={loading}
+                            title="Delete user"
+                          >
+                            <Trash size={16} className="text-stone-400 hover:text-stone-300" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            {loading && users.length > 0 && (
+              <div className="mt-4 text-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-teal-500 mx-auto"></div>
+              </div>
+            )}
+          </>
+        )}
+        
+        {/* Show channels tab content */}
+        {activeTab === 'channels' && (
+          <>
+            {/* Create Channel Form - Only shown when showCreateChannelForm is true */}
+            {showCreateChannelForm && (
+              <div className="mb-6 p-4 bg-stone-800 rounded">
+                <h3 className="text-lg mb-3 text-teal-400">Create New Channel</h3>
+                <form onSubmit={handleCreateChannel} className="flex items-end gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-400 mb-1">Channel Name:</label>
+                    <input
+                      type="text"
+                      value={newChannelName}
+                      onChange={(e) => setNewChannelName(e.target.value)}
+                      className="bg-stone-700 text-white px-2 py-1 rounded w-full"
+                      placeholder="Enter channel name"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
+                    disabled={channelLoading}
+                  >
+                    {channelLoading ? 'Creating...' : 'Create Channel'}
+                  </button>
+                </form>
+              </div>
+            )}
+            
+            {/* Channels Table */}
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-stone-700">
+                  <th className="text-left p-2">Channel Name</th>
+                  <th className="text-left p-2">Created By</th>
+                  <th className="text-left p-2">Created At</th>
+                  <th className="text-left p-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {channels.map(channel => (
+                  <tr key={channel.id} className="border-b border-stone-800 hover:bg-stone-800">
+                    <td className="p-2">{channel.name}</td>
+                    <td className="p-2">{channel.created_by || '-'}</td>
+                    <td className="p-2">
+                      {new Date(channel.created_at).toLocaleString()}
+                    </td>
+                    <td className="p-2">
+                      <button
+                        onClick={() => handleDeleteChannel(channel.id)}
+                        className="focus:outline-none"
+                        title="Delete channel"
+                        disabled={channelLoading}
+                      >
+                        <Trash size={16} className="text-stone-400 hover:text-stone-300" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {channels.length === 0 && !channelLoading && (
+                  <tr>
+                    <td colSpan="4" className="p-4 text-center text-stone-500">
+                      No channels found. Create one above.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            
+            {channelLoading && (
+              <div className="mt-4 text-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-teal-500 mx-auto"></div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AdminWindow;
 
 ================
 File: components/windows/AudioWindow.jsx
@@ -1468,6 +2295,7 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { MoreVertical, Trash } from 'lucide-react'; // Import icons
 
 const ChatWindow = ({ isActive, nodeId }) => {
   const { user } = useAuth();
@@ -1482,6 +2310,9 @@ const ChatWindow = ({ isActive, nodeId }) => {
   
   const MAX_CHARS = 500; // Maximum character limit
 
+  // New state for tracking which message's menu is open
+  const [activeMenu, setActiveMenu] = useState(null);
+
   // Connect to WebSocket server
   useEffect(() => {
     const socketInstance = io(API_CONFIG.BASE_URL.replace('/api', ''));
@@ -1491,6 +2322,33 @@ const ChatWindow = ({ isActive, nodeId }) => {
       socketInstance.disconnect();
     };
   }, []);
+  
+  // Add effects to listen for message_deleted and room_deleted events
+  useEffect(() => {
+    if (!socket) return;
+    
+    const handleMessageDeleted = (data) => {
+      setMessages(prev => prev.filter(msg => msg.id !== data.id));
+    };
+    
+    const handleRoomDeleted = (data) => {
+      // If the active room was deleted, set activeRoom to null
+      if (activeRoom && activeRoom.id === data.id) {
+        setActiveRoom(null);
+      }
+      
+      // Remove the deleted room from the rooms list
+      setRooms(prev => prev.filter(room => room.id !== data.id));
+    };
+    
+    socket.on('message_deleted', handleMessageDeleted);
+    socket.on('room_deleted', handleRoomDeleted);
+    
+    return () => {
+      socket.off('message_deleted', handleMessageDeleted);
+      socket.off('room_deleted', handleRoomDeleted);
+    };
+  }, [socket, activeRoom]);
 
   // Fetch available rooms
   useEffect(() => {
@@ -1600,6 +2458,27 @@ const ChatWindow = ({ isActive, nodeId }) => {
       console.error('Failed to create room:', error);
     }
   };
+  
+  // Add new function to handle message deletion
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const endpoint = API_CONFIG.ENDPOINTS.CHAT_DELETE_MESSAGE.replace(':id', messageId);
+      await axios.delete(
+        `${API_CONFIG.BASE_URL}${endpoint}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // The message will be removed from the UI when the socket event is received
+      setActiveMenu(null); // Close the menu
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
+  };
+
+  // Toggle menu function
+  const toggleMenu = (messageId) => {
+    setActiveMenu(activeMenu === messageId ? null : messageId);
+  };
 
   const joinRoom = async (room) => {
     try {
@@ -1648,16 +2527,10 @@ const ChatWindow = ({ isActive, nodeId }) => {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`mb-1 ${
-                    msg.user_id === user.id ? 'text-right' : ''
-                  }`}
+                  className="mb-1"
                 >
                   <div
-                    className={`hover:bg-stone-800 inline-block rounded-lg px-4 py-2 w-[100%] break-all overflow-wrap break-word hyphens-auto overflow-hidden whitespace-pre-wrap ${
-                      msg.user_id === user.id
-                        ? 'bg-teal-600 text-white'
-                        : 'text-white'
-                    }`}
+                    className="hover:bg-stone-800 inline-block rounded-lg px-4 py-2 w-[100%] break-all overflow-wrap break-word hyphens-auto overflow-hidden whitespace-pre-wrap relative text-white"
                     style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                   >
                     <div className="text-teal-400 flex font-medium text-s mb-1">
@@ -1682,6 +2555,22 @@ const ChatWindow = ({ isActive, nodeId }) => {
                           });
                         })()}
                       </div>
+                      
+                      {/* Admin controls - only show if user is admin */}
+                      {user?.is_admin && (
+                        <div className="ml-auto">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(msg.id);
+                            }}
+                            className="text-white opacity-50 hover:opacity-100 focus:outline-none"
+                            title="Delete message"
+                          >
+                            <Trash size={16} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div>{msg.message}</div>
                   </div>
@@ -1701,7 +2590,6 @@ const ChatWindow = ({ isActive, nodeId }) => {
                   className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
                   maxLength={MAX_CHARS}
                 />
-
               </div>
             </form>
           </>
@@ -1761,11 +2649,10 @@ const EditorWindow = ({ nodeId, onCommand, windowState, updateWindowState }) => 
           className="w-full h-full text-gray-800 resize-none focus:outline-none"
           value={text}
           onChange={handleTextChange}
-          autoFocus
         />
       </div>
 
-      {/* Command input */}
+      {/* Editor's own command input */}
       <div className="mt-2 flex items-center gap-2">
         <span className="text-gray-400">$</span>
         <input
@@ -1915,14 +2802,22 @@ File: components/windows/ExplorerWindow.css
 ================
 File: components/windows/ExplorerWindow.jsx
 ================
-import React, { useState, useEffect } from 'react';
-import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X, Globe, Lock, FileEdit } from 'lucide-react';
 import showdown from 'showdown';
+import path from 'path-browserify';
+import API_CONFIG from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 import './ExplorerWindow.css';
 
-const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updateWindowState }) => {
+const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
+  // Get auth context to check if user is admin
+  const { user } = useAuth();
+  const isAdmin = user?.is_admin || false;
+  
   // Use state from windowState or initialize with defaults
   const [files, setFiles] = useState([]);
+  const [publicFiles, setPublicFiles] = useState([]);
   const [currentPath, setCurrentPath] = useState(windowState?.currentPath || '/');
   const [selectedFile, setSelectedFile] = useState(windowState?.selectedFile || null);
   const [expandedFolders, setExpandedFolders] = useState(windowState?.expandedFolders || {});
@@ -1930,6 +2825,28 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
   const [fileContent, setFileContent] = useState(windowState?.fileContent || '');
   const [errorMessage, setErrorMessage] = useState('');
   const [showPreview, setShowPreview] = useState(windowState?.showPreview || false);
+  const [activeTab, setActiveTab] = useState(windowState?.activeTab || 'public'); // 'public' or 'private'
+  
+  // Additional state for markdown editing
+  const [editMode, setEditMode] = useState(windowState?.editMode || false);
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+  
+  // State for file/folder creation
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createType, setCreateType] = useState('file'); // 'file' or 'directory'
+  const [newItemName, setNewItemName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  
+  // State for file/folder renaming
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [itemToRename, setItemToRename] = useState(null);
+  const [newName, setNewName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  
+  // For auto-save functionality
+  const saveTimeoutRef = useRef(null);
+  const createInputRef = useRef(null);
+  const renameInputRef = useRef(null);
   
   // Initialize Showdown converter for Markdown
   const converter = new showdown.Converter({
@@ -1939,61 +2856,147 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
     emoji: true
   });
 
-  // Function to fetch directory contents from the server
+  // Function to fetch public directory contents
+  const fetchPublicDirectoryContents = async (publicPath = '/') => {
+    try {
+      setIsLoading(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch public directory contents from the server
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILES_LIST}?path=${encodeURIComponent(publicPath)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        setErrorMessage(`Failed to load public files: ${response.statusText}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Transform the data to match our expected format
+      const transformedFiles = data.items.map(item => ({
+        name: item.name,
+        type: item.type,
+        path: item.path,
+        children: item.children || [],
+        isPublic: true
+      }));
+      
+      setPublicFiles(transformedFiles);
+      setCurrentPath(publicPath);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching public directory contents:', error);
+      setErrorMessage('Failed to load public files. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  // Function to fetch public file content
+  const fetchPublicFileContent = async (filePath) => {
+    try {
+      setIsLoading(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch public file content from the server
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILE_CONTENT}?path=${encodeURIComponent(filePath)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        setErrorMessage(`Failed to load file content: ${response.statusText}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      setFileContent(data.content);
+      setIsLoading(false);
+      setSaveStatus('saved');
+    } catch (error) {
+      console.error('Error fetching public file content:', error);
+      setErrorMessage(`Error loading file: ${error.message}`);
+      setSaveStatus('error');
+      setIsLoading(false);
+    }
+  };
+
+  // Function to fetch private directory contents from the server (admin only)
   const fetchDirectoryContents = async (path = '/') => {
     try {
       setIsLoading(true);
       setErrorMessage('');
       
-      // In a real implementation, we would call an API endpoint
-      // Since we can't do that directly in this example, I'll simulate a response
-      
-      // For development with Vite, we could use:
-      // const response = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
-      // const data = await response.json();
-      
-      // Simulate server response with a directory structure
-      setTimeout(() => {
-        // This simulates the files in your project root
-        // In a real implementation, this would come from your server
-        const projectFiles = [
-          {
-            name: 'docs',
-            type: 'directory',
-            path: '/docs',
-            children: [
-              { name: 'introduction.md', type: 'file', path: '/docs/introduction.md' },
-              { name: 'getting-started.md', type: 'file', path: '/docs/getting-started.md' },
-              { name: 'api-reference.md', type: 'file', path: '/docs/api-reference.md' }
-            ]
-          },
-          {
-            name: 'src',
-            type: 'directory',
-            path: '/src',
-            children: [
-              { name: 'App.jsx', type: 'file', path: '/src/App.jsx' },
-              { name: 'main.jsx', type: 'file', path: '/src/main.jsx' },
-              { name: 'styles.css', type: 'file', path: '/src/styles.css' },
-              { 
-                name: 'components', 
-                type: 'directory', 
-                path: '/src/components',
-                children: [
-                  { name: 'WindowManager.jsx', type: 'file', path: '/src/components/WindowManager.jsx' },
-                  { name: 'CommandBar.jsx', type: 'file', path: '/src/components/CommandBar.jsx' }
-                ]
-              }
-            ]
-          },
-          { name: 'README.md', type: 'file', path: '/README.md' },
-          { name: 'package.json', type: 'file', path: '/package.json' }
-        ];
-        
-        setFiles(projectFiles);
-        setCurrentPath(path);
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
         setIsLoading(false);
-      }, 300);
+        return;
+      }
+      
+      // Fetch directory contents from the server
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILES_LIST}?path=${encodeURIComponent(path)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        // If response is 403, it means the user doesn't have admin access
+        if (response.status === 403) {
+          setErrorMessage('Admin access required to view files.');
+        } else {
+          setErrorMessage(`Failed to load files: ${response.statusText}`);
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Transform the data to match our expected format
+      const transformedFiles = data.items.map(item => ({
+        name: item.name,
+        type: item.type,
+        path: item.path,
+        children: item.children || []
+      }));
+      
+      setFiles(transformedFiles);
+      setCurrentPath(path);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching directory contents:', error);
       setErrorMessage('Failed to load files. Please try again.');
@@ -2007,87 +3010,124 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
       setIsLoading(true);
       setErrorMessage('');
       
-      // In a real implementation, we would call an API endpoint
-      // Since we can't do that directly in this example, I'll simulate content for markdown files
-      
-      setTimeout(() => {
-        // Sample content for markdown files
-        let content = '';
-        
-        if (filePath === '/README.md') {
-          content = `# SLUMTERM
-          
-## Overview
-i can render markdown now nerd
-
-its over`;
-        } 
-        else if (filePath === '/docs/introduction.md') {
-          content = `# Introduction to Window Manager
-          
-The Window Manager is a React-based system for creating flexible, multi-pane layouts.
-
-## Core Concepts
-- **Windows**: Individual content panes
-- **Splits**: Divisions between windows
-- **Workspaces**: Collections of window arrangements
-
-## Architecture
-The system uses a binary tree structure to represent the layout hierarchy.`;
-        }
-        else if (filePath === '/docs/getting-started.md') {
-          content = `# Getting Started
-          
-## Installation
-\`\`\`bash
-npm install
-npm run dev
-\`\`\`
-
-## Basic Usage
-- **Ctrl+Enter**: Create new window or split vertically
-- **Ctrl+Shift+Enter**: Split horizontally
-- **Ctrl+Backspace**: Close window
-- **Ctrl+Q**: Toggle resize mode`;
-        }
-        else if (filePath === '/docs/api-reference.md') {
-          content = `# API Reference
-          
-## Components
-
-### WindowManager
-The main component that manages the window hierarchy.
-
-\`\`\`jsx
-<WindowManager defaultLayout={layout} />
-\`\`\`
-
-### CommandBar
-Provides a command interface for controlling the window manager.
-
-\`\`\`jsx
-<CommandBar onCommand={handleCommand} />
-\`\`\``;
-        }
-        else {
-          // For non-markdown files, show a placeholder message
-          content = `Content for ${filePath} would be displayed here.`;
-        }
-        
-        setFileContent(content);
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
         setIsLoading(false);
-      }, 300);
+        return;
+      }
+      
+      // Fetch file content from the server
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_CONTENT}?path=${encodeURIComponent(filePath)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        // If response is 403, it means the user doesn't have admin access
+        if (response.status === 403) {
+          setErrorMessage('Admin access required to view file content.');
+        } else {
+          setErrorMessage(`Failed to load file content: ${response.statusText}`);
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      setFileContent(data.content);
+      setIsLoading(false);
+      setSaveStatus('saved');
     } catch (error) {
       console.error('Error fetching file content:', error);
-      setErrorMessage('Failed to load file content. Please try again.');
+      setErrorMessage(`Error loading file: ${error.message}`);
+      setSaveStatus('error');
       setIsLoading(false);
     }
+  };
+  
+  // Function to save file content
+  const saveFileContent = async () => {
+    try {
+      // Check if filePath is valid
+      if (!selectedFile || !selectedFile.path || selectedFile.path.trim() === '') {
+        setErrorMessage('No file selected. Please select a file first.');
+        setSaveStatus('error');
+        return;
+      }
+      
+      setSaveStatus('saving');
+      
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_SAVE}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          path: selectedFile.path,
+          content: fileContent
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to save file: ${response.statusText}`);
+      }
+      
+      setSaveStatus('saved');
+      setErrorMessage('');
+    } catch (error) {
+      console.error('Error saving file:', error);
+      setErrorMessage(`Error saving file: ${error.message}`);
+      setSaveStatus('error');
+    }
+  };
+  
+  // Handle markdown content change
+  const handleMarkdownChange = (e) => {
+    setFileContent(e.target.value);
   };
 
   // Load initial directory contents
   useEffect(() => {
-    fetchDirectoryContents();
-  }, []);
+    // Load public files for all users
+    fetchPublicDirectoryContents();
+    
+    // Load private files for admin users
+    if (isAdmin) {
+      fetchDirectoryContents();
+    }
+  }, [isAdmin]);
+
+  // Auto-save functionality with debounce
+  useEffect(() => {
+    // Only auto-save if in edit mode, user is admin, and we have a markdown file selected
+    if (editMode && isAdmin && selectedFile && selectedFile.name.endsWith('.md') && fileContent) {
+      // Clear any existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Set status to saving
+      setSaveStatus('saving');
+      
+      // Set a new timeout for auto-save
+      saveTimeoutRef.current = setTimeout(() => {
+        saveFileContent();
+      }, 1000); // 1 second debounce
+    }
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [fileContent, editMode, isAdmin, selectedFile]);
 
   // Update window state when relevant state changes
   useEffect(() => {
@@ -2097,10 +3137,23 @@ Provides a command interface for controlling the window manager.
         selectedFile,
         expandedFolders,
         fileContent,
-        showPreview
+        showPreview,
+        editMode,
+        saveStatus,
+        activeTab
       });
     }
-  }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, updateWindowState]);
+  }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, editMode, saveStatus, activeTab, updateWindowState]);
+  
+  // Focus the input field when the create or rename dialog is shown
+  useEffect(() => {
+    if (showCreateDialog && createInputRef.current) {
+      createInputRef.current.focus();
+    }
+    if (showRenameDialog && renameInputRef.current) {
+      renameInputRef.current.focus();
+    }
+  }, [showCreateDialog, showRenameDialog]);
 
   // Toggle folder expansion
   const toggleFolder = (folderPath) => {
@@ -2109,14 +3162,226 @@ Provides a command interface for controlling the window manager.
       [folderPath]: !prev[folderPath]
     }));
   };
+  
+  // Create a new file or folder
+  const createNewItem = async () => {
+    if (!newItemName.trim()) {
+      setErrorMessage('Name cannot be empty');
+      return;
+    }
+    
+    try {
+      setIsCreating(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsCreating(false);
+        return;
+      }
+      
+      // Determine if we're creating in the public folder or private folder
+      const isPublicFolder = activeTab === 'public';
+      
+      // Construct the full path for the new item
+      let newItemPath;
+      if (isPublicFolder) {
+        // For public folder, prefix with /public
+        newItemPath = path.join('/public', currentPath, newItemName.trim()).replace(/\\/g, '/');
+      } else {
+        // For private folder (admin only)
+        newItemPath = path.join(currentPath, newItemName.trim()).replace(/\\/g, '/');
+      }
+      
+      // Create the new file or folder
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_CREATE}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          path: newItemPath,
+          type: createType,
+          content: createType === 'file' ? '' : undefined
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to create ${createType}: ${response.statusText}`);
+      }
+      
+      // Close the dialog and reset the form
+      setShowCreateDialog(false);
+      setNewItemName('');
+      
+      // Refresh the appropriate file list
+      if (isPublicFolder) {
+        fetchPublicDirectoryContents(currentPath);
+      } else {
+        fetchDirectoryContents(currentPath);
+      }
+      
+      // If it's a directory, expand it
+      if (createType === 'directory') {
+        setExpandedFolders(prev => ({
+          ...prev,
+          [newItemPath]: true
+        }));
+      }
+      
+      setIsCreating(false);
+    } catch (error) {
+      console.error(`Error creating ${createType}:`, error);
+      setErrorMessage(`Failed to create ${createType}: ${error.message}`);
+      setIsCreating(false);
+    }
+  };
+  
+  // Open the create dialog
+  const openCreateDialog = (type) => {
+    setCreateType(type);
+    setNewItemName('');
+    setErrorMessage('');
+    setShowCreateDialog(true);
+  };
+  
+  // Close the create dialog
+  const closeCreateDialog = () => {
+    setShowCreateDialog(false);
+    setNewItemName('');
+    setErrorMessage('');
+  };
+  
+  // Handle key press in the create dialog
+  const handleCreateKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      createNewItem();
+    } else if (e.key === 'Escape') {
+      closeCreateDialog();
+    }
+  };
 
+  // Open the rename dialog for a file or folder
+  const openRenameDialog = (item) => {
+    if (!isAdmin) {
+      setErrorMessage('Admin access required to rename files.');
+      return;
+    }
+    
+    setItemToRename(item);
+    setNewName(item.name);
+    setErrorMessage('');
+    setShowRenameDialog(true);
+  };
+  
+  // Close the rename dialog
+  const closeRenameDialog = () => {
+    setShowRenameDialog(false);
+    setItemToRename(null);
+    setNewName('');
+    setErrorMessage('');
+  };
+  
+  // Handle key press in the rename dialog
+  const handleRenameKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      renameItem();
+    } else if (e.key === 'Escape') {
+      closeRenameDialog();
+    }
+  };
+  
+  // Rename a file or folder
+  const renameItem = async () => {
+    if (!newName.trim()) {
+      setErrorMessage('Name cannot be empty');
+      return;
+    }
+    
+    if (!itemToRename) {
+      setErrorMessage('No item selected for renaming');
+      return;
+    }
+    
+    try {
+      setIsRenaming(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsRenaming(false);
+        return;
+      }
+      
+      // Rename the file or folder
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_RENAME}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          oldPath: itemToRename.path,
+          newName: newName.trim()
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to rename ${itemToRename.type}: ${response.statusText}`);
+      }
+      
+      // Close the dialog and reset the form
+      setShowRenameDialog(false);
+      setItemToRename(null);
+      setNewName('');
+      
+      // If the renamed item was selected, update the selected file
+      if (selectedFile && selectedFile.path === itemToRename.path) {
+        setSelectedFile(null);
+      }
+      
+      // Refresh the appropriate file list
+      if (itemToRename.isPublic) {
+        fetchPublicDirectoryContents(currentPath);
+      } else {
+        fetchDirectoryContents(currentPath);
+      }
+      
+      setIsRenaming(false);
+    } catch (error) {
+      console.error(`Error renaming ${itemToRename.type}:`, error);
+      setErrorMessage(`Failed to rename ${itemToRename.type}: ${error.message}`);
+      setIsRenaming(false);
+    }
+  };
+  
   // Handle file selection
   const handleFileSelect = (file) => {
     setSelectedFile(file);
     
+    // Reset edit mode when selecting a new file
+    if (editMode) {
+      setEditMode(false);
+    }
+    
     // If it's a markdown file, fetch its content and show preview
     if (file.name.endsWith('.md')) {
-      fetchFileContent(file.path);
+      if (file.isPublic) {
+        // Fetch public file content
+        fetchPublicFileContent(file.path);
+      } else {
+        // Fetch private file content (admin only)
+        fetchFileContent(file.path);
+      }
       setShowPreview(true);
     } else {
       setFileContent('');
@@ -2141,12 +3406,27 @@ Provides a command interface for controlling the window manager.
         return (
           <div key={item.path} className="ml-2">
             <div 
-              className={`flex items-center py-1 px-1 rounded hover:bg-stone-700 cursor-pointer ${isExpanded ? 'text-teal-300' : 'text-teal-400'}`}
-              onClick={() => toggleFolder(item.path)}
+              className={`flex items-center justify-between py-1 px-1 rounded hover:bg-stone-700 cursor-pointer group ${isExpanded ? 'text-teal-300' : 'text-teal-400'}`}
             >
-              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              <FolderOpen size={16} className="ml-1 mr-2" />
-              <span className="text-sm">{item.name}</span>
+              <div className="flex items-center" onClick={() => toggleFolder(item.path)}>
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <FolderOpen size={16} className="ml-1 mr-2" />
+                <span className="text-sm">{item.name}</span>
+              </div>
+              
+              {/* Admin-only rename button */}
+              {isAdmin && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openRenameDialog(item);
+                  }}
+                  className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-teal-300 opacity-0 group-hover:opacity-100"
+                  title="Rename folder"
+                >
+                  <FileEdit size={14} />
+                </button>
+              )}
             </div>
             
             {isExpanded && item.children && (
@@ -2161,15 +3441,49 @@ Provides a command interface for controlling the window manager.
         return (
           <div 
             key={item.path} 
-            className={`flex items-center py-1 px-1 ml-4 rounded cursor-pointer hover:bg-stone-700 ${isSelected ? 'bg-stone-700 text-teal-300' : 'text-teal-50'}`}
-            onClick={() => handleFileSelect(item)}
+            className={`flex items-center justify-between py-1 px-1 ml-4 rounded cursor-pointer hover:bg-stone-700 group ${isSelected ? 'bg-stone-700 text-teal-300' : 'text-teal-50'}`}
           >
-            {getFileIcon(item.name)}
-            <span className="text-sm">{item.name}</span>
+            <div className="flex items-center" onClick={() => handleFileSelect(item)}>
+              {getFileIcon(item.name)}
+              <span className="text-sm">{item.name}</span>
+            </div>
+            
+            {/* Admin-only rename button */}
+            {isAdmin && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openRenameDialog(item);
+                }}
+                className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-teal-300 opacity-0 group-hover:opacity-100"
+                title="Rename file"
+              >
+                <FileEdit size={14} />
+              </button>
+            )}
           </div>
         );
       }
     });
+  };
+
+  // Toggle edit mode
+  const toggleEditMode = () => {
+    if (!isAdmin) {
+      setErrorMessage('Admin access required to edit files.');
+      return;
+    }
+    
+    if (!selectedFile || !selectedFile.name.endsWith('.md')) {
+      setErrorMessage('Only markdown files can be edited.');
+      return;
+    }
+    
+    setEditMode(!editMode);
+    // When switching to preview mode, ensure preview is shown
+    if (editMode) {
+      setShowPreview(true);
+    }
   };
 
   // Handle command input
@@ -2179,13 +3493,42 @@ Provides a command interface for controlling the window manager.
       onCommand(cmd);
       e.target.value = '';
       
-      // Example commands:
+      // Commands:
       // - refresh: refresh file list
       // - preview: toggle markdown preview
+      // - edit: toggle edit mode (admin only)
+      // - save: manually save the current file
+      // - new-file: create a new file (admin only)
+      // - new-folder: create a new folder (admin only)
+      // - rename: rename selected file or folder (admin only)
+      // - public: switch to public files tab
+      // - private: switch to private files tab (admin only)
       if (cmd === 'refresh') {
-        fetchDirectoryContents(currentPath);
+        // Refresh the appropriate file list based on the active tab
+        if (activeTab === 'public') {
+          fetchPublicDirectoryContents(currentPath);
+        } else {
+          fetchDirectoryContents(currentPath);
+        }
       } else if (cmd === 'preview' && selectedFile?.name.endsWith('.md')) {
         setShowPreview(!showPreview);
+        if (editMode) {
+          setEditMode(false); // Exit edit mode when switching to preview
+        }
+      } else if (cmd === 'edit' && selectedFile?.name.endsWith('.md')) {
+        toggleEditMode();
+      } else if (cmd === 'save' && editMode && selectedFile?.name.endsWith('.md')) {
+        saveFileContent();
+      } else if (cmd === 'new-file' && isAdmin) {
+        openCreateDialog('file');
+      } else if (cmd === 'new-folder' && isAdmin) {
+        openCreateDialog('directory');
+      } else if (cmd === 'rename' && isAdmin && selectedFile) {
+        openRenameDialog(selectedFile);
+      } else if (cmd === 'public') {
+        setActiveTab('public');
+      } else if (cmd === 'private' && isAdmin) {
+        setActiveTab('private');
       }
     }
   };
@@ -2195,8 +3538,61 @@ Provides a command interface for controlling the window manager.
       <div className="flex flex-1 overflow-hidden">
         {/* File tree panel */}
         <div className="w-1/3 border-r border-stone-700 flex flex-col overflow-hidden">
-          <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center">
-            <span>PROJECT FILES</span>
+          <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
+            <div className="flex items-center">
+              <span>FILES</span>
+              
+              {/* Tabs for switching between public and private files */}
+              <div className="flex ml-4">
+                <button
+                  onClick={() => setActiveTab('public')}
+                  className={`px-2 py-1 rounded-t text-xs flex items-center gap-1 ${
+                    activeTab === 'public' 
+                      ? 'bg-stone-700 text-teal-300' 
+                      : 'bg-stone-800 hover:bg-stone-700'
+                  }`}
+                  title="Public files (readable by all users)"
+                >
+                  <Globe size={14} />
+                  <span>Public</span>
+                </button>
+                
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveTab('private')}
+                    className={`px-2 py-1 rounded-t text-xs flex items-center gap-1 ml-1 ${
+                      activeTab === 'private' 
+                        ? 'bg-stone-700 text-teal-300' 
+                        : 'bg-stone-800 hover:bg-stone-700'
+                    }`}
+                    title="Private files (admin only)"
+                  >
+                    <Lock size={14} />
+                    <span>Private</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Admin-only file creation buttons */}
+            {isAdmin && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => openCreateDialog('file')}
+                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                  title="Create new file"
+                >
+                  <Plus size={16} />
+                </button>
+                <button
+                  onClick={() => openCreateDialog('directory')}
+                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                  title="Create new folder"
+                >
+                  <FolderPlus size={16} />
+                </button>
+              </div>
+            )}
           </div>
           
           <div className="flex-1 overflow-auto">
@@ -2208,30 +3604,185 @@ Provides a command interface for controlling the window manager.
               <div className="p-2 text-red-400">{errorMessage}</div>
             ) : (
               <div className="p-2 font-mono">
-                {renderFileTree(files)}
+                {activeTab === 'public' ? (
+                  // Show public files to all users
+                  <>
+                    <div className="flex items-center py-1 px-1 text-teal-300">
+                      <Globe size={16} className="mr-2" />
+                      <span className="text-sm font-bold">Public Files</span>
+                    </div>
+                    {publicFiles.length > 0 ? (
+                      renderFileTree(publicFiles)
+                    ) : (
+                      <div className="ml-4 text-stone-500 text-sm">No public files available</div>
+                    )}
+                  </>
+                ) : (
+                  // Show private files to admin users
+                  <>
+                    <div className="flex items-center py-1 px-1 text-teal-300">
+                      <Lock size={16} className="mr-2" />
+                      <span className="text-sm font-bold">Private Files (Admin Only)</span>
+                    </div>
+                    {files.length > 0 ? (
+                      renderFileTree(files)
+                    ) : (
+                      <div className="ml-4 text-stone-500 text-sm">No private files available</div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
+          
+          {/* Create file/folder dialog */}
+          {showCreateDialog && (
+            <div className="p-2 border-t border-stone-700 bg-stone-800">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-bold">
+                  {createType === 'file' ? 'New File' : 'New Folder'}
+                </span>
+                <button
+                  onClick={closeCreateDialog}
+                  className="p-1 rounded hover:bg-stone-700 text-stone-400"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={createInputRef}
+                  type="text"
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  onKeyDown={handleCreateKeyPress}
+                  placeholder={createType === 'file' ? 'filename.ext' : 'folder name'}
+                  className="flex-1 bg-stone-700 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+                  disabled={isCreating}
+                />
+                <button
+                  onClick={createNewItem}
+                  disabled={isCreating || !newItemName.trim()}
+                  className={`px-2 py-1 rounded text-xs ${
+                    isCreating || !newItemName.trim()
+                      ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                      : 'bg-teal-700 text-teal-100 hover:bg-teal-600'
+                  }`}
+                >
+                  {isCreating ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Rename file/folder dialog */}
+          {showRenameDialog && itemToRename && (
+            <div className="p-2 border-t border-stone-700 bg-stone-800">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-bold">
+                  Rename {itemToRename.type === 'directory' ? 'Folder' : 'File'}
+                </span>
+                <button
+                  onClick={closeRenameDialog}
+                  className="p-1 rounded hover:bg-stone-700 text-stone-400"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={renameInputRef}
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={handleRenameKeyPress}
+                  placeholder="New name"
+                  className="flex-1 bg-stone-700 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+                  disabled={isRenaming}
+                />
+                <button
+                  onClick={renameItem}
+                  disabled={isRenaming || !newName.trim() || newName === itemToRename.name}
+                  className={`px-2 py-1 rounded text-xs ${
+                    isRenaming || !newName.trim() || newName === itemToRename.name
+                      ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                      : 'bg-teal-700 text-teal-100 hover:bg-teal-600'
+                  }`}
+                >
+                  {isRenaming ? 'Renaming...' : 'Rename'}
+                </button>
+              </div>
+            </div>
+          )}
           
           <div className="p-2 border-t border-stone-700 text-xs">
             {selectedFile ? selectedFile.path : currentPath}
           </div>
         </div>
         
-        {/* File preview panel - only shown for markdown files */}
+        {/* File content panel (preview or edit) */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {selectedFile && showPreview ? (
+          {selectedFile ? (
             <>
-              <div className="p-2 border-b border-stone-700 font-mono text-sm">
-                <span>{selectedFile.name}</span>
+              {/* Header with file name, status, and controls */}
+              <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="mr-2">{selectedFile.name}</span>
+                  {saveStatus === 'saving' && <span className="text-yellow-400 text-xs ml-2">Saving...</span>}
+                  {saveStatus === 'saved' && <span className="text-green-400 text-xs ml-2">Saved</span>}
+                  {saveStatus === 'error' && <span className="text-red-400 text-xs ml-2">Error!</span>}
+                </div>
+                
+                {/* Only show edit/preview toggle for markdown files and admin users */}
+                {selectedFile.name.endsWith('.md') && isAdmin && (
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={toggleEditMode}
+                      className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${editMode ? 'bg-teal-700 text-teal-100' : 'bg-stone-800 hover:bg-stone-700'}`}
+                      title={editMode ? "Switch to preview mode" : "Switch to edit mode"}
+                    >
+                      {editMode ? <Eye size={14} /> : <Edit size={14} />}
+                      {editMode ? 'Preview' : 'Edit'}
+                    </button>
+                    
+                    {editMode && (
+                      <button 
+                        onClick={saveFileContent}
+                        className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
+                        title="Save file"
+                      >
+                        Save
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               
-              <div className="flex-1 overflow-auto p-4">
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <span className="text-teal-300">Loading content...</span>
-                  </div>
-                ) : (
+              {/* Error message */}
+              {errorMessage && (
+                <div className="p-2 bg-red-900 text-red-200 text-sm">
+                  {errorMessage}
+                </div>
+              )}
+              
+              {/* Content area - either editor or preview */}
+              {isLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <span className="text-teal-300">Loading content...</span>
+                </div>
+              ) : editMode && selectedFile.name.endsWith('.md') && isAdmin ? (
+                // Editor mode - only for markdown files and admin users
+                <div className="flex-1 p-2">
+                  <textarea
+                    className="w-full h-full bg-stone-800 text-teal-50 p-4 resize-none focus:outline-none font-mono"
+                    value={fileContent}
+                    onChange={handleMarkdownChange}
+                    placeholder="# Start typing your markdown here..."
+                  />
+                </div>
+              ) : showPreview ? (
+                // Preview mode
+                <div className="flex-1 overflow-auto p-4">
                   <div className="markdown-preview text-teal-50">
                     {selectedFile.name.endsWith('.md') ? (
                       <div 
@@ -2246,15 +3797,17 @@ Provides a command interface for controlling the window manager.
                       </pre>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              ) : null}
             </>
           ) : (
+            // No file selected
             <div className="flex items-center justify-center h-full text-stone-600">
               <div className="text-center">
                 <FileText size={48} className="mx-auto mb-4" />
                 <p>Select a markdown file to preview</p>
                 <p className="text-xs mt-2">Use the 'preview' command to toggle preview mode</p>
+                {isAdmin && <p className="text-xs mt-1">Admin users can use the 'edit' command to edit markdown files</p>}
               </div>
             </div>
           )}
@@ -2265,10 +3818,11 @@ Provides a command interface for controlling the window manager.
       <div className="p-2 flex items-center gap-2 border-t border-stone-700">
         <span className="text-teal-400">$</span>
         <input
+          ref={focusRef}
           type="text"
           onKeyDown={handleCommand}
-          className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
-          autoFocus
+          className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder, rename, public, private" : "Commands: refresh, preview, public"}
         />
       </div>
     </div>
@@ -2278,163 +3832,49 @@ Provides a command interface for controlling the window manager.
 export default ExplorerWindow;
 
 ================
-File: components/windows/imageWindow.jsx
-================
-import React, { useState, useEffect } from 'react';
-import { Image as ImageIcon } from 'lucide-react';
-import dhakmir from '../../assets/dhakmir-01.png';  // Default image
-import martell from '../../assets/Martell2.png';    // Alternative image
-
-const ImageWindow = ({ nodeId, onCommand, windowState, updateWindowState }) => {
-  // Use state from windowState or initialize with defaults
-  const [imageSrc, setImageSrc] = useState(windowState?.imageSrc || dhakmir);
-  const [imageAlt, setImageAlt] = useState(windowState?.imageAlt || 'dhakmir');
-
-  // Update window state when image changes
-  useEffect(() => {
-    if (updateWindowState) {
-      updateWindowState({
-        imageSrc,
-        imageAlt
-      });
-    }
-  }, [imageSrc, imageAlt, updateWindowState]);
-
-  // Handle image switching command
-  const handleImageCommand = (command) => {
-    if (command === 'switch') {
-      if (imageSrc === dhakmir) {
-        setImageSrc(martell);
-        setImageAlt('martell');
-      } else {
-        setImageSrc(dhakmir);
-        setImageAlt('dhakmir');
-      }
-      return true;
-    }
-    return false;
-  };
-
-  return (
-    <div className="h-full w-full flex flex-col bg-stone-900">
-      {/* Container div with relative positioning */}
-      <div className="flex-1 relative">
-        {/* Image absolutely positioned to fill space while staying centered */}
-        <img 
-          src={imageSrc} 
-          alt={imageAlt} 
-          className="absolute inset-0 w-full h-full object-contain m-auto"
-        />
-      </div>
-
-      {/* Command input */}
-      <div className="p-4 flex items-center gap-2">
-        <span className="text-teal-400">$</span>
-        <input
-          type="text"
-          className="flex-1 bg-transparent outline-none text-teal-400 font-mono"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && e.target.value.trim()) {
-              const command = e.target.value.trim();
-              // First try our custom image commands
-              const handled = handleImageCommand(command);
-              // If not handled, pass to the general command handler
-              if (!handled) {
-                onCommand(command);
-              }
-              e.target.value = '';
-            }
-          }}
-        />
-      </div>
-      <div className="p-2 text-xs text-teal-600 text-center">
-        Type "switch" to toggle between images
-      </div>
-    </div>
-  );
-};
-
-export default ImageWindow;
-
-================
 File: components/windows/index.js
 ================
 import TerminalWindow from './TerminalWindow';
 import ExplorerWindow from './ExplorerWindow';
 import EditorWindow from './EditorWindow';
-import PreviewWindow from './PreviewWindow';
-import ImageWindow from './imageWindow';
 import withCommandHandling from '../../hocs/withCommandHandling';
 import withWindowState from '../../hocs/withWindowState';
+import withCommandInput from '../../hocs/withCommandInput';
 import AudioWindow from './AudioWindow';
 import ChatWindow from './ChatWindow';
+import AdminWindow from './AdminWindow';
 import { WINDOW_TYPES } from '../../utils/constants';
 
-// Create enhanced versions of each window component by wrapping them with both HOCs
-// First apply withCommandHandling, then withWindowState to provide state management
+// Create enhanced versions of each window component by wrapping them with HOCs
+// Terminal and Explorer already have command inputs, so we don't need to add them
 export const EnhancedTerminalWindow = withWindowState(withCommandHandling(TerminalWindow), WINDOW_TYPES.TERMINAL);
 export const EnhancedExplorerWindow = withWindowState(withCommandHandling(ExplorerWindow), WINDOW_TYPES.EXPLORER);
-export const EnhancedEditorWindow = withWindowState(withCommandHandling(EditorWindow), WINDOW_TYPES.EDITOR);
-export const EnhancedPreviewWindow = withWindowState(withCommandHandling(PreviewWindow), WINDOW_TYPES.CHART);
-export const EnhancedImageWindow = withWindowState(withCommandHandling(ImageWindow), WINDOW_TYPES.IMAGE);
-export const EnhancedAudioWindow = withWindowState(withCommandHandling(AudioWindow), WINDOW_TYPES.AUDIO);
-export const EnhancedChatWindow = withWindowState(withCommandHandling(ChatWindow), WINDOW_TYPES.CHAT);
+
+// For other windows, add the command input
+export const EnhancedEditorWindow = withWindowState(withCommandHandling(withCommandInput(EditorWindow)), WINDOW_TYPES.EDITOR);
+export const EnhancedAudioWindow = withWindowState(withCommandHandling(withCommandInput(AudioWindow)), WINDOW_TYPES.AUDIO);
+export const EnhancedChatWindow = withWindowState(withCommandHandling(withCommandInput(ChatWindow)), WINDOW_TYPES.CHAT);
+export const EnhancedAdminWindow = withWindowState(withCommandHandling(withCommandInput(AdminWindow)), WINDOW_TYPES.ADMIN);
 
 // Also export the base components in case they're needed
-export { TerminalWindow, ExplorerWindow, EditorWindow, PreviewWindow, ChatWindow };
-
-================
-File: components/windows/PreviewWindow.jsx
-================
-import React, { useState } from 'react';
-
-const PreviewWindow = ({ nodeId, onCommand }) => {
-  const [command, setCommand] = useState('');
-  
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && command.trim()) {
-      onCommand(command.trim());
-      setCommand('');
-    }
-  };
-
-  return (
-    <div className="p-4 h-full flex flex-col bg-stone-900">
-      <div className="flex-1">
-        <h1 className="text-2xl text-teal-400 font-mono">Pretend this is a chart</h1>
-        <p className="mt-2 text-teal-400 font-mono text-sm">
-          these would be the different components
-        </p>
-      </div>
-
-      {/* Command input */}
-      {/* <div className="mt-2 flex items-center gap-2">
-        <span className="mr-2">$</span>
-        <input
-          type="text"
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent outline-none text-teal-400"
-          placeholder="Type a command..."
-        />
-      </div> */}
-    </div>
-  );
-};
-
-export default PreviewWindow;
+export { TerminalWindow, ExplorerWindow, EditorWindow, ChatWindow, AdminWindow };
 
 ================
 File: components/windows/TerminalWindow.jsx
 ================
 import React, { useState, useEffect, useRef } from 'react';
 import { WINDOW_TYPES } from '../../utils/windowTypes';
+import { useAuth } from '../../context/AuthContext';
+import { useAnnouncement } from '../../context/AnnouncementContext';
 
-const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState }) => {
-  // Refs for managing focus and scrolling
+const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState, focusRef }) => {
+  // Get user authentication info
+  const { user } = useAuth();
+  // Get announcement context
+  const { updateAnnouncement } = useAnnouncement();
+  
+  // Ref for managing scrolling
   const terminalRef = useRef(null);
-  const inputRef = useRef(null);
 
   // Terminal state - use windowState if available
   const [history, setHistory] = useState(
@@ -2444,12 +3884,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   const [currentInput, setCurrentInput] = useState(windowState?.currentInput || '');
   const [historyIndex, setHistoryIndex] = useState(windowState?.historyIndex || -1);
 
-  // Auto-focus when terminal becomes active
-  useEffect(() => {
-    if (isActive) {
-      inputRef.current?.focus();
-    }
-  }, [isActive]);
+  // Auto-focus is now handled by the withWindowState HOC
 
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
@@ -2457,6 +3892,19 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [history]);
+  
+  // Clear input when window becomes active or when transformed back to terminal
+  useEffect(() => {
+    // Always clear the input when the component mounts or is transformed back to terminal
+    setCurrentInput('');
+  }, []);
+  
+  // Also clear input when window becomes active
+  useEffect(() => {
+    if (isActive) {
+      setCurrentInput('');
+    }
+  }, [isActive]);
 
   // Update window state when terminal state changes
   useEffect(() => {
@@ -2471,14 +3919,15 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   }, [history, commandHistory, currentInput, historyIndex, updateWindowState]);
 
   const handleTerminalClick = () => {
-    inputRef.current?.focus();
+    focusRef.current?.focus();
   };
 
-  const executeCommand = (command) => {
+  const executeCommand = async (command) => {
     setHistory(prev => [...prev, `$ ${command}`]);
     setCommandHistory(prev => [...prev, command]);
   
-    const cmd = command.toLowerCase();
+    const parts = command.split(' ');
+    const cmd = parts[0].toLowerCase();
   
     if (Object.keys(WINDOW_TYPES).some(type => type.toLowerCase() === cmd)) {
       const requestedType = WINDOW_TYPES[cmd.toUpperCase()];
@@ -2486,15 +3935,64 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       return;
     }
   
+  // Handle the announcement command
+    if (cmd === 'announcement') {
+      // Check if user is admin
+      if (!user?.is_admin) {
+        setHistory(prev => [...prev, 'Access denied: Admin privileges required']);
+        return;
+      }
+
+      // Extract the announcement text from quotes
+      const match = command.match(/"([^"]*)"|'([^']*)'|`([^`]*)`/);
+      if (!match) {
+        setHistory(prev => [...prev, 'Usage: announcement "Your announcement text here"']);
+        return;
+      }
+
+      // Get the matched text from whichever group captured it
+      const announcementText = match[1] || match[2] || match[3];
+      
+      setHistory(prev => [...prev, `Setting announcement: "${announcementText}"...`]);
+      
+      try {
+        // Update the announcement via the API
+        const success = await updateAnnouncement(announcementText);
+        
+        if (success) {
+          setHistory(prev => [...prev, `Announcement set: "${announcementText}"`]);
+          setHistory(prev => [...prev, 'Announcement has been broadcast to all connected users.']);
+        } else {
+          setHistory(prev => [...prev, 'Failed to set announcement. Please try again.']);
+        }
+      } catch (error) {
+        console.error('Error setting announcement:', error);
+        setHistory(prev => [...prev, 'Error setting announcement. Please try again.']);
+      }
+      return;
+    }
+  
     let response;
     switch (cmd) {
+      case 'admin':
+        // Check if user is admin
+        if (user?.is_admin) {
+          transformWindow(nodeId, WINDOW_TYPES.ADMIN);
+          return;
+        } else {
+          response = 'Access denied: Admin privileges required';
+        }
+        break;
+        
       case 'help':
+        const adminCommands = user?.is_admin ? 
+          '  admin        - Access admin panel\n  announcement "text" - Set a system-wide announcement\n' : 
+          '';
         response = [
-          'Available commands:',
-          '  explorer     - Transform into file explorer',
-          '  editor       - Transform into code editor',
+          'Commands:',
+          '  explorer     - Transform window into file explorer',
           '  terminal     - Transform into terminal',
-          '  preview      - Transform into preview window',
+          adminCommands,
           '  help         - Show this help message',
           '  clear        - Clear terminal output',
           '',
@@ -2502,12 +4000,13 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           '  Ctrl + Enter       - Split vertically',
           '  Ctrl + Shift + Enter - Split horizontally',
           '  Ctrl + Backspace   - Close window',
-          '  /                  - Focus command bar'
+          '  Ctrl + Q   - Resize mode',
+          '  Ctrl + M   - Move mode'
         ].join('\n');
         break;
   
       case 'clear':
-        setHistory(['Terminal cleared']);
+        setHistory(['']);
         return;
   
       case 'version':
@@ -2557,7 +4056,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       <div className="p-2 flex items-center gap-2 border-t border-stone-700">
         <span className="mr-2">$</span>
         <input
-          ref={inputRef}
+          ref={focusRef}
           type="text"
           value={currentInput}
           onChange={(e) => setCurrentInput(e.target.value)}
@@ -2585,14 +4084,147 @@ const API_CONFIG = {
     LOGIN: '/login',
     REGISTER: '/register',
     PROFILE: '/profile',
+    ANNOUNCEMENT: '/announcement',
     // Chat endpoints
     CHAT_ROOMS: '/chat/rooms',
     CHAT_MESSAGES: '/chat/rooms/:id/messages',
-    CHAT_JOIN: '/chat/rooms/:id/join'
+    CHAT_JOIN: '/chat/rooms/:id/join',
+    CHAT_DELETE_MESSAGE: '/chat/messages/:id',
+    CHAT_DELETE_ROOM: '/chat/rooms/:id',
+    // Admin endpoints
+    USERS: '/users',
+    // Window state endpoints
+    WINDOW_STATES: '/window-states',
+    // Workspace endpoints
+    WORKSPACES: '/workspaces',
+    // File endpoints
+    FILES_LIST: '/files',
+    FILE_CONTENT: '/files/content',
+    FILE_SAVE: '/files/content',
+    FILE_CREATE: '/files/create',
+    FILE_DELETE: '/files/delete',
+    FILE_RENAME: '/files/rename',
+    // Public file endpoints
+    PUBLIC_FILES_LIST: '/public-files',
+    PUBLIC_FILE_CONTENT: '/public-files/content'
   }
 };
 
 export default API_CONFIG;
+
+================
+File: context/AnnouncementContext.jsx
+================
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+import io from 'socket.io-client';
+import API_CONFIG from '../config/api';
+
+const AnnouncementContext = createContext();
+
+export function AnnouncementProvider({ children }) {
+  const [announcement, setAnnouncement] = useState('');
+  
+  // Fetch initial announcement when component mounts
+  useEffect(() => {
+    const fetchAnnouncement = async () => {
+      try {
+        const response = await axios.get(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ANNOUNCEMENT}`
+        );
+        setAnnouncement(response.data.announcement);
+      } catch (error) {
+        console.error('Failed to fetch announcement:', error);
+      }
+    };
+    
+    fetchAnnouncement();
+    
+    // Extract the origin from the BASE_URL or use window.location.origin
+    const getSocketUrl = () => {
+      // If BASE_URL is a full URL (starts with http)
+      if (API_CONFIG.BASE_URL.startsWith('http')) {
+        try {
+          const url = new URL(API_CONFIG.BASE_URL);
+          console.log('Using Socket.IO URL from BASE_URL origin:', url.origin);
+          return url.origin; // Just the protocol, hostname, and port
+        } catch (e) {
+          console.error('Invalid BASE_URL format:', e);
+        }
+      }
+      // Otherwise use the current origin
+      console.log('Using Socket.IO URL from window.location.origin:', window.location.origin);
+      return window.location.origin;
+    };
+    
+    // Improved Socket.IO connection with correct URL
+    const socketUrl = getSocketUrl();
+    console.log('Connecting Socket.IO to:', socketUrl);
+    
+    const socket = io(socketUrl, {
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      transports: ['websocket', 'polling'],
+      path: '/socket.io' // Default Socket.IO path
+    });
+    
+    socket.on('connect', () => {
+      console.log('Socket.IO connected, ID:', socket.id);
+    });
+    
+    socket.on('connect_error', (err) => {
+      console.error('Socket.IO connection error:', err);
+      console.error('Connection details:', {
+        url: socketUrl,
+        transport: socket.io.engine.transport.name
+      });
+    });
+    
+    socket.on('announcement_update', (data) => {
+      console.log('Received announcement update:', data);
+      setAnnouncement(data.announcement);
+      
+      // Send acknowledgment back to server
+      socket.emit('announcement_received', { 
+        received: true, 
+        announcement: data.announcement,
+        timestamp: new Date().toISOString()
+      });
+    });
+    
+    return () => {
+      console.log('Disconnecting Socket.IO');
+      socket.off('announcement_update');
+      socket.disconnect();
+    };
+  }, []);
+  
+  // Function to set a new announcement (admin only)
+  const updateAnnouncement = async (text) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.post(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ANNOUNCEMENT}`,
+        { announcement: text },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return true;
+    } catch (error) {
+      console.error('Failed to update announcement:', error);
+      return false;
+    }
+  };
+
+  return (
+    <AnnouncementContext.Provider value={{ announcement, updateAnnouncement }}>
+      {children}
+    </AnnouncementContext.Provider>
+  );
+}
+
+export function useAnnouncement() {
+  return useContext(AnnouncementContext);
+}
 
 ================
 File: context/AuthContext.jsx
@@ -2600,10 +4232,16 @@ File: context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import API_CONFIG from '../config/api';
+import { useWindowState } from './WindowStateContext';
+import { useWorkspace } from './WorkspaceContext';
 
 // Create the authentication context
 const AuthContext = createContext();
 
+// Internal context for window state access
+const InternalAuthContext = createContext();
+
+// Main Auth Provider that doesn't depend on WindowStateContext
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2625,7 +4263,14 @@ export function AuthProvider({ children }) {
       const response = await axios.get(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PROFILE}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUser(response.data);
+      
+      // If is_admin is not present in the response, default to false
+      const userData = {
+        ...response.data,
+        is_admin: response.data.is_admin || false
+      };
+      
+      setUser(userData);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch user profile:', err);
@@ -2658,7 +4303,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Logout function
+  // Logout function (without window state clearing)
   const logout = () => {
     localStorage.removeItem('auth_token');
     setUser(null);
@@ -2682,7 +4327,65 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <InternalAuthContext.Provider value={value}>
+      {children}
+    </InternalAuthContext.Provider>
+  );
+}
+
+// Wrapper component that connects AuthContext with WindowStateContext
+export function AuthProviderWithWindowState({ children }) {
+  // Get the window state context
+  const { clearWindowStates, reloadWindowStates } = useWindowState();
+  
+  // Get the workspace context
+  const { setWorkspaces, loadWorkspaces } = useWorkspace();
+  
+  // Initial workspaces state
+  const initialWorkspaces = [
+    { id: 1, name: 'Main', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 2, name: 'Code', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 3, name: 'Terminal', root: null, activeNodeId: null, terminalStates: {} },
+    { id: 4, name: 'Preview', root: null, activeNodeId: null, terminalStates: {} }
+  ];
+  
+  // Get the internal auth context
+  const auth = useContext(InternalAuthContext);
+  
+  // Create a new logout function that also clears window states and workspaces
+  const logoutWithClear = () => {
+    auth.logout();
+    clearWindowStates();
+    
+    // Reset workspaces to initial state
+    setWorkspaces(initialWorkspaces);
+  };
+  
+  // Create a new login function that also reloads window states and workspaces
+  const loginWithReload = async (username, password) => {
+    const result = await auth.login(username, password);
+    
+    if (result.success) {
+      // Reload window states and workspaces after successful login
+      console.log('Login successful, reloading window states and workspaces');
+      await Promise.all([
+        reloadWindowStates(),
+        loadWorkspaces()
+      ]);
+    }
+    
+    return result;
+  };
+  
+  // Create a new context value with the enhanced functions
+  const enhancedValue = {
+    ...auth,
+    logout: logoutWithClear,
+    login: loginWithReload
+  };
+  
+  return (
+    <AuthContext.Provider value={enhancedValue}>
       {children}
     </AuthContext.Provider>
   );
@@ -2692,7 +4395,7 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProviderWithWindowState');
   }
   return context;
 }
@@ -2701,6 +4404,8 @@ export function useAuth() {
 File: context/WindowStateContext.jsx
 ================
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import axios from 'axios';
+import API_CONFIG from '../config/api';
 
 // Create context
 const WindowStateContext = createContext();
@@ -2718,33 +4423,47 @@ export function WindowStateProvider({ children }) {
   // Use useState just to trigger re-renders when needed
   const [, forceUpdate] = useState({});
   
-  // Add a ref to track if we should update localStorage
+  // Add a ref to track if we should update API
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef(null);
 
-  // Load initial state from localStorage once on mount
+  // Load initial state from API once on mount
   useEffect(() => {
-    try {
-      const savedState = localStorage.getItem('windowStates');
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-        if (parsedState && parsedState.windowStates) {
+    const fetchWindowStates = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          isInitialMount.current = false;
+          return; // No token, use default empty state
+        }
+        
+        const response = await axios.get(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WINDOW_STATES}`, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.data.windowStates) {
           // Update the state ref directly
-          stateRef.current = parsedState;
+          stateRef.current = {
+            windowStates: response.data.windowStates
+          };
           // Force a re-render
           forceUpdate({});
         }
+        
+        // Mark initial load as complete
+        isInitialMount.current = false;
+      } catch (error) {
+        console.error('Failed to load window states from API:', error);
+        isInitialMount.current = false;
       }
-      // Mark initial load as complete
-      isInitialMount.current = false;
-    } catch (error) {
-      console.error('Failed to load window states from localStorage:', error);
-      isInitialMount.current = false;
-    }
+    };
+    
+    fetchWindowStates();
   }, []); // Empty dependency array means this runs once on mount
 
-  // Save to localStorage with debounce
-  const saveToLocalStorage = useCallback(() => {
+  // Save to API with debounce
+  const saveToAPI = useCallback(() => {
     // Skip saving on initial load
     if (isInitialMount.current) {
       return;
@@ -2756,13 +4475,53 @@ export function WindowStateProvider({ children }) {
     }
     
     // Set a new timeout to save the state after a delay
-    saveTimeoutRef.current = setTimeout(() => {
+    saveTimeoutRef.current = setTimeout(async () => {
       try {
-        localStorage.setItem('windowStates', JSON.stringify(stateRef.current));
+        const token = localStorage.getItem('auth_token');
+        if (!token) return; // No token, don't save
+        
+        await axios.post(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WINDOW_STATES}`, 
+          { windowStates: stateRef.current.windowStates },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
       } catch (error) {
-        console.error('Failed to save window states to localStorage:', error);
+        console.error('Failed to save window states to API:', error);
       }
     }, 500); // 500ms debounce
+  }, []);
+
+  // Clear window states (used during logout)
+  const clearWindowStates = useCallback(() => {
+    stateRef.current = initialState;
+    forceUpdate({});
+  }, []);
+
+  // Reload window states from API (used after login)
+  const reloadWindowStates = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        return; // No token, use default empty state
+      }
+      
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WINDOW_STATES}`, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.windowStates) {
+        // Update the state ref directly
+        stateRef.current = {
+          windowStates: response.data.windowStates
+        };
+        // Force a re-render
+        forceUpdate({});
+        console.log('Window states reloaded after login');
+      }
+    } catch (error) {
+      console.error('Failed to reload window states from API:', error);
+    }
   }, []);
 
   // Action creators
@@ -2779,12 +4538,12 @@ export function WindowStateProvider({ children }) {
       }
     };
     
-    // Save to localStorage
-    saveToLocalStorage();
+    // Save to API
+    saveToAPI();
     
     // Force a re-render
     forceUpdate({});
-  }, [saveToLocalStorage]);
+  }, [saveToAPI]);
 
   const removeWindowState = useCallback((windowId) => {
     // Create a new state object
@@ -2799,12 +4558,12 @@ export function WindowStateProvider({ children }) {
     // Update the state ref
     stateRef.current = newState;
     
-    // Save to localStorage
-    saveToLocalStorage();
+    // Save to API
+    saveToAPI();
     
     // Force a re-render
     forceUpdate({});
-  }, [saveToLocalStorage]);
+  }, [saveToAPI]);
 
   const getWindowState = useCallback((windowId) => {
     return stateRef.current.windowStates[windowId] || null;
@@ -2815,8 +4574,10 @@ export function WindowStateProvider({ children }) {
     windowStates: stateRef.current.windowStates,
     setWindowState,
     removeWindowState,
-    getWindowState
-  }), [setWindowState, removeWindowState, getWindowState]);
+    getWindowState,
+    clearWindowStates,
+    reloadWindowStates
+  }), [setWindowState, removeWindowState, getWindowState, clearWindowStates, reloadWindowStates]);
 
   return (
     <WindowStateContext.Provider value={contextValue}>
@@ -2833,6 +4594,351 @@ export function useWindowState() {
   }
   return context;
 }
+
+================
+File: context/WorkspaceContext.jsx
+================
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import axios from 'axios';
+import API_CONFIG from '../config/api';
+
+// Create context
+const WorkspaceContext = createContext();
+
+// Initial workspaces
+const initialWorkspaces = [
+  { id: 1, name: 'Main', root: null, activeNodeId: null, terminalStates: {} },
+  { id: 2, name: 'Code', root: null, activeNodeId: null, terminalStates: {} },
+  { id: 3, name: 'Terminal', root: null, activeNodeId: null, terminalStates: {} },
+  { id: 4, name: 'Preview', root: null, activeNodeId: null, terminalStates: {} }
+];
+
+/**
+ * WorkspaceProvider component for managing workspace state
+ * This handles the persistence of window layouts across page refreshes
+ */
+export function WorkspaceProvider({ children }) {
+  const [workspaces, setWorkspaces] = useState(initialWorkspaces);
+  const [currentWorkspaceIndex, setCurrentWorkspaceIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Function to load workspaces from server
+  const loadWorkspaces = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get auth token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.log('No auth token found, using initial workspaces');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch workspaces from server
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKSPACES}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data && response.data.workspaces) {
+        console.log('Loaded workspaces from server:', response.data.workspaces);
+        setWorkspaces(response.data.workspaces);
+      } else {
+        console.log('No saved workspaces found, using initial workspaces');
+      }
+    } catch (error) {
+      console.error('Failed to load workspaces from server:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  // Load workspaces from server API on mount
+  useEffect(() => {
+    loadWorkspaces();
+  }, [loadWorkspaces]);
+  
+  // Save workspaces to server API whenever they change
+  useEffect(() => {
+    if (isLoading) return; // Skip saving during initial load
+    
+    const saveWorkspaces = async () => {
+      try {
+        // Get auth token
+        const token = localStorage.getItem('auth_token');
+        if (!token) return; // Don't save if not authenticated
+        
+        // Ensure we're only saving the array of workspaces
+        // Create a clean copy without any non-array properties
+        const workspacesToSave = [...workspaces].map(workspace => ({
+          id: workspace.id,
+          name: workspace.name,
+          root: workspace.root,
+          activeNodeId: workspace.activeNodeId,
+          terminalStates: workspace.terminalStates || {}
+        }));
+        
+        console.log('Saving workspaces to server:', workspacesToSave);
+        
+        // Save workspaces to server
+        await axios.post(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WORKSPACES}`,
+          { workspaces: workspacesToSave },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (error) {
+        console.error('Failed to save workspaces to server:', error);
+      }
+    };
+    
+    const timeoutId = setTimeout(saveWorkspaces, 500); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [workspaces, isLoading]);
+  
+  // Update a specific workspace
+  const updateWorkspace = useCallback((index, updater) => {
+    setWorkspaces(prev => {
+      const updated = [...prev];
+      if (typeof updater === 'function') {
+        updated[index] = {
+          ...updated[index],
+          ...updater(updated[index])
+        };
+      } else {
+        updated[index] = {
+          ...updated[index],
+          ...updater
+        };
+      }
+      return updated;
+    });
+  }, []);
+  
+  // Switch to a different workspace
+  const switchWorkspace = useCallback((target) => {
+    if (typeof target === 'number' && target >= 0 && target < workspaces.length) {
+      setCurrentWorkspaceIndex(target);
+    } else if (target === 'right' || target === 'left') {
+      setCurrentWorkspaceIndex(prev => {
+        const newIndex = target === 'right' 
+          ? (prev + 1) % workspaces.length 
+          : prev - 1 < 0 ? workspaces.length - 1 : prev - 1;
+        return newIndex;
+      });
+    }
+  }, [workspaces.length]);
+  
+  // Context value
+  const value = useMemo(() => ({
+    workspaces,
+    setWorkspaces,
+    currentWorkspaceIndex,
+    currentWorkspace: workspaces[currentWorkspaceIndex],
+    updateWorkspace,
+    switchWorkspace,
+    isLoading,
+    loadWorkspaces
+  }), [workspaces, setWorkspaces, currentWorkspaceIndex, updateWorkspace, switchWorkspace, isLoading, loadWorkspaces]);
+  
+  return (
+    <WorkspaceContext.Provider value={value}>
+      {children}
+    </WorkspaceContext.Provider>
+  );
+}
+
+// Custom hook to use the workspace context
+export function useWorkspace() {
+  const context = useContext(WorkspaceContext);
+  if (!context) {
+    throw new Error('useWorkspace must be used within a WorkspaceProvider');
+  }
+  return context;
+}
+
+================
+File: db/db-config.js
+================
+/**
+ * IndexedDB configuration for the window manager
+ */
+
+const DB_NAME = 'WindowManagerDB';
+const DB_VERSION = 1;
+const STORES = {
+  WORKSPACES: 'workspaces',
+  WINDOW_STATES: 'windowStates'
+};
+
+export { DB_NAME, DB_VERSION, STORES };
+
+================
+File: db/db-operations.js
+================
+/**
+ * Basic CRUD operations for IndexedDB
+ */
+import { getDB } from './db';
+
+/**
+ * Save data to a store
+ * @param {string} storeName - The name of the object store
+ * @param {Object} data - The data to save
+ * @returns {Promise<any>} A promise that resolves to the result of the operation
+ */
+export const saveData = async (storeName, data) => {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.put(data);
+    
+    request.onerror = (event) => reject(event.target.error);
+    request.onsuccess = (event) => resolve(event.target.result);
+    
+    // Close the database when the transaction is complete
+    transaction.oncomplete = () => db.close();
+  });
+};
+
+/**
+ * Get data from a store
+ * @param {string} storeName - The name of the object store
+ * @param {string|number} id - The ID of the data to retrieve
+ * @returns {Promise<any>} A promise that resolves to the retrieved data
+ */
+export const getData = async (storeName, id) => {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.get(id);
+    
+    request.onerror = (event) => reject(event.target.error);
+    request.onsuccess = (event) => resolve(request.result);
+    
+    // Close the database when the transaction is complete
+    transaction.oncomplete = () => db.close();
+  });
+};
+
+/**
+ * Delete data from a store
+ * @param {string} storeName - The name of the object store
+ * @param {string|number} id - The ID of the data to delete
+ * @returns {Promise<void>} A promise that resolves when the data is deleted
+ */
+export const deleteData = async (storeName, id) => {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(id);
+    
+    request.onerror = (event) => reject(event.target.error);
+    request.onsuccess = (event) => resolve();
+    
+    // Close the database when the transaction is complete
+    transaction.oncomplete = () => db.close();
+  });
+};
+
+/**
+ * Get all data from a store
+ * @param {string} storeName - The name of the object store
+ * @returns {Promise<Array>} A promise that resolves to an array of all data in the store
+ */
+export const getAllData = async (storeName) => {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.getAll();
+    
+    request.onerror = (event) => reject(event.target.error);
+    request.onsuccess = (event) => resolve(request.result);
+    
+    // Close the database when the transaction is complete
+    transaction.oncomplete = () => db.close();
+  });
+};
+
+/**
+ * Clear all data from a store
+ * @param {string} storeName - The name of the object store
+ * @returns {Promise<void>} A promise that resolves when the store is cleared
+ */
+export const clearStore = async (storeName) => {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.clear();
+    
+    request.onerror = (event) => reject(event.target.error);
+    request.onsuccess = (event) => resolve();
+    
+    // Close the database when the transaction is complete
+    transaction.oncomplete = () => db.close();
+  });
+};
+
+================
+File: db/db.js
+================
+/**
+ * IndexedDB initialization and core functionality
+ */
+import { DB_NAME, DB_VERSION, STORES } from './db-config';
+
+/**
+ * Initialize the IndexedDB database
+ * @returns {Promise<IDBDatabase>} A promise that resolves to the database instance
+ */
+export const initDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = (event) => {
+      console.error('IndexedDB error:', event.target.error);
+      reject('Error opening IndexedDB');
+    };
+    
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      console.log('IndexedDB opened successfully');
+      resolve(db);
+    };
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      
+      // Create object stores if they don't exist
+      if (!db.objectStoreNames.contains(STORES.WORKSPACES)) {
+        db.createObjectStore(STORES.WORKSPACES, { keyPath: 'id' });
+        console.log(`Created ${STORES.WORKSPACES} object store`);
+      }
+      
+      if (!db.objectStoreNames.contains(STORES.WINDOW_STATES)) {
+        db.createObjectStore(STORES.WINDOW_STATES, { keyPath: 'id' });
+        console.log(`Created ${STORES.WINDOW_STATES} object store`);
+      }
+    };
+  });
+};
+
+/**
+ * Get a database connection
+ * @returns {Promise<IDBDatabase>} A promise that resolves to the database instance
+ */
+export const getDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME);
+    request.onerror = (event) => reject(event.target.error);
+    request.onsuccess = (event) => resolve(event.target.result);
+  });
+};
 
 ================
 File: hocs/withCommandHandling.jsx
@@ -2908,9 +5014,75 @@ const withCommandHandling = (WrappedComponent) => {
 export default withCommandHandling;
 
 ================
+File: hocs/withCommandInput.jsx
+================
+import React, { useState, useRef } from 'react';
+
+/**
+ * Higher-Order Component that adds a command input field to any window component.
+ * This HOC provides a standardized way to input commands across different window types.
+ * The command input is added at the bottom of the window, after any existing content.
+ *
+ * @param {React.Component} WrappedComponent - The window component to enhance with a command input
+ * @returns {React.Component} - A new component with a command input field
+ */
+const withCommandInput = (WrappedComponent) => {
+  return function WithCommandInput({
+    onCommand,
+    focusRef,
+    ...props
+  }) {
+    const [command, setCommand] = useState('');
+    const commandInputRef = useRef(null);
+
+    // Use the provided focusRef for the command input
+    const combinedRef = (el) => {
+      commandInputRef.current = el;
+      if (focusRef) {
+        focusRef.current = el;
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && command.trim()) {
+        onCommand(command.trim());
+        setCommand('');
+      }
+    };
+
+    return (
+      <div className="h-full flex flex-col">
+        {/* Original component takes most of the space */}
+        <div className="flex-1 overflow-auto">
+          <WrappedComponent
+            {...props}
+            onCommand={onCommand}
+          />
+        </div>
+        
+        {/* Command input - always at the bottom */}
+        <div className="p-2 flex items-center gap-2 border-t border-stone-700 bg-stone-900">
+          <span className="text-teal-400 mr-2">$</span>
+          <input
+            ref={combinedRef}
+            type="text"
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+          />
+        </div>
+      </div>
+    );
+  };
+};
+
+export default withCommandInput;
+
+================
 File: hocs/withWindowState.jsx
 ================
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useEffect } from 'react';
 import { useWindowState } from '../context/WindowStateContext';
 
 /**
@@ -2924,8 +5096,18 @@ import { useWindowState } from '../context/WindowStateContext';
 const withWindowState = (WrappedComponent, windowType) => {
   return function WithWindowState({ 
     nodeId,
+    isActive,
     ...props
   }) {
+    // Create a ref for auto-focusing input elements
+    const focusRef = useRef(null);
+    
+    // Auto-focus when window becomes active
+    useEffect(() => {
+      if (isActive && focusRef.current) {
+        focusRef.current.focus();
+      }
+    }, [isActive]);
     // Access the window state context
     const { getWindowState, setWindowState } = useWindowState();
     
@@ -2955,12 +5137,145 @@ const withWindowState = (WrappedComponent, windowType) => {
         nodeId={nodeId}
         windowState={currentState}
         updateWindowState={updateWindowState}
+        isActive={isActive}
+        focusRef={focusRef}
       />
     );
   };
 };
 
 export default withWindowState;
+
+================
+File: hooks/swapWindows.js
+================
+// Function to swap two windows in the tree
+const swapWindows = useCallback((sourceId, targetId) => {
+  if (!sourceId || !targetId || sourceId === targetId) return;
+
+  console.log('Swapping windows:', sourceId, targetId);
+
+  updateWorkspace(workspace => {
+    const newRoot = JSON.parse(JSON.stringify(workspace.root));
+    
+    // Find the nodes to swap
+    const sourceNode = findNodeById(newRoot, sourceId);
+    const targetNode = findNodeById(newRoot, targetId);
+    
+    if (!sourceNode || !targetNode) {
+      console.log('Could not find one or both nodes to swap');
+      return workspace;
+    }
+    
+    // Swap the window types and states
+    const tempWindowType = sourceNode.windowType;
+    const tempState = sourceNode.state;
+    
+    sourceNode.windowType = targetNode.windowType;
+    sourceNode.state = targetNode.state;
+    
+    targetNode.windowType = tempWindowType;
+    targetNode.state = tempState;
+    
+    return { ...workspace, root: newRoot };
+  });
+  
+  // Exit move mode after swapping
+  setIsMoveMode(false);
+  setMoveSourceWindowId(null);
+}, [updateWorkspace]);
+
+// Add direct keyboard event listener for move mode
+useEffect(() => {
+  const handleMoveKeyDown = (e) => {
+    // Handle move mode toggle
+    if (e.ctrlKey && e.key === 'm') {
+      e.preventDefault();
+      e.stopPropagation(); // Stop event propagation to prevent multiple handlers
+      console.log('Move mode toggle pressed directly in useWindowManager');
+      console.log('Current isMoveMode:', isMoveMode);
+      
+      // Toggle move mode
+      setIsMoveMode(!isMoveMode);
+      
+      // Reset source window when toggling off
+      if (isMoveMode) {
+        setMoveSourceWindowId(null);
+      }
+    }
+    
+    // Handle move mode Enter key
+    if (isMoveMode && e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Enter key pressed in move mode');
+      
+      if (!moveSourceWindowId) {
+        // First window selection
+        console.log('Selected first window for move:', activeNodeId);
+        setMoveSourceWindowId(activeNodeId);
+      } else {
+        // Second window selection - perform the swap
+        console.log('Selected second window for move:', activeNodeId);
+        swapWindows(moveSourceWindowId, activeNodeId);
+      }
+    }
+  };
+  
+  // Add the event listener with capture: true to ensure it runs before other listeners
+  window.addEventListener('keydown', handleMoveKeyDown, { capture: true });
+  return () => window.removeEventListener('keydown', handleMoveKeyDown, { capture: true });
+}, [isMoveMode, moveSourceWindowId, activeNodeId, setIsMoveMode, setMoveSourceWindowId, swapWindows]);
+
+// Debug checks for modes
+useEffect(() => {
+  console.log('Resize mode:', isResizeMode);
+}, [isResizeMode]);
+
+useEffect(() => {
+  console.log('Move mode:', isMoveMode);
+  if (!isMoveMode) {
+    setMoveSourceWindowId(null);
+  }
+}, [isMoveMode]);
+
+// Function to update terminal state
+const updateTerminalState = useCallback((terminalId, newState) => {
+  updateWorkspace(workspace => ({
+    ...workspace,
+    terminalStates: {
+      ...workspace.terminalStates,
+      [terminalId]: newState
+    }
+  }));
+}, [updateWorkspace]);
+
+return {
+  rootNode,
+  activeNodeId,
+  setActiveNodeId,
+  terminalStates,
+  updateTerminalState,
+  createNewWindow,
+  splitWindow,
+  closeWindow,
+  transformWindow,
+  handleCommand,
+  navigateToWindow,
+  hasActiveWindow: Boolean(activeNodeId),
+  hasRootNode: Boolean(rootNode),
+  currentWorkspaceIndex,
+  workspaceCount: 4,
+  switchWorkspace,
+  isResizeMode,
+  setIsResizeMode,
+  resizeActiveWindow,
+  isMoveMode,
+  setIsMoveMode,
+  moveSourceWindowId,
+  setMoveSourceWindowId,
+  swapWindows
+};
 
 ================
 File: hooks/useForceUpdate.js
@@ -3163,75 +5478,38 @@ import {
 } from '../utils/treeUtils';
 import { getWindowBounds } from '../utils/windowUtils';
 import { useWindowState } from '../context/WindowStateContext';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   MIN_WINDOW_WIDTH_PX, 
   MIN_WINDOW_HEIGHT_PX 
 } from '../utils/windowSizeConstants';
 
 export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } = {}) => {
-  // Workspace state
-  const [workspaces, setWorkspaces] = useState([
-    { id: 1, name: 'Main', root: defaultLayout, activeNodeId: null, terminalStates: {} },
-    { id: 2, name: 'Code', root: null, activeNodeId: null, terminalStates: {} },
-    { id: 3, name: 'Terminal', root: null, activeNodeId: null, terminalStates: {} },
-    { id: 4, name: 'Preview', root: null, activeNodeId: null, terminalStates: {} }
-  ]);
-  const [currentWorkspaceIndex, setCurrentWorkspaceIndex] = useState(0);
+  // Use workspace context instead of internal state
+  const { 
+    workspaces,
+    currentWorkspaceIndex,
+    currentWorkspace,
+    updateWorkspace,
+    switchWorkspace
+  } = useWorkspace();
+  
+  // Get current workspace data
+  const rootNode = currentWorkspace.root;
+  const activeNodeId = currentWorkspace.activeNodeId;
+  const terminalStates = currentWorkspace.terminalStates;
+  
   const [isResizeMode, setIsResizeMode] = useState(false);
   const [isMoveMode, setIsMoveMode] = useState(false);
   const [moveSourceWindowId, setMoveSourceWindowId] = useState(null);
 
-  // Get current workspace data directly from workspaces array
-  const currentWorkspace = workspaces[currentWorkspaceIndex];
-  const rootNode = currentWorkspace.root;
-  const activeNodeId = currentWorkspace.activeNodeId;
-  const terminalStates = currentWorkspace.terminalStates;
-
   // Create setActiveNodeId function that updates the workspace
   const setActiveNodeId = useCallback((nodeId) => {
-    setWorkspaces(prev => {
-      const updated = [...prev];
-      updated[currentWorkspaceIndex] = {
-        ...updated[currentWorkspaceIndex],
-        activeNodeId: nodeId
-      };
-      return updated;
-    });
-  }, [currentWorkspaceIndex]);
-
-  // Update workspace state
-  const updateWorkspace = useCallback((updater) => {
-    setWorkspaces(prev => {
-      const updated = [...prev];
-      if (typeof updater === 'function') {
-        updated[currentWorkspaceIndex] = {
-          ...updated[currentWorkspaceIndex],
-          ...updater(updated[currentWorkspaceIndex])
-        };
-      } else {
-        updated[currentWorkspaceIndex] = {
-          ...updated[currentWorkspaceIndex],
-          ...updater
-        };
-      }
-      return updated;
-    });
-  }, [currentWorkspaceIndex]);
-
-  const switchWorkspace = useCallback((target) => {
-    console.log('Switching to:', target);
-    if (typeof target === 'number' && target >= 0 && target < 4) {
-      setCurrentWorkspaceIndex(target);
-    } else if (target === 'right' || target === 'left') {
-      setCurrentWorkspaceIndex(prev => {
-        const newIndex = target === 'right' 
-          ? (prev + 1) % 4 
-          : prev - 1 < 0 ? 3 : prev - 1;
-        console.log('New index:', newIndex);
-        return newIndex;
-      });
-    }
-  }, [setCurrentWorkspaceIndex]);
+    updateWorkspace(currentWorkspaceIndex, workspace => ({
+      ...workspace,
+      activeNodeId: nodeId
+    }));
+  }, [updateWorkspace, currentWorkspaceIndex]);
 
   useEffect(() => {
     const handleWorkspaceKeys = (e) => {
@@ -3566,7 +5844,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       setWindowState(newWindow.id, WINDOW_TYPES.TERMINAL, initialContent);
       
       // Also update the workspace terminal states
-      updateWorkspace(workspace => ({
+      updateWorkspace(currentWorkspaceIndex, workspace => ({
         ...workspace,
         terminalStates: {
           ...workspace.terminalStates,
@@ -3598,18 +5876,18 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     
     if (wouldViolate) {
       console.log('Split blocked: would result in windows smaller than minimum size');
-      // Flash the active window border to indicate we've hit the minimum size
-      if (onFlashBorder && activeNodeId) {
-        onFlashBorder(activeNodeId);
+      // Flash the window being split to indicate we've hit the minimum size
+      if (onFlashBorder && nodeId) {
+        onFlashBorder(nodeId);
       }
       return;
     }
   
-    updateWorkspace(workspace => ({
-      ...workspace,
-      root: splitNodeById(workspace.root, nodeId, direction, newWindow)
-    }));
-  }, [updateWorkspace, getWindowState, setWindowState, rootNode, calculatePixelDimensions]);
+  updateWorkspace(currentWorkspaceIndex, workspace => ({
+    ...workspace,
+    root: splitNodeById(workspace.root, nodeId, direction, newWindow)
+  }));
+  }, [updateWorkspace, getWindowState, setWindowState, rootNode, calculatePixelDimensions, currentWorkspaceIndex]);
 
   const createNewWindow = useCallback((windowType) => {
     const newNode = Node.createWindow(Date.now(), windowType || WINDOW_TYPES.TERMINAL);
@@ -3622,7 +5900,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       initialContent.history = ['Welcome to the Terminal! Type "help" for available commands.'];
       initialContent.commandHistory = [];
       
-      updateWorkspace(workspace => ({
+      updateWorkspace(currentWorkspaceIndex, workspace => ({
         ...workspace,
         terminalStates: {
           ...workspace.terminalStates,
@@ -3646,7 +5924,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     
     if (!rootNode) {
       // First window, always allowed
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: newNode,
         activeNodeId: newNode.id
       });
@@ -3668,14 +5946,18 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       
       if (tooSmallWindows.length > 0) {
         console.log('Cannot create new window: existing windows are already too small');
-        // Flash the active window border to indicate we've hit the minimum size
-        if (onFlashBorder && activeNodeId) {
-          onFlashBorder(activeNodeId);
+        // Flash the window that would be affected
+        if (onFlashBorder && rootNode) {
+          // If there's no active window but there's a root node, flash the root node
+          const nodeToFlash = rootNode.type === 'window' ? rootNode.id : null;
+          if (nodeToFlash) {
+            onFlashBorder(nodeToFlash);
+          }
         }
         return;
       }
       
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: newNode,
         activeNodeId: newNode.id
       });
@@ -3685,14 +5967,14 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     // Use splitWindow which already has minimum size checks
     splitWindow(activeNodeId, 'vertical', newNode);
     setActiveNodeId(newNode.id);
-  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState, calculatePixelDimensions, splitWindow]);
+  }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState, calculatePixelDimensions, splitWindow, currentWorkspaceIndex]);
 
   const closeWindow = useCallback((nodeId) => {
     // Clean up window state when closing a window
     removeWindowState(nodeId);
     
     if (rootNode.type === 'window' && rootNode.id === nodeId) {
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: null,
         activeNodeId: null
       });
@@ -3704,16 +5986,16 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     
     if (activeNodeId === nodeId && result) {
       const nextWindowId = findAllWindowIds(result)[0] || null;
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: result,
         activeNodeId: nextWindowId
       });
     } else {
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: result
       });
     }
-  }, [rootNode, activeNodeId, updateWorkspace, removeWindowState]);
+  }, [rootNode, activeNodeId, updateWorkspace, removeWindowState, currentWorkspaceIndex]);
 
   const transformWindow = useCallback((nodeId, newType) => {
     const newRoot = JSON.parse(JSON.stringify(rootNode));
@@ -3730,7 +6012,16 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
         
         // Update the window state with the new type but preserve content
         if (currentWindowState) {
-          setWindowState(nodeId, newType, currentWindowState.content);
+          // If transforming to a terminal window, clear the currentInput field
+          if (newType === WINDOW_TYPES.TERMINAL) {
+            const updatedContent = { 
+              ...currentWindowState.content,
+              currentInput: '' // Clear the input field
+            };
+            setWindowState(nodeId, newType, updatedContent);
+          } else {
+            setWindowState(nodeId, newType, currentWindowState.content);
+          }
         }
         
         return true;
@@ -3745,11 +6036,11 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     
     const updated = updateNodeInTree(newRoot);
     if (updated) {
-      updateWorkspace({
+      updateWorkspace(currentWorkspaceIndex, {
         root: newRoot
       });
     }
-  }, [rootNode, updateWorkspace, getWindowState, setWindowState]);
+  }, [rootNode, updateWorkspace, getWindowState, setWindowState, currentWorkspaceIndex]);
 
   const handleCommand = useCallback((command) => {
     const parts = command.split(' ');
@@ -3768,12 +6059,12 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
         }
         break;
     }
-  }, [activeNodeId, splitWindow, closeWindow]);
+  }, [activeNodeId, splitWindow, closeWindow, currentWorkspaceIndex]);
 
   const resizeActiveWindow = useCallback((direction) => {
     if (!activeNodeId || !rootNode || !isResizeMode) return;
   
-    updateWorkspace(workspace => {
+    updateWorkspace(currentWorkspaceIndex, workspace => {
       const newRoot = JSON.parse(JSON.stringify(workspace.root));
       
       // Helper function to find all affected splits and determine if window is in second child
@@ -3870,9 +6161,141 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
   
       return { ...workspace, root: newRoot };
     });
-  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace, wouldViolateMinSize]);
+  }, [activeNodeId, rootNode, isResizeMode, updateWorkspace, wouldViolateMinSize, currentWorkspaceIndex]);
   
   // Function to swap two windows in the tree
+  const swapWindows = useCallback((sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+
+    console.log('Swapping windows:', sourceId, targetId);
+
+    updateWorkspace(currentWorkspaceIndex, workspace => {
+      const newRoot = JSON.parse(JSON.stringify(workspace.root));
+      
+      // Find the nodes to swap
+      const sourceNode = findNodeById(newRoot, sourceId);
+      const targetNode = findNodeById(newRoot, targetId);
+      
+      if (!sourceNode || !targetNode) {
+        console.log('Could not find one or both nodes to swap');
+        return workspace;
+      }
+      
+      // Swap the window types and states
+      const tempWindowType = sourceNode.windowType;
+      const tempState = sourceNode.state;
+      
+      sourceNode.windowType = targetNode.windowType;
+      sourceNode.state = targetNode.state;
+      
+      targetNode.windowType = tempWindowType;
+      targetNode.state = tempState;
+      
+      return { ...workspace, root: newRoot };
+    });
+    
+    // Exit move mode after swapping
+    setIsMoveMode(false);
+    setMoveSourceWindowId(null);
+  }, [updateWorkspace, currentWorkspaceIndex]);
+
+  // Add direct keyboard event listener for move mode
+  useEffect(() => {
+    const handleMoveKeyDown = (e) => {
+      // Handle move mode toggle
+      if (e.ctrlKey && e.key === 'm') {
+        e.preventDefault();
+        e.stopPropagation(); // Stop event propagation to prevent multiple handlers
+        console.log('Move mode toggle pressed directly in useWindowManager');
+        console.log('Current isMoveMode:', isMoveMode);
+        
+        // Toggle move mode
+        setIsMoveMode(!isMoveMode);
+        
+        // Reset source window when toggling off
+        if (isMoveMode) {
+          setMoveSourceWindowId(null);
+        }
+      }
+      
+      // Handle move mode Enter key
+      if (isMoveMode && e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Enter key pressed in move mode');
+        
+        if (!moveSourceWindowId) {
+          // First window selection
+          console.log('Selected first window for move:', activeNodeId);
+          setMoveSourceWindowId(activeNodeId);
+        } else {
+          // Second window selection - perform the swap
+          console.log('Selected second window for move:', activeNodeId);
+          swapWindows(moveSourceWindowId, activeNodeId);
+        }
+      }
+    };
+    
+    // Add the event listener with capture: true to ensure it runs before other listeners
+    window.addEventListener('keydown', handleMoveKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleMoveKeyDown, { capture: true });
+  }, [isMoveMode, moveSourceWindowId, activeNodeId, setIsMoveMode, setMoveSourceWindowId, swapWindows]);
+
+  // Debug checks for modes
+  useEffect(() => {
+    console.log('Resize mode:', isResizeMode);
+  }, [isResizeMode]);
+
+  useEffect(() => {
+    console.log('Move mode:', isMoveMode);
+    if (!isMoveMode) {
+      setMoveSourceWindowId(null);
+    }
+  }, [isMoveMode]);
+
+  // Function to update terminal state
+  const updateTerminalState = useCallback((terminalId, newState) => {
+    updateWorkspace(currentWorkspaceIndex, workspace => ({
+      ...workspace,
+      terminalStates: {
+        ...workspace.terminalStates,
+        [terminalId]: newState
+      }
+    }));
+  }, [updateWorkspace, currentWorkspaceIndex]);
+
+  return {
+    rootNode,
+    activeNodeId,
+    setActiveNodeId,
+    terminalStates,
+    updateTerminalState,
+    createNewWindow,
+    splitWindow,
+    closeWindow,
+    transformWindow,
+    handleCommand,
+    navigateToWindow,
+    hasActiveWindow: Boolean(activeNodeId),
+    hasRootNode: Boolean(rootNode),
+    currentWorkspaceIndex,
+    workspaceCount: 4,
+    switchWorkspace,
+    isResizeMode,
+    setIsResizeMode,
+    resizeActiveWindow,
+    isMoveMode,
+    setIsMoveMode,
+    moveSourceWindowId,
+    setMoveSourceWindowId,
+    swapWindows
+  };
+};
+
+================
+File: hooks/useWindowManagerCompletion.js
+================
+// Function to swap two windows in the tree
   const swapWindows = useCallback((sourceId, targetId) => {
     if (!sourceId || !targetId || sourceId === targetId) return;
 
@@ -4031,13 +6454,21 @@ import App from './App'
 import './styles.css'
 import './App.css'
 import { WindowStateProvider } from './context/WindowStateContext'
-import { AuthProvider } from './context/AuthContext'
+import { WorkspaceProvider } from './context/WorkspaceContext'
+import { AuthProvider, AuthProviderWithWindowState } from './context/AuthContext'
+import { AnnouncementProvider } from './context/AnnouncementContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider>
       <WindowStateProvider>
-        <App />
+        <WorkspaceProvider>
+          <AuthProviderWithWindowState>
+            <AnnouncementProvider>
+              <App />
+            </AnnouncementProvider>
+          </AuthProviderWithWindowState>
+        </WorkspaceProvider>
       </WindowStateProvider>
     </AuthProvider>
   </React.StrictMode>,
@@ -4079,6 +6510,138 @@ export class Node {
     return node;
   }
 }
+
+================
+File: services/indexedDBService.js
+================
+/**
+ * IndexedDB service for the window manager
+ * Provides specific functions for working with workspaces and window states
+ */
+import { initDB } from '../db/db';
+import { saveData, getData, getAllData, deleteData, clearStore } from '../db/db-operations';
+import { STORES } from '../db/db-config';
+
+// Initialize the database when the service is first imported
+let dbInitialized = false;
+const ensureDBInitialized = async () => {
+  if (!dbInitialized) {
+    await initDB();
+    dbInitialized = true;
+  }
+};
+
+/**
+ * Save a workspace to IndexedDB
+ * @param {Object} workspace - The workspace to save
+ * @returns {Promise<any>} A promise that resolves to the result of the operation
+ */
+export const saveWorkspace = async (workspace) => {
+  await ensureDBInitialized();
+  return saveData(STORES.WORKSPACES, workspace);
+};
+
+/**
+ * Get a workspace from IndexedDB
+ * @param {string|number} id - The ID of the workspace to retrieve
+ * @returns {Promise<Object>} A promise that resolves to the workspace
+ */
+export const getWorkspace = async (id) => {
+  await ensureDBInitialized();
+  return getData(STORES.WORKSPACES, id);
+};
+
+/**
+ * Get all workspaces from IndexedDB
+ * @returns {Promise<Array>} A promise that resolves to an array of all workspaces
+ */
+export const getAllWorkspaces = async () => {
+  await ensureDBInitialized();
+  return getAllData(STORES.WORKSPACES);
+};
+
+/**
+ * Delete a workspace from IndexedDB
+ * @param {string|number} id - The ID of the workspace to delete
+ * @returns {Promise<void>} A promise that resolves when the workspace is deleted
+ */
+export const deleteWorkspace = async (id) => {
+  await ensureDBInitialized();
+  return deleteData(STORES.WORKSPACES, id);
+};
+
+/**
+ * Save a window state to IndexedDB
+ * @param {Object} windowState - The window state to save
+ * @returns {Promise<any>} A promise that resolves to the result of the operation
+ */
+export const saveWindowState = async (windowState) => {
+  await ensureDBInitialized();
+  return saveData(STORES.WINDOW_STATES, windowState);
+};
+
+/**
+ * Get a window state from IndexedDB
+ * @param {string|number} id - The ID of the window state to retrieve
+ * @returns {Promise<Object>} A promise that resolves to the window state
+ */
+export const getWindowState = async (id) => {
+  await ensureDBInitialized();
+  return getData(STORES.WINDOW_STATES, id);
+};
+
+/**
+ * Get all window states from IndexedDB
+ * @returns {Promise<Array>} A promise that resolves to an array of all window states
+ */
+export const getAllWindowStates = async () => {
+  await ensureDBInitialized();
+  return getAllData(STORES.WINDOW_STATES);
+};
+
+/**
+ * Delete a window state from IndexedDB
+ * @param {string|number} id - The ID of the window state to delete
+ * @returns {Promise<void>} A promise that resolves when the window state is deleted
+ */
+export const deleteWindowState = async (id) => {
+  await ensureDBInitialized();
+  return deleteData(STORES.WINDOW_STATES, id);
+};
+
+/**
+ * Save all workspaces at once (for bulk operations)
+ * @param {Array} workspaces - The workspaces to save
+ * @returns {Promise<void>} A promise that resolves when all workspaces are saved
+ */
+export const saveAllWorkspaces = async (workspaces) => {
+  await ensureDBInitialized();
+  
+  // Clear existing workspaces
+  await clearStore(STORES.WORKSPACES);
+  
+  // Save each workspace
+  for (const workspace of workspaces) {
+    await saveWorkspace(workspace);
+  }
+};
+
+/**
+ * Save all window states at once (for bulk operations)
+ * @param {Array} windowStates - The window states to save
+ * @returns {Promise<void>} A promise that resolves when all window states are saved
+ */
+export const saveAllWindowStates = async (windowStates) => {
+  await ensureDBInitialized();
+  
+  // Clear existing window states
+  await clearStore(STORES.WINDOW_STATES);
+  
+  // Save each window state
+  for (const state of windowStates) {
+    await saveWindowState(state);
+  }
+};
 
 ================
 File: styles.css
@@ -4163,6 +6726,26 @@ html, body, #root {
   height: 4px;
 }
 
+/* Announcement carousel animation - simple and consistent */
+@keyframes scroll-text {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Container for announcement text */
+.announcement-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Wrapper for scrolling text with padding */
+.announcement-text {
+  display: inline-block;
+  padding-right: 50px; /* Add space between end and beginning when looping */
+  white-space: nowrap;
+}
+
 ================
 File: styles/main.css
 ================
@@ -4179,10 +6762,9 @@ export const WINDOW_TYPES = {
     EXPLORER: 'explorer',
     EDITOR: 'editor',
     TERMINAL: 'terminal',
-    CHART: 'chart',
-    IMAGE: 'image',
     AUDIO: 'audio',
-    CHAT: 'chat'  // Add chat window type
+    CHAT: 'chat',  // Add chat window type
+    ADMIN: 'admin' // Add admin window type
   };
 
 ================
@@ -4327,7 +6909,7 @@ export const MAX_VERTICAL_WINDOWS = 4;   // Maximum windows total
 File: utils/windowTypes.js
 ================
 // src/utils/windowTypes.js
-import { FolderOpen, Code, Terminal as TerminalIcon, Eye, MessageSquare } from 'lucide-react';
+import { FolderOpen, Code, Terminal as TerminalIcon, Eye, MessageSquare, Shield } from 'lucide-react';
 import { WINDOW_TYPES } from './constants';
 
 // Import individually to avoid circular dependency
@@ -4335,10 +6917,9 @@ import {
   EnhancedTerminalWindow,
   EnhancedEditorWindow,
   EnhancedExplorerWindow,
-  EnhancedPreviewWindow,
-  EnhancedImageWindow,
   EnhancedAudioWindow,
-  EnhancedChatWindow
+  EnhancedChatWindow,
+  EnhancedAdminWindow
 } from '../components/windows';
 
 export { WINDOW_TYPES };
@@ -4359,16 +6940,6 @@ export const WINDOW_CONTENT = {
     icon: TerminalIcon,
     component: EnhancedTerminalWindow
   },
-  [WINDOW_TYPES.CHART]: {
-    title: 'Chart',
-    icon: Eye,
-    component: EnhancedPreviewWindow
-  },
-  [WINDOW_TYPES.IMAGE]: {
-    title: 'Image',
-    icon: Eye,
-    component: EnhancedImageWindow
-  },
   [WINDOW_TYPES.AUDIO]: {
     title: 'Audio Player',
     icon: Eye,
@@ -4378,6 +6949,11 @@ export const WINDOW_CONTENT = {
     title: 'Chat',
     icon: MessageSquare,
     component: EnhancedChatWindow
+  },
+  [WINDOW_TYPES.ADMIN]: {
+    title: 'Admin Panel',
+    icon: Shield,
+    component: EnhancedAdminWindow
   }
 };
 

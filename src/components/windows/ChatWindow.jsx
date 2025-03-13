@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
-import { MoreVertical, Trash } from 'lucide-react'; // Import icons
+import { MoreVertical, Trash, Mic, MicOff, Phone, PhoneOff, Plus } from 'lucide-react'; // Import additional icons
+import SimplePeer from 'simple-peer';
 
 const ChatWindow = ({ isActive, nodeId }) => {
   const { user } = useAuth();
@@ -16,6 +17,15 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
   
+  // Voice chat state
+  const [voiceChannels, setVoiceChannels] = useState([]);
+  const [activeVoiceChannel, setActiveVoiceChannel] = useState(null);
+  const [voiceParticipants, setVoiceParticipants] = useState([]);
+  const [isMuted, setIsMuted] = useState(false);
+  const [localStream, setLocalStream] = useState(null);
+  const [peers, setPeers] = useState({});
+  const [newVoiceChannelName, setNewVoiceChannelName] = useState('');
+  
   const MAX_CHARS = 500; // Maximum character limit
 
   // New state for tracking which message's menu is open
@@ -26,7 +36,23 @@ const ChatWindow = ({ isActive, nodeId }) => {
     const socketInstance = io(API_CONFIG.BASE_URL.replace('/api', ''));
     setSocket(socketInstance);
 
+    // Authenticate the socket connection
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      socketInstance.emit('authenticate', token);
+    }
+
     return () => {
+      // Clean up voice chat if active
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      
+      // Clean up peer connections
+      Object.values(peers).forEach(peer => {
+        if (peer.destroy) peer.destroy();
+      });
+      
       socketInstance.disconnect();
     };
   }, []);
@@ -49,14 +75,26 @@ const ChatWindow = ({ isActive, nodeId }) => {
       setRooms(prev => prev.filter(room => room.id !== data.id));
     };
     
+    const handleVoiceChannelDeleted = (data) => {
+      // If the active voice channel was deleted, leave it
+      if (activeVoiceChannel && activeVoiceChannel.id === data.id) {
+        leaveVoiceChannel();
+      }
+      
+      // Remove the deleted voice channel from the list
+      setVoiceChannels(prev => prev.filter(channel => channel.id !== data.id));
+    };
+    
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('room_deleted', handleRoomDeleted);
+    socket.on('voice_channel_deleted', handleVoiceChannelDeleted);
     
     return () => {
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('room_deleted', handleRoomDeleted);
+      socket.off('voice_channel_deleted', handleVoiceChannelDeleted);
     };
-  }, [socket, activeRoom]);
+  }, [socket, activeRoom, activeVoiceChannel]);
 
   // Fetch available rooms
   useEffect(() => {
@@ -101,7 +139,22 @@ const ChatWindow = ({ isActive, nodeId }) => {
       }
     };
 
+    // Fetch voice channels for the room
+    const fetchVoiceChannels = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get(
+          `${API_CONFIG.BASE_URL}/chat/rooms/${activeRoom.id}/voice-channels`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setVoiceChannels(response.data);
+      } catch (error) {
+        console.error('Failed to fetch voice channels:', error);
+      }
+    };
+
     fetchMessages();
+    fetchVoiceChannels();
 
     // Listen for new messages
     const handleNewMessage = (message) => {
@@ -116,6 +169,174 @@ const ChatWindow = ({ isActive, nodeId }) => {
       socket.off('new_message', handleNewMessage);
     };
   }, [activeRoom, socket]);
+
+  // Voice chat socket event handlers
+  useEffect(() => {
+    if (!socket) return;
+    
+    // Handle when a user joins a voice channel
+    const handleUserJoinedVoice = (data) => {
+      console.log('User joined voice:', data);
+      
+      // Add to participants list
+      setVoiceParticipants(prev => {
+        // Check if user is already in the list
+        if (prev.some(p => p.user_id === data.userId)) {
+          return prev;
+        }
+        return [...prev, {
+          user_id: data.userId,
+          username: data.username,
+          is_muted: data.isMuted,
+          channel_id: data.channelId
+        }];
+      });
+      
+      // If this is our active voice channel and we have a local stream,
+      // initiate a peer connection to the new user
+      if (activeVoiceChannel && 
+          activeVoiceChannel.id === data.channelId && 
+          localStream && 
+          data.userId !== user.id) {
+        
+        const peer = new SimplePeer({
+          initiator: true,
+          trickle: false,
+          stream: localStream
+        });
+        
+        peer.on('signal', signal => {
+          socket.emit('voice_signal', {
+            channelId: activeVoiceChannel.id,
+            targetUserId: data.userId,
+            signal
+          });
+        });
+        
+        peer.on('stream', stream => {
+          // Create audio element for the remote stream
+          const audio = document.createElement('audio');
+          audio.id = `remote-audio-${data.userId}`;
+          audio.srcObject = stream;
+          audio.autoplay = true;
+          document.body.appendChild(audio);
+        });
+        
+        // Add to peers state
+        setPeers(prev => ({
+          ...prev,
+          [data.userId]: peer
+        }));
+      }
+    };
+    
+    // Handle when a user leaves a voice channel
+    const handleUserLeftVoice = (data) => {
+      console.log('User left voice:', data);
+      
+      // Remove from participants list
+      setVoiceParticipants(prev => 
+        prev.filter(p => !(p.user_id === data.userId && p.channel_id === data.channelId))
+      );
+      
+      // If we have a peer connection to this user, clean it up
+      if (peers[data.userId]) {
+        peers[data.userId].destroy();
+        
+        // Remove the audio element
+        const audioElement = document.getElementById(`remote-audio-${data.userId}`);
+        if (audioElement) {
+          audioElement.remove();
+        }
+        
+        // Remove from peers state
+        setPeers(prev => {
+          const newPeers = { ...prev };
+          delete newPeers[data.userId];
+          return newPeers;
+        });
+      }
+    };
+    
+    // Handle voice participants list
+    const handleVoiceParticipants = (data) => {
+      if (data.channelId === activeVoiceChannel?.id) {
+        setVoiceParticipants(data.participants);
+      }
+    };
+    
+    // Handle WebRTC signaling
+    const handleVoiceSignal = (data) => {
+      console.log('Received voice signal:', data);
+      
+      // If the signal is for us and we're in the same channel
+      if (data.channelId === activeVoiceChannel?.id && data.fromUserId !== user.id) {
+        
+        // If we already have a peer for this user
+        if (peers[data.fromUserId]) {
+          peers[data.fromUserId].signal(data.signal);
+        } else {
+          // Create a new peer
+          const peer = new SimplePeer({
+            initiator: false,
+            trickle: false,
+            stream: localStream
+          });
+          
+          peer.on('signal', signal => {
+            socket.emit('voice_signal', {
+              channelId: activeVoiceChannel.id,
+              targetUserId: data.fromUserId,
+              signal
+            });
+          });
+          
+          peer.on('stream', stream => {
+            // Create audio element for the remote stream
+            const audio = document.createElement('audio');
+            audio.id = `remote-audio-${data.fromUserId}`;
+            audio.srcObject = stream;
+            audio.autoplay = true;
+            document.body.appendChild(audio);
+          });
+          
+          // Signal with the received data
+          peer.signal(data.signal);
+          
+          // Add to peers state
+          setPeers(prev => ({
+            ...prev,
+            [data.fromUserId]: peer
+          }));
+        }
+      }
+    };
+    
+    // Handle mute status changes
+    const handleUserMuteChanged = (data) => {
+      setVoiceParticipants(prev => 
+        prev.map(p => 
+          p.user_id === data.userId && p.channel_id === data.channelId
+            ? { ...p, is_muted: data.isMuted }
+            : p
+        )
+      );
+    };
+    
+    socket.on('user_joined_voice', handleUserJoinedVoice);
+    socket.on('user_left_voice', handleUserLeftVoice);
+    socket.on('voice_participants', handleVoiceParticipants);
+    socket.on('voice_signal', handleVoiceSignal);
+    socket.on('user_mute_changed', handleUserMuteChanged);
+    
+    return () => {
+      socket.off('user_joined_voice', handleUserJoinedVoice);
+      socket.off('user_left_voice', handleUserLeftVoice);
+      socket.off('voice_participants', handleVoiceParticipants);
+      socket.off('voice_signal', handleVoiceSignal);
+      socket.off('user_mute_changed', handleUserMuteChanged);
+    };
+  }, [socket, activeVoiceChannel, localStream, peers, user]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -201,13 +422,113 @@ const ChatWindow = ({ isActive, nodeId }) => {
       console.error('Failed to join room:', error);
     }
   };
+  
+  // Voice chat functions
+  const createVoiceChannel = async (e) => {
+    e.preventDefault();
+    if (!newVoiceChannelName.trim() || !activeRoom) return;
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.post(
+        `${API_CONFIG.BASE_URL}/chat/rooms/${activeRoom.id}/voice-channels`,
+        { name: newVoiceChannelName },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setVoiceChannels(prev => [response.data, ...prev]);
+      setNewVoiceChannelName('');
+    } catch (error) {
+      console.error('Failed to create voice channel:', error);
+    }
+  };
+  
+  const joinVoiceChannel = async (channel) => {
+    // If already in a voice channel, leave it first
+    if (activeVoiceChannel) {
+      await leaveVoiceChannel();
+    }
+    
+    try {
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Set initial mute state
+      stream.getAudioTracks()[0].enabled = !isMuted;
+      
+      // Store the stream
+      setLocalStream(stream);
+      
+      // Set the active voice channel
+      setActiveVoiceChannel(channel);
+      
+      // Join the channel via socket
+      socket.emit('join_voice', { 
+        channelId: channel.id,
+        isMuted
+      });
+      
+      console.log(`Joined voice channel: ${channel.name}`);
+    } catch (error) {
+      console.error('Failed to join voice channel:', error);
+      alert('Could not access microphone. Please check your permissions.');
+    }
+  };
+  
+  const leaveVoiceChannel = async () => {
+    if (!activeVoiceChannel || !socket) return;
+    
+    // Notify server
+    socket.emit('leave_voice', activeVoiceChannel.id);
+    
+    // Clean up peer connections
+    Object.values(peers).forEach(peer => {
+      if (peer.destroy) peer.destroy();
+    });
+    setPeers({});
+    
+    // Remove remote audio elements
+    document.querySelectorAll('[id^="remote-audio-"]').forEach(el => el.remove());
+    
+    // Stop local stream
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      setLocalStream(null);
+    }
+    
+    // Clear active voice channel
+    setActiveVoiceChannel(null);
+    setVoiceParticipants([]);
+    
+    console.log('Left voice channel');
+  };
+  
+  const toggleMute = () => {
+    if (!localStream) return;
+    
+    // Toggle mute state
+    const newMuteState = !isMuted;
+    setIsMuted(newMuteState);
+    
+    // Update audio track
+    localStream.getAudioTracks()[0].enabled = !newMuteState;
+    
+    // Notify others
+    if (socket && activeVoiceChannel) {
+      socket.emit('voice_mute_toggle', {
+        channelId: activeVoiceChannel.id,
+        isMuted: newMuteState
+      });
+    }
+  };
 
   return (
     <div className="flex h-full">
       {/* Room sidebar */}
       <div className="w-1/9 max-w-[20%] min-w-[10%] bg-stone-900 border-r border-stone-700 flex flex-col">
+        {/* Text channels */}
         <div className="p-2 border-b border-stone-700">
-          <h3 className="text-teal-400 font-medium text-sm">Channels</h3>
+          <h3 className="text-teal-400 font-medium text-sm">Text Channels</h3>
         </div>
         <div className="flex-1 overflow-y-auto">
           {rooms.map((room) => (
@@ -222,6 +543,92 @@ const ChatWindow = ({ isActive, nodeId }) => {
             </div>
           ))}
         </div>
+        
+        {/* Voice channels */}
+        {activeRoom && (
+          <>
+            <div className="p-2 border-t border-b border-stone-700 flex justify-between items-center">
+              <h3 className="text-teal-400 font-medium text-sm">Voice Channels</h3>
+              <button 
+                onClick={() => document.getElementById('voice-channel-form').classList.toggle('hidden')}
+                className="text-teal-400 hover:text-teal-300"
+                title="Create voice channel"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            
+            {/* Voice channel creation form */}
+            <div id="voice-channel-form" className="p-2 border-b border-stone-700 hidden">
+              <form onSubmit={createVoiceChannel} className="flex flex-col">
+                <input
+                  type="text"
+                  value={newVoiceChannelName}
+                  onChange={(e) => setNewVoiceChannelName(e.target.value)}
+                  placeholder="Voice channel name"
+                  className="bg-stone-800 text-teal-400 px-2 py-1 rounded text-sm mb-1"
+                />
+                <button
+                  type="submit"
+                  className="bg-teal-600 text-white px-2 py-1 rounded text-sm"
+                >
+                  Create
+                </button>
+              </form>
+            </div>
+            
+            <div className="overflow-y-auto">
+              {voiceChannels.map((channel) => (
+                <div
+                  key={channel.id}
+                  className={`text-sm p-2 cursor-pointer hover:bg-stone-700 ${
+                    activeVoiceChannel?.id === channel.id ? 'bg-stone-800' : ''
+                  }`}
+                >
+                  <div 
+                    className="text-white flex items-center justify-between"
+                    onClick={() => activeVoiceChannel?.id === channel.id ? leaveVoiceChannel() : joinVoiceChannel(channel)}
+                  >
+                    <span>{channel.name}</span>
+                    {activeVoiceChannel?.id === channel.id ? (
+                      <PhoneOff size={16} className="text-red-500" />
+                    ) : (
+                      <Phone size={16} className="text-teal-400" />
+                    )}
+                  </div>
+                  
+                  {/* Voice participants */}
+                  {voiceParticipants.length > 0 && channel.id === activeVoiceChannel?.id && (
+                    <div className="mt-1 pl-2 border-l border-stone-700">
+                      {voiceParticipants.map(participant => (
+                        <div key={participant.user_id} className="flex items-center text-xs text-stone-400 py-1">
+                          {participant.is_muted ? (
+                            <MicOff size={12} className="mr-1 text-red-500" />
+                          ) : (
+                            <Mic size={12} className="mr-1 text-green-500" />
+                          )}
+                          <span>{participant.username}</span>
+                          {participant.user_id === user.id && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleMute();
+                              }}
+                              className="ml-2 text-stone-400 hover:text-teal-400"
+                              title={isMuted ? "Unmute" : "Mute"}
+                            >
+                              {isMuted ? <MicOff size={12} /> : <Mic size={12} />}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Chat area */}

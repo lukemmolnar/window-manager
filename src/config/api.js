@@ -15,6 +15,11 @@ const API_CONFIG = {
     CHAT_JOIN: '/chat/rooms/:id/join',
     CHAT_DELETE_MESSAGE: '/chat/messages/:id',
     CHAT_DELETE_ROOM: '/chat/rooms/:id',
+    // Voice chat endpoints
+    VOICE_CHANNELS: '/chat/rooms/:id/voice-channels',
+    VOICE_CHANNEL: '/chat/voice-channels/:id',
+    VOICE_PARTICIPANTS: '/chat/voice-channels/:id/participants',
+    VOICE_DELETE_CHANNEL: '/chat/voice-channels/:id',
     // Admin endpoints
     USERS: '/users',
     // Window state endpoints
