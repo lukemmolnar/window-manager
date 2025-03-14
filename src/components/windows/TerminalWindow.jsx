@@ -2,15 +2,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import { WINDOW_TYPES } from '../../utils/windowTypes';
 import { useAuth } from '../../context/AuthContext';
 import { useAnnouncement } from '../../context/AnnouncementContext';
+import { useWindowState } from '../../context/WindowStateContext';
+import { saveTerminalState, getTerminalState } from '../../services/indexedDBService';
 
 const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState, focusRef }) => {
   // Get user authentication info
   const { user } = useAuth();
   // Get announcement context
   const { updateAnnouncement } = useAnnouncement();
+  // Get window state context for additional persistence
+  const { setActiveWindow } = useWindowState();
   
   // Ref for managing scrolling
   const terminalRef = useRef(null);
+  // Ref to track if state has been loaded from IndexedDB
+  const stateLoadedRef = useRef(false);
 
   // Terminal state - use windowState if available
   const [history, setHistory] = useState(
@@ -20,7 +26,45 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   const [currentInput, setCurrentInput] = useState(windowState?.currentInput || '');
   const [historyIndex, setHistoryIndex] = useState(windowState?.historyIndex || -1);
 
-  // Auto-focus is now handled by the withWindowState HOC
+  // Load terminal state from IndexedDB on mount if not already in windowState
+  useEffect(() => {
+    const loadTerminalState = async () => {
+      // Skip if we already have state from the WindowStateContext
+      if (windowState?.history && windowState?.commandHistory) {
+        stateLoadedRef.current = true;
+        return;
+      }
+      
+      try {
+        // Try to load terminal state from IndexedDB
+        const savedState = await getTerminalState(nodeId);
+        
+        if (savedState && savedState.content && !stateLoadedRef.current) {
+          console.log(`Loaded terminal state for window ${nodeId} from IndexedDB:`, savedState.content);
+          
+          // Update state with saved values
+          if (savedState.content.history) {
+            setHistory(savedState.content.history);
+          }
+          
+          if (savedState.content.commandHistory) {
+            setCommandHistory(savedState.content.commandHistory);
+          }
+          
+          if (savedState.content.historyIndex !== undefined) {
+            setHistoryIndex(savedState.content.historyIndex);
+          }
+          
+          // Mark as loaded
+          stateLoadedRef.current = true;
+        }
+      } catch (error) {
+        console.error(`Failed to load terminal state for window ${nodeId} from IndexedDB:`, error);
+      }
+    };
+    
+    loadTerminalState();
+  }, [nodeId, windowState]);
 
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
@@ -35,24 +79,41 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     setCurrentInput('');
   }, []);
   
-  // Also clear input when window becomes active
+  // Handle window activation
   useEffect(() => {
     if (isActive) {
+      // Clear input when window becomes active
       setCurrentInput('');
+      
+      // Save this as the active terminal window
+      setActiveWindow(nodeId, WINDOW_TYPES.TERMINAL);
     }
-  }, [isActive]);
+  }, [isActive, nodeId, setActiveWindow]);
 
   // Update window state when terminal state changes
   useEffect(() => {
     if (updateWindowState) {
-      updateWindowState({
+      const newState = {
         history,
         commandHistory,
         currentInput,
         historyIndex
-      });
+      };
+      
+      // Update window state in context
+      updateWindowState(newState);
+      
+      // Also save directly to IndexedDB for redundancy
+      if (stateLoadedRef.current) { // Only save after initial load to avoid overwriting with empty state
+        saveTerminalState({
+          id: nodeId,
+          content: newState
+        }).catch(error => {
+          console.error(`Failed to save terminal state for window ${nodeId} to IndexedDB:`, error);
+        });
+      }
     }
-  }, [history, commandHistory, currentInput, historyIndex, updateWindowState]);
+  }, [history, commandHistory, currentInput, historyIndex, updateWindowState, nodeId]);
 
   const handleTerminalClick = () => {
     focusRef.current?.focus();
@@ -128,6 +189,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           'Commands:',
           '  explorer     - Transform window into file explorer',
           '  terminal     - Transform into terminal',
+          '  chat         - Transform into chat window',
           adminCommands,
           '  help         - Show this help message',
           '  clear        - Clear terminal output',

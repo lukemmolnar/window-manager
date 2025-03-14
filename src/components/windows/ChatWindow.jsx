@@ -3,6 +3,9 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { useWindowState } from '../../context/WindowStateContext';
+import { WINDOW_TYPES } from '../../utils/windowTypes';
+import { saveChatState, getChatState } from '../../services/indexedDBService';
 import { MoreVertical, Trash, Mic, MicOff, Phone, PhoneOff, Plus } from 'lucide-react'; // Import additional icons
 import SimplePeer from 'simple-peer';
 
@@ -31,6 +34,7 @@ const safelyDestroyPeer = (peer) => {
 
 const ChatWindow = ({ isActive, nodeId }) => {
   const { user } = useAuth();
+  const { setActiveWindow } = useWindowState();
   const [rooms, setRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -39,6 +43,8 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const [newRoomName, setNewRoomName] = useState('');
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
+  // Ref to track if state has been loaded from IndexedDB
+  const stateLoadedRef = useRef(false);
   
   // Voice chat state
   const [voiceChannels, setVoiceChannels] = useState([]);
@@ -183,6 +189,49 @@ const ChatWindow = ({ isActive, nodeId }) => {
     };
   }, [socket, activeRoom, activeVoiceChannel]);
 
+  // Load chat state from IndexedDB on mount
+  useEffect(() => {
+    const loadChatState = async () => {
+      try {
+        // Try to load chat state from IndexedDB
+        const savedState = await getChatState(nodeId);
+        
+        if (savedState && savedState.content && !stateLoadedRef.current) {
+          console.log(`Loaded chat state for window ${nodeId} from IndexedDB:`, savedState.content);
+          
+          // If we have a saved active room ID, we'll use it after fetching rooms
+          stateLoadedRef.current = true;
+          
+          // Store the active room ID to use after fetching rooms
+          if (savedState.content.activeRoomId) {
+            // We'll set this after fetching rooms
+            window.setTimeout(() => {
+              if (rooms.length > 0) {
+                const savedRoom = rooms.find(room => room.id === savedState.content.activeRoomId);
+                if (savedRoom) {
+                  setActiveRoom(savedRoom);
+                  console.log(`Restored active room: ${savedRoom.name}`);
+                }
+              }
+            }, 100);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to load chat state for window ${nodeId} from IndexedDB:`, error);
+      }
+    };
+    
+    loadChatState();
+  }, [nodeId]);
+  
+  // Handle window activation
+  useEffect(() => {
+    if (isActive) {
+      // Save this as the active chat window
+      setActiveWindow(nodeId, WINDOW_TYPES.CHAT);
+    }
+  }, [isActive, nodeId, setActiveWindow]);
+
   // Fetch available rooms
   useEffect(() => {
     const fetchRooms = async () => {
@@ -204,6 +253,23 @@ const ChatWindow = ({ isActive, nodeId }) => {
 
     fetchRooms();
   }, [activeRoom]);
+
+  // Save active room to IndexedDB when it changes
+  useEffect(() => {
+    if (!activeRoom || !stateLoadedRef.current) return;
+    
+    // Save the active room ID to IndexedDB
+    saveChatState({
+      id: nodeId,
+      content: {
+        activeRoomId: activeRoom.id
+      }
+    }).catch(error => {
+      console.error(`Failed to save chat state for window ${nodeId} to IndexedDB:`, error);
+    });
+    
+    console.log(`Saved active room ID ${activeRoom.id} to IndexedDB for window ${nodeId}`);
+  }, [activeRoom, nodeId]);
 
   // Join room and fetch messages
   useEffect(() => {

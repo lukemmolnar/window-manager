@@ -4,12 +4,21 @@ import showdown from 'showdown';
 import path from 'path-browserify';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { useWindowState } from '../../context/WindowStateContext';
+import { WINDOW_TYPES } from '../../utils/windowTypes';
+import { saveExplorerState, getExplorerState } from '../../services/indexedDBService';
 import './ExplorerWindow.css';
 
-const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
+const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
   // Get auth context to check if user is admin
   const { user } = useAuth();
   const isAdmin = user?.is_admin || false;
+  
+  // Get window state context for additional persistence
+  const { setActiveWindow } = useWindowState();
+  
+  // Ref to track if state has been loaded from IndexedDB
+  const stateLoadedRef = useRef(false);
   
   // Use state from windowState or initialize with defaults
   const [files, setFiles] = useState([]);
@@ -288,6 +297,66 @@ const ExplorerWindow = ({ nodeId, onCommand, transformWindow, windowState, updat
   const handleMarkdownChange = (e) => {
     setFileContent(e.target.value);
   };
+
+  // Load explorer state from IndexedDB on mount
+  useEffect(() => {
+    const loadExplorerState = async () => {
+      try {
+        // Try to load explorer state from IndexedDB
+        const savedState = await getExplorerState(nodeId);
+        
+        if (savedState && savedState.content && !stateLoadedRef.current) {
+          console.log(`Loaded explorer state for window ${nodeId} from IndexedDB:`, savedState.content);
+          
+          // Update state with saved values
+          if (savedState.content.selectedFile) {
+            setSelectedFile(savedState.content.selectedFile);
+          }
+          
+          if (savedState.content.expandedFolders) {
+            setExpandedFolders(savedState.content.expandedFolders);
+          }
+          
+          if (savedState.content.activeTab) {
+            setActiveTab(savedState.content.activeTab);
+          }
+          
+          // Mark as loaded
+          stateLoadedRef.current = true;
+        }
+      } catch (error) {
+        console.error(`Failed to load explorer state for window ${nodeId} from IndexedDB:`, error);
+      }
+    };
+    
+    loadExplorerState();
+  }, [nodeId]);
+  
+  // Handle window activation
+  useEffect(() => {
+    if (isActive) {
+      // Save this as the active explorer window
+      setActiveWindow(nodeId, WINDOW_TYPES.EXPLORER);
+    }
+  }, [isActive, nodeId, setActiveWindow]);
+  
+  // Save explorer state to IndexedDB when it changes
+  useEffect(() => {
+    if (!stateLoadedRef.current) return;
+    
+    // Save the explorer state to IndexedDB
+    saveExplorerState({
+      id: nodeId,
+      content: {
+        selectedFile,
+        expandedFolders,
+        activeTab
+      }
+    }).catch(error => {
+      console.error(`Failed to save explorer state for window ${nodeId} to IndexedDB:`, error);
+    });
+    
+  }, [selectedFile, expandedFolders, activeTab, nodeId]);
 
   // Load initial directory contents
   useEffect(() => {

@@ -15,6 +15,10 @@ import {
   MIN_WINDOW_WIDTH_PX, 
   MIN_WINDOW_HEIGHT_PX 
 } from '../utils/windowSizeConstants';
+import { 
+  saveActiveWindow, 
+  getActiveWindow 
+} from '../services/indexedDBService';
 
 export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } = {}) => {
   // Use workspace context instead of internal state
@@ -41,7 +45,50 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       ...workspace,
       activeNodeId: nodeId
     }));
-  }, [updateWorkspace, currentWorkspaceIndex]);
+    
+    // Save the active window ID to IndexedDB for persistence across refreshes
+    if (nodeId) {
+      // Get the window type from the node
+      const node = findNodeById(rootNode, nodeId);
+      if (node && node.windowType) {
+        // Save the active window ID for this window type
+        saveActiveWindow({
+          id: 'activeWindow',
+          activeNodeId: nodeId,
+          windowType: node.windowType
+        }).catch(error => {
+          console.error('Failed to save active window ID to IndexedDB:', error);
+        });
+      }
+    }
+  }, [updateWorkspace, currentWorkspaceIndex, rootNode]);
+  
+  // Load the active window ID from IndexedDB on mount
+  useEffect(() => {
+    const loadActiveWindow = async () => {
+      try {
+        // Try to load the active window ID from IndexedDB
+        const savedActiveWindow = await getActiveWindow('activeWindow');
+        
+        if (savedActiveWindow && savedActiveWindow.activeNodeId) {
+          console.log('Loaded active window ID from IndexedDB:', savedActiveWindow.activeNodeId);
+          
+          // Check if the window still exists in the current workspace
+          if (rootNode && findNodeById(rootNode, savedActiveWindow.activeNodeId)) {
+            // Update the active window ID
+            setActiveNodeId(savedActiveWindow.activeNodeId);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load active window ID from IndexedDB:', error);
+      }
+    };
+    
+    // Only load if we have a root node but no active node
+    if (rootNode && !activeNodeId) {
+      loadActiveWindow();
+    }
+  }, [rootNode, activeNodeId, setActiveNodeId]);
 
   useEffect(() => {
     const handleWorkspaceKeys = (e) => {
