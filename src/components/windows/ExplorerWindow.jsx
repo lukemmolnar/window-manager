@@ -62,8 +62,25 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     breaks: true  // Enable line breaks to be rendered as <br> tags
   });
 
+  // Helper function to expand all parent folders of a path
+  const expandParentFolders = (filePath) => {
+    const parts = filePath.split('/').filter(Boolean);
+    let currentPath = '';
+    
+    // Create a new expanded folders object
+    const newExpandedFolders = { ...expandedFolders };
+    
+    // Expand each parent folder
+    for (let i = 0; i < parts.length; i++) {
+      currentPath += '/' + parts[i];
+      newExpandedFolders[currentPath] = true;
+    }
+    
+    setExpandedFolders(newExpandedFolders);
+  };
+
   // Function to fetch public directory contents
-  const fetchPublicDirectoryContents = async (publicPath = '/') => {
+  const fetchPublicDirectoryContents = async (publicPath = '/', refreshAll = false) => {
     try {
       setIsLoading(true);
       setErrorMessage('');
@@ -76,9 +93,12 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         return;
       }
       
+      // If refreshAll is true, start from the root
+      const pathToFetch = refreshAll ? '/' : publicPath;
+      
       // Fetch public directory contents from the server
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILES_LIST}?path=${encodeURIComponent(publicPath)}`,
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILES_LIST}?path=${encodeURIComponent(pathToFetch)}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -104,8 +124,18 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       }));
       
       setPublicFiles(transformedFiles);
-      setCurrentPath(publicPath);
+      
+      // Only update the current path if we're not refreshing the entire tree
+      if (!refreshAll) {
+        setCurrentPath(publicPath);
+      }
+      
       setIsLoading(false);
+      
+      // If we refreshed the entire tree, make sure the current path's parent folders are expanded
+      if (refreshAll && currentPath !== '/') {
+        expandParentFolders(currentPath);
+      }
     } catch (error) {
       console.error('Error fetching public directory contents:', error);
       setErrorMessage('Failed to load public files. Please try again.');
@@ -156,7 +186,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   };
 
   // Function to fetch private directory contents from the server (admin only)
-  const fetchDirectoryContents = async (path = '/') => {
+  const fetchDirectoryContents = async (path = '/', refreshAll = false) => {
     try {
       setIsLoading(true);
       setErrorMessage('');
@@ -169,9 +199,12 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         return;
       }
       
+      // If refreshAll is true, start from the root
+      const pathToFetch = refreshAll ? '/' : path;
+      
       // Fetch directory contents from the server
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILES_LIST}?path=${encodeURIComponent(path)}`,
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILES_LIST}?path=${encodeURIComponent(pathToFetch)}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -201,8 +234,18 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       }));
       
       setFiles(transformedFiles);
-      setCurrentPath(path);
+      
+      // Only update the current path if we're not refreshing the entire tree
+      if (!refreshAll) {
+        setCurrentPath(path);
+      }
+      
       setIsLoading(false);
+      
+      // If we refreshed the entire tree, make sure the current path's parent folders are expanded
+      if (refreshAll && currentPath !== '/') {
+        expandParentFolders(currentPath);
+      }
     } catch (error) {
       console.error('Error fetching directory contents:', error);
       setErrorMessage('Failed to load files. Please try again.');
@@ -492,11 +535,11 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       setShowCreateDialog(false);
       setNewItemName('');
       
-      // Refresh the appropriate file list
+      // Refresh the entire file tree from the root
       if (isPublicFolder) {
-        fetchPublicDirectoryContents(currentPath);
+        fetchPublicDirectoryContents('/', true);
       } else {
-        fetchDirectoryContents(currentPath);
+        fetchDirectoryContents('/', true);
       }
       
       // If it's a directory, expand it
@@ -625,9 +668,9 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       
       // Refresh the appropriate file list
       if (itemToRename.isPublic) {
-        fetchPublicDirectoryContents(currentPath);
+        fetchPublicDirectoryContents('/', true);
       } else {
-        fetchDirectoryContents(currentPath);
+        fetchDirectoryContents('/', true);
       }
       
       setIsRenaming(false);
@@ -662,6 +705,22 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     }
   };
   
+  // Helper function to get parent directory path
+  const getParentDirectoryPath = (filePath) => {
+    // Remove trailing slash if present
+    const normalizedPath = filePath.endsWith('/') ? filePath.slice(0, -1) : filePath;
+    // Find the last slash in the path
+    const lastSlashIndex = normalizedPath.lastIndexOf('/');
+    
+    if (lastSlashIndex === -1) {
+      // No slash found, return root
+      return '/';
+    }
+    
+    // Return everything up to the last slash
+    return normalizedPath.substring(0, lastSlashIndex) || '/';
+  };
+  
   // Handle file selection
   const handleFileSelect = (file) => {
     // If it's a directory, handle it differently
@@ -671,6 +730,10 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     }
     
     setSelectedFile(file);
+    
+    // Set the parent directory as the current path
+    const parentPath = getParentDirectoryPath(file.path);
+    setCurrentPath(parentPath);
     
     // Reset edit mode when selecting a new file
     if (editMode) {
@@ -707,10 +770,14 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     return items.map(item => {
       if (item.type === 'directory') {
         const isExpanded = expandedFolders[item.path];
+        const isActive = currentPath === item.path;
         return (
           <div key={item.path} className="ml-2">
             <div 
-              className={`flex items-center justify-between py-1 px-1 rounded hover:bg-stone-700 cursor-pointer group ${isExpanded ? 'text-teal-300' : 'text-teal-400'}`}
+              className={`flex items-center justify-between py-1 px-1 rounded hover:bg-stone-700 cursor-pointer group ${
+                isActive ? 'bg-stone-800 text-teal-300 font-bold' : 
+                isExpanded ? 'text-teal-300' : 'text-teal-400'
+              }`}
             >
               <div className="flex items-center" onClick={() => toggleFolder(item.path, item)}>
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -810,9 +877,9 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       if (cmd === 'refresh') {
         // Refresh the appropriate file list based on the active tab
         if (activeTab === 'public') {
-          fetchPublicDirectoryContents(currentPath);
+          fetchPublicDirectoryContents('/', true);
         } else {
-          fetchDirectoryContents(currentPath);
+          fetchDirectoryContents('/', true);
         }
       } else if (cmd === 'preview' && selectedFile?.name.endsWith('.md')) {
         setShowPreview(!showPreview);
