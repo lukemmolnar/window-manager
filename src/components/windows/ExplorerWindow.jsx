@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X, Globe, Lock, FileEdit } from 'lucide-react';
+import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X, Globe, Lock, FileEdit, Trash2 } from 'lucide-react';
 import showdown from 'showdown';
 import path from 'path-browserify';
 import API_CONFIG from '../../config/api';
@@ -47,6 +47,11 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   const [itemToRename, setItemToRename] = useState(null);
   const [newName, setNewName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
+  
+  // State for file/folder deletion
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // For auto-save functionality
   const saveTimeoutRef = useRef(null);
@@ -604,6 +609,86 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     setErrorMessage('');
   };
   
+  // Open the delete dialog for a file or folder
+  const openDeleteDialog = (item) => {
+    if (!isAdmin) {
+      setErrorMessage('Admin access required to delete files.');
+      return;
+    }
+    
+    setItemToDelete(item);
+    setErrorMessage('');
+    setShowDeleteDialog(true);
+  };
+  
+  // Close the delete dialog
+  const closeDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setItemToDelete(null);
+    setErrorMessage('');
+  };
+  
+  // Delete a file or folder
+  const deleteItem = async () => {
+    if (!itemToDelete) {
+      setErrorMessage('No item selected for deletion');
+      return;
+    }
+    
+    try {
+      setIsDeleting(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsDeleting(false);
+        return;
+      }
+      
+      // Delete the file or folder
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_DELETE}?path=${encodeURIComponent(itemToDelete.path)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to delete ${itemToDelete.type}: ${response.statusText}`);
+      }
+      
+      // Close the dialog
+      setShowDeleteDialog(false);
+      setItemToDelete(null);
+      
+      // If the deleted item was selected, clear the selection
+      if (selectedFile && selectedFile.path === itemToDelete.path) {
+        setSelectedFile(null);
+        setFileContent('');
+        setShowPreview(false);
+        if (editMode) {
+          setEditMode(false);
+        }
+      }
+      
+      // Refresh the appropriate file list
+      if (itemToDelete.isPublic) {
+        fetchPublicDirectoryContents('/', true);
+      } else {
+        fetchDirectoryContents('/', true);
+      }
+      
+      setIsDeleting(false);
+    } catch (error) {
+      console.error(`Error deleting ${itemToDelete.type}:`, error);
+      setErrorMessage(`Failed to delete ${itemToDelete.type}: ${error.message}`);
+      setIsDeleting(false);
+    }
+  };
+  
   // Handle key press in the rename dialog
   const handleRenameKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -785,18 +870,30 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
                 <span className="text-sm">{item.name}</span>
               </div>
               
-              {/* Admin-only rename button */}
+              {/* Admin-only buttons */}
               {isAdmin && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openRenameDialog(item);
-                  }}
-                  className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-teal-300 opacity-0 group-hover:opacity-100"
-                  title="Rename folder"
-                >
-                  <FileEdit size={14} />
-                </button>
+                <div className="flex">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openRenameDialog(item);
+                    }}
+                    className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-teal-300 opacity-0 group-hover:opacity-100"
+                    title="Rename folder"
+                  >
+                    <FileEdit size={14} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDeleteDialog(item);
+                    }}
+                    className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                    title="Delete folder"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               )}
             </div>
             
@@ -819,18 +916,30 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
               <span className="text-sm">{item.name}</span>
             </div>
             
-            {/* Admin-only rename button */}
+            {/* Admin-only buttons */}
             {isAdmin && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openRenameDialog(item);
-                }}
-                className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-teal-300 opacity-0 group-hover:opacity-100"
-                title="Rename file"
-              >
-                <FileEdit size={14} />
-              </button>
+              <div className="flex">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openRenameDialog(item);
+                  }}
+                  className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-teal-300 opacity-0 group-hover:opacity-100"
+                  title="Rename file"
+                >
+                  <FileEdit size={14} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDeleteDialog(item);
+                  }}
+                  className="p-1 rounded hover:bg-stone-600 text-stone-400 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                  title="Delete file"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             )}
           </div>
         );
@@ -872,6 +981,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       // - new-file: create a new file (admin only)
       // - new-folder: create a new folder (admin only)
       // - rename: rename selected file or folder (admin only)
+      // - delete: delete selected file or folder (admin only)
       // - public: switch to public files tab
       // - private: switch to private files tab (admin only)
       if (cmd === 'refresh') {
@@ -896,6 +1006,8 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         openCreateDialog('directory');
       } else if (cmd === 'rename' && isAdmin && selectedFile) {
         openRenameDialog(selectedFile);
+      } else if (cmd === 'delete' && isAdmin && selectedFile) {
+        openDeleteDialog(selectedFile);
       } else if (cmd === 'public') {
         setActiveTab('public');
       } else if (cmd === 'private' && isAdmin) {
@@ -1086,6 +1198,48 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
             </div>
           )}
           
+          {/* Delete file/folder confirmation dialog */}
+          {showDeleteDialog && itemToDelete && (
+            <div className="p-2 border-t border-stone-700 bg-stone-800">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-bold">
+                  Delete {itemToDelete.type === 'directory' ? 'Folder' : 'File'}
+                </span>
+                <button
+                  onClick={closeDeleteDialog}
+                  className="p-1 rounded hover:bg-stone-700 text-stone-400"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="mb-2 text-sm">
+                <p>Are you sure you want to delete <span className="text-red-400 font-bold">{itemToDelete.name}</span>?</p>
+                {itemToDelete.type === 'directory' && (
+                  <p className="text-red-400 text-xs mt-1">This will delete all files and folders inside it!</p>
+                )}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={closeDeleteDialog}
+                  className="px-2 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={deleteItem}
+                  disabled={isDeleting}
+                  className={`px-2 py-1 rounded text-xs ${
+                    isDeleting
+                      ? 'bg-red-900 text-red-300 cursor-not-allowed'
+                      : 'bg-red-700 text-red-100 hover:bg-red-600'
+                  }`}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          )}
+          
           <div className="p-2 border-t border-stone-700 text-xs">
             {selectedFile ? selectedFile.path : currentPath}
           </div>
@@ -1193,7 +1347,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           type="text"
           onKeyDown={handleCommand}
           className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
-          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder, rename, public, private" : "Commands: refresh, preview, public"}
+          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder, rename, delete, public, private" : "Commands: refresh, preview, public"}
         />
       </div>
     </div>
