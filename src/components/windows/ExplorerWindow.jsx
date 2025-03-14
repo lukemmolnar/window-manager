@@ -58,7 +58,8 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     tables: true,
     tasklists: true,
     strikethrough: true,
-    emoji: true
+    emoji: true,
+    breaks: true  // Enable line breaks to be rendered as <br> tags
   });
 
   // Function to fetch public directory contents
@@ -421,11 +422,19 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   }, [showCreateDialog, showRenameDialog]);
 
   // Toggle folder expansion
-  const toggleFolder = (folderPath) => {
+  const toggleFolder = (folderPath, folder) => {
+    const isExpanding = !expandedFolders[folderPath];
+    
     setExpandedFolders(prev => ({
       ...prev,
-      [folderPath]: !prev[folderPath]
+      [folderPath]: isExpanding
     }));
+    
+    // If we're expanding the folder, also set it as the current path
+    if (isExpanding) {
+      setCurrentPath(folderPath);
+      setSelectedFile(folder);
+    }
   };
   
   // Create a new file or folder
@@ -629,8 +638,38 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     }
   };
   
+  // Handle folder selection
+  const handleFolderSelect = (folder) => {
+    // Update the current path to the selected folder's path
+    setCurrentPath(folder.path);
+    
+    // Set the selected folder
+    setSelectedFile(folder);
+    
+    // Expand the folder
+    setExpandedFolders(prev => ({
+      ...prev,
+      [folder.path]: true
+    }));
+    
+    // Reset content and preview
+    setFileContent('');
+    setShowPreview(false);
+    
+    // Reset edit mode
+    if (editMode) {
+      setEditMode(false);
+    }
+  };
+  
   // Handle file selection
   const handleFileSelect = (file) => {
+    // If it's a directory, handle it differently
+    if (file.type === 'directory') {
+      handleFolderSelect(file);
+      return;
+    }
+    
     setSelectedFile(file);
     
     // Reset edit mode when selecting a new file
@@ -673,7 +712,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
             <div 
               className={`flex items-center justify-between py-1 px-1 rounded hover:bg-stone-700 cursor-pointer group ${isExpanded ? 'text-teal-300' : 'text-teal-400'}`}
             >
-              <div className="flex items-center" onClick={() => toggleFolder(item.path)}>
+              <div className="flex items-center" onClick={() => toggleFolder(item.path, item)}>
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 <FolderOpen size={16} className="ml-1 mr-2" />
                 <span className="text-sm">{item.name}</span>

@@ -4,6 +4,7 @@
     line-height: 1.6;
     font-family: 'Oxygen Mono', monospace;
     padding: 1rem;
+    white-space: pre-wrap; /* Preserve line breaks */
   }
   
   /* Header styles with clear size differences */
