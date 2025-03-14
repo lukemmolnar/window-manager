@@ -1,10 +1,11 @@
-// This file is now simplified as vite-plugin-node-polyfills handles most polyfills
+// Import the actual process module
+import process from 'process';
 
 // Ensure global is defined as window
 window.global = window;
 
-// Ensure process.browser is set to true for SimplePeer
-window.process = window.process || {};
-window.process.browser = true;
+// Use the actual process module instead of our basic polyfill
+window.process = process;
 
-// Add any additional polyfills or global variables needed for SimplePeer here
+// Ensure browser property is set (SimplePeer checks this)
+window.process.browser = true;
