@@ -863,8 +863,9 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
                 isActive ? 'bg-stone-800 text-teal-300 font-bold' : 
                 isExpanded ? 'text-teal-300' : 'text-teal-400'
               }`}
+              onClick={() => toggleFolder(item.path, item)}
             >
-              <div className="flex items-center" onClick={() => toggleFolder(item.path, item)}>
+              <div className="flex items-center">
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 <FolderOpen size={16} className="ml-1 mr-2" />
                 <span className="text-sm">{item.name}</span>
@@ -910,8 +911,9 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           <div 
             key={item.path} 
             className={`flex items-center justify-between py-1 px-1 ml-4 rounded cursor-pointer hover:bg-stone-700 group ${isSelected ? 'bg-stone-700 text-teal-300' : 'text-teal-50'}`}
+            onClick={() => handleFileSelect(item)}
           >
-            <div className="flex items-center" onClick={() => handleFileSelect(item)}>
+            <div className="flex items-center">
               {getFileIcon(item.name)}
               <span className="text-sm">{item.name}</span>
             </div>
