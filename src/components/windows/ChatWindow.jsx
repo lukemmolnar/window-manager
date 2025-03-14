@@ -422,22 +422,30 @@ const ChatWindow = ({ isActive, nodeId }) => {
         
         console.log('Creating new peer connection to user:', data.userId);
         
-        // Delay peer creation slightly to ensure browser WebRTC is ready
-        setTimeout(() => {
-          try {
-            const peer = new SimplePeer({
-              initiator: true,
-              trickle: false,
-              stream: localStream,
-              config: {
-                iceServers: [
-                  { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
-                ]
-              }
-            });
+        // Create peer connection with optimized settings
+        try {
+          // Track connection start time for performance monitoring
+          const connectionStartTime = performance.now();
+          
+          const peer = new SimplePeer({
+            initiator: true,
+            trickle: true, // Enable trickle ICE for faster connections
+            stream: localStream,
+            config: {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+              ],
+              iceCandidatePoolSize: 10 // Pre-gather some ICE candidates
+            }
+          });
             
             peer.on('signal', signal => {
               console.log('Generated signal for user:', data.userId, signal);
+              console.time('signaling-' + data.userId);
               socket.emit('voice_signal', {
                 channelId: activeVoiceChannel.id,
                 targetUserId: data.userId,
@@ -461,9 +469,11 @@ const ChatWindow = ({ isActive, nodeId }) => {
               console.log('ICE state change (initiator):', state);
             });
             
-            // Monitor connection state
+            // Monitor connection state with timing
             peer.on('connect', () => {
-              console.log('Peer connection established (initiator) with user:', data.userId);
+              console.timeEnd('signaling-' + data.userId);
+              const connectionTime = performance.now() - connectionStartTime;
+              console.log('Peer connection established (initiator) with user:', data.userId, 'in', connectionTime.toFixed(0), 'ms');
             });
             
             // Add to peers state
@@ -474,7 +484,6 @@ const ChatWindow = ({ isActive, nodeId }) => {
           } catch (err) {
             console.error('Error creating peer connection (initiator):', err);
           }
-        }, 500); // 500ms delay
       }
     };
     
@@ -538,24 +547,32 @@ const ChatWindow = ({ isActive, nodeId }) => {
             return;
           }
           
-          // Create a new peer with delay to ensure browser WebRTC is ready
+          // Create a new peer with optimized settings
           console.log('Creating new non-initiator peer for user:', data.fromUserId);
           
-          setTimeout(() => {
-            try {
-              const peer = new SimplePeer({
-                initiator: false,
-                trickle: false,
-                stream: localStream,
-                config: {
-                  iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' } // Simplified to one STUN server
-                  ]
-                }
-              });
+          try {
+            // Track connection start time for performance monitoring
+            const connectionStartTime = performance.now();
+            
+            const peer = new SimplePeer({
+              initiator: false,
+              trickle: true, // Enable trickle ICE for faster connections
+              stream: localStream,
+              config: {
+                iceServers: [
+                  { urls: 'stun:stun.l.google.com:19302' },
+                  { urls: 'stun:stun1.l.google.com:19302' },
+                  { urls: 'stun:stun2.l.google.com:19302' },
+                  { urls: 'stun:stun3.l.google.com:19302' },
+                  { urls: 'stun:stun4.l.google.com:19302' }
+                ],
+                iceCandidatePoolSize: 10 // Pre-gather some ICE candidates
+              }
+            });
               
               peer.on('signal', signal => {
                 console.log('Generated response signal for user:', data.fromUserId, signal);
+                console.time('signaling-' + data.fromUserId);
                 socket.emit('voice_signal', {
                   channelId: activeVoiceChannel.id,
                   targetUserId: data.fromUserId,
@@ -579,9 +596,11 @@ const ChatWindow = ({ isActive, nodeId }) => {
                 console.log('ICE state change (non-initiator):', state);
               });
               
-              // Monitor connection state
+              // Monitor connection state with timing
               peer.on('connect', () => {
-                console.log('Peer connection established (non-initiator) with user:', data.fromUserId);
+                console.timeEnd('signaling-' + data.fromUserId);
+                const connectionTime = performance.now() - connectionStartTime;
+                console.log('Peer connection established (non-initiator) with user:', data.fromUserId, 'in', connectionTime.toFixed(0), 'ms');
               });
               
               // Signal with the received data
@@ -595,7 +614,6 @@ const ChatWindow = ({ isActive, nodeId }) => {
             } catch (err) {
               console.error('Error creating peer connection (non-initiator):', err);
             }
-          }, 500); // 500ms delay
         }
       }
     };
