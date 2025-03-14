@@ -53,6 +53,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const analyserRef = useRef(null);
   const speakingTimeoutRef = useRef(null);
   const joinSoundRef = useRef(null);
+  const leaveSoundRef = useRef(null);
   
   // Helper function to create audio elements for remote streams
   const createAudioElement = (userId, stream) => {
@@ -84,18 +85,27 @@ const ChatWindow = ({ isActive, nodeId }) => {
   // New state for tracking which message's menu is open
   const [activeMenu, setActiveMenu] = useState(null);
 
-  // Initialize join sound
+  // Initialize sound effects
   useEffect(() => {
     // Create the audio element for the join sound
     const joinSound = new Audio('/audio/vine-boom.mp3');
     joinSound.volume = 0.5; // Set volume to 50%
     joinSoundRef.current = joinSound;
     
+    // Create the audio element for the leave sound
+    const leaveSound = new Audio('/audio/vine-boom-leave.mp3');
+    leaveSound.volume = 0.5; // Set volume to 50%
+    leaveSoundRef.current = leaveSound;
+    
     return () => {
       // Clean up
       if (joinSoundRef.current) {
         joinSoundRef.current.pause();
         joinSoundRef.current.src = '';
+      }
+      if (leaveSoundRef.current) {
+        leaveSoundRef.current.pause();
+        leaveSoundRef.current.src = '';
       }
     };
   }, []);
@@ -490,6 +500,18 @@ const ChatWindow = ({ isActive, nodeId }) => {
     // Handle when a user leaves a voice channel
     const handleUserLeftVoice = (data) => {
       console.log('User left voice:', data);
+      
+      // Play leave sound if this is our active channel and we're not the one leaving
+      if (activeVoiceChannel && 
+          activeVoiceChannel.id === data.channelId && 
+          data.userId !== user.id &&
+          leaveSoundRef.current) {
+        // Reset the audio to the beginning and play it
+        leaveSoundRef.current.currentTime = 0;
+        leaveSoundRef.current.play().catch(err => {
+          console.error('Error playing leave sound:', err);
+        });
+      }
       
       // Remove from participants list
       setVoiceParticipants(prev => 
