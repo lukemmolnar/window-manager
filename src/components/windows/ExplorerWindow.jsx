@@ -486,6 +486,20 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     }
   };
   
+  // Helper function to get the active folder path based on selected item and current path
+  const getActiveFolderPath = () => {
+    if (selectedFile) {
+      // If selected item is a directory, use its path
+      if (selectedFile.type === 'directory') {
+        return selectedFile.path;
+      }
+      // If selected item is a file, use its parent directory
+      return getParentDirectoryPath(selectedFile.path);
+    }
+    // Fall back to current path if no file is selected
+    return currentPath;
+  };
+  
   // Create a new file or folder
   const createNewItem = async () => {
     if (!newItemName.trim()) {
@@ -508,14 +522,18 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       // Determine if we're creating in the public folder or private folder
       const isPublicFolder = activeTab === 'public';
       
+      // Get the active folder path where the new item should be created
+      const activeFolderPath = getActiveFolderPath();
+      
       // Construct the full path for the new item
       let newItemPath;
       if (isPublicFolder) {
-        // For public folder, prefix with /public
-        newItemPath = path.join('/public', currentPath, newItemName.trim()).replace(/\\/g, '/');
+        // For public folder, prefix with /public if not already included
+        const publicPrefix = activeFolderPath.startsWith('/public') ? '' : '/public';
+        newItemPath = path.join(publicPrefix, activeFolderPath, newItemName.trim()).replace(/\\/g, '/');
       } else {
         // For private folder (admin only)
-        newItemPath = path.join(currentPath, newItemName.trim()).replace(/\\/g, '/');
+        newItemPath = path.join(activeFolderPath, newItemName.trim()).replace(/\\/g, '/');
       }
       
       // Create the new file or folder
