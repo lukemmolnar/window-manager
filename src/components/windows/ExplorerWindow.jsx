@@ -26,7 +26,8 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   const [currentPath, setCurrentPath] = useState(windowState?.currentPath || '/');
   const [selectedFile, setSelectedFile] = useState(windowState?.selectedFile || null);
   const [expandedFolders, setExpandedFolders] = useState(windowState?.expandedFolders || {});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isTreeLoading, setIsTreeLoading] = useState(true);
+  const [isContentLoading, setIsContentLoading] = useState(false);
   const [fileContent, setFileContent] = useState(windowState?.fileContent || '');
   const [errorMessage, setErrorMessage] = useState('');
   const [showPreview, setShowPreview] = useState(windowState?.showPreview || false);
@@ -87,14 +88,14 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   // Function to fetch public directory contents
   const fetchPublicDirectoryContents = async (publicPath = '/', refreshAll = false) => {
     try {
-      setIsLoading(true);
+      setIsTreeLoading(true);
       setErrorMessage('');
       
       // Get the authentication token
       const token = localStorage.getItem('auth_token');
       if (!token) {
         setErrorMessage('Authentication required. Please log in.');
-        setIsLoading(false);
+        setIsTreeLoading(false);
         return;
       }
       
@@ -113,7 +114,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       
       if (!response.ok) {
         setErrorMessage(`Failed to load public files: ${response.statusText}`);
-        setIsLoading(false);
+        setIsTreeLoading(false);
         return;
       }
       
@@ -135,7 +136,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         setCurrentPath(publicPath);
       }
       
-      setIsLoading(false);
+      setIsTreeLoading(false);
       
       // If we refreshed the entire tree, make sure the current path's parent folders are expanded
       if (refreshAll && currentPath !== '/') {
@@ -144,21 +145,21 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     } catch (error) {
       console.error('Error fetching public directory contents:', error);
       setErrorMessage('Failed to load public files. Please try again.');
-      setIsLoading(false);
+      setIsTreeLoading(false);
     }
   };
 
   // Function to fetch public file content
   const fetchPublicFileContent = async (filePath) => {
     try {
-      setIsLoading(true);
+      setIsContentLoading(true);
       setErrorMessage('');
       
       // Get the authentication token
       const token = localStorage.getItem('auth_token');
       if (!token) {
         setErrorMessage('Authentication required. Please log in.');
-        setIsLoading(false);
+        setIsContentLoading(false);
         return;
       }
       
@@ -174,33 +175,33 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       
       if (!response.ok) {
         setErrorMessage(`Failed to load file content: ${response.statusText}`);
-        setIsLoading(false);
+        setIsContentLoading(false);
         return;
       }
       
       const data = await response.json();
       setFileContent(data.content);
-      setIsLoading(false);
+      setIsContentLoading(false);
       setSaveStatus('saved');
     } catch (error) {
       console.error('Error fetching public file content:', error);
       setErrorMessage(`Error loading file: ${error.message}`);
       setSaveStatus('error');
-      setIsLoading(false);
+      setIsContentLoading(false);
     }
   };
 
   // Function to fetch private directory contents from the server (admin only)
   const fetchDirectoryContents = async (path = '/', refreshAll = false) => {
     try {
-      setIsLoading(true);
+      setIsTreeLoading(true);
       setErrorMessage('');
       
       // Get the authentication token
       const token = localStorage.getItem('auth_token');
       if (!token) {
         setErrorMessage('Authentication required. Please log in.');
-        setIsLoading(false);
+        setIsTreeLoading(false);
         return;
       }
       
@@ -224,7 +225,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         } else {
           setErrorMessage(`Failed to load files: ${response.statusText}`);
         }
-        setIsLoading(false);
+        setIsTreeLoading(false);
         return;
       }
       
@@ -245,7 +246,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         setCurrentPath(path);
       }
       
-      setIsLoading(false);
+      setIsTreeLoading(false);
       
       // If we refreshed the entire tree, make sure the current path's parent folders are expanded
       if (refreshAll && currentPath !== '/') {
@@ -254,21 +255,21 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     } catch (error) {
       console.error('Error fetching directory contents:', error);
       setErrorMessage('Failed to load files. Please try again.');
-      setIsLoading(false);
+      setIsTreeLoading(false);
     }
   };
 
   // Function to fetch file content
   const fetchFileContent = async (filePath) => {
     try {
-      setIsLoading(true);
+      setIsContentLoading(true);
       setErrorMessage('');
       
       // Get the authentication token
       const token = localStorage.getItem('auth_token');
       if (!token) {
         setErrorMessage('Authentication required. Please log in.');
-        setIsLoading(false);
+        setIsContentLoading(false);
         return;
       }
       
@@ -289,19 +290,19 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         } else {
           setErrorMessage(`Failed to load file content: ${response.statusText}`);
         }
-        setIsLoading(false);
+        setIsContentLoading(false);
         return;
       }
       
       const data = await response.json();
       setFileContent(data.content);
-      setIsLoading(false);
+      setIsContentLoading(false);
       setSaveStatus('saved');
     } catch (error) {
       console.error('Error fetching file content:', error);
       setErrorMessage(`Error loading file: ${error.message}`);
       setSaveStatus('error');
-      setIsLoading(false);
+      setIsContentLoading(false);
     }
   };
   
@@ -816,9 +817,8 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     
     setSelectedFile(file);
     
-    // Set the parent directory as the current path
-    const parentPath = getParentDirectoryPath(file.path);
-    setCurrentPath(parentPath);
+    // We don't change the current path when selecting a file
+    // This prevents the file tree from reloading unnecessarily
     
     // Reset edit mode when selecting a new file
     if (editMode) {
@@ -852,10 +852,16 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   
   // Render the file tree recursively
   const renderFileTree = (items) => {
+    // Keep track of the path to the currently selected file to highlight its parent folder
+    const selectedFilePath = selectedFile?.path || '';
+    const selectedFileParentPath = selectedFile && selectedFile.type !== 'directory' ? 
+      getParentDirectoryPath(selectedFilePath) : '';
+    
     return items.map(item => {
       if (item.type === 'directory') {
         const isExpanded = expandedFolders[item.path];
-        const isActive = currentPath === item.path;
+        // A folder is considered active if it's the current path OR if it's the parent of the selected file
+        const isActive = currentPath === item.path || (selectedFileParentPath === item.path);
         return (
           <div key={item.path} className="ml-2">
             <div 
@@ -1081,9 +1087,9 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           </div>
           
           <div className="flex-1 overflow-auto">
-            {isLoading && !fileContent ? (
+            {isTreeLoading ? (
               <div className="flex items-center justify-center h-full">
-                <span className="text-teal-300">Loading...</span>
+                <span className="text-teal-300">Loading files...</span>
               </div>
             ) : errorMessage ? (
               <div className="p-2 text-red-400">{errorMessage}</div>
@@ -1293,7 +1299,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
               )}
               
               {/* Content area - either editor or preview */}
-              {isLoading ? (
+              {isContentLoading ? (
                 <div className="flex-1 flex items-center justify-center">
                   <span className="text-teal-300">Loading content...</span>
                 </div>
