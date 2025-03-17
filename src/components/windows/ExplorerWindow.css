@@ -6,6 +6,18 @@
     padding: 1rem;
     white-space: pre-wrap; /* Preserve line breaks */
   }
+
+  /* Bold text styling */
+  .markdown-content strong {
+    font-weight: 700;
+    color: #2dd4bf; /* Teal accent color to make bold text stand out */
+  }
+  
+  /* Italic text styling */
+  .markdown-content em {
+    font-style: italic;
+    color: #a5f3fc; /* Light cyan for emphasis */
+  }
   
   /* Header styles with clear size differences */
   .markdown-content h1 {
@@ -101,18 +113,137 @@
     margin-top: 0.5rem;
   }
   
-  /* Lists */
-  .markdown-content ul, .markdown-content ol {
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-    padding-left: 2rem;
-    font-family: 'Oxygen Mono', monospace;
-  }
-  
-  .markdown-content li {
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
-  }
+/* Lists */
+.markdown-content ul, .markdown-content ol {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  padding-left: 2rem;
+  font-family: 'Oxygen Mono', monospace;
+  list-style-position: outside;
+}
+
+/* Bullet points */
+.markdown-content ul {
+  list-style-type: disc;
+}
+
+/* Numbered lists */
+.markdown-content ol {
+  list-style-type: decimal;
+}
+
+.markdown-content li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-left: 0.5rem;
+  display: list-item;
+}
+
+/* Make sure list items are clearly visible */
+.markdown-content ul > li::marker {
+  color: #2dd4bf; /* Teal color for bullet points */
+}
+
+.markdown-content ol > li::marker {
+  color: #2dd4bf; /* Teal color for numbers */
+  font-weight: bold;
+}
+
+/* Task lists (checkboxes) */
+.markdown-content .task-list {
+  list-style-type: none;
+  padding-left: 0.5rem;
+}
+
+.markdown-content .task-list-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content .task-list-item-checkbox {
+  margin-right: 0.5rem;
+  margin-top: 0.25rem;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #2dd4bf;
+  border-radius: 0.25rem;
+  background-color: #1c1917;
+  cursor: pointer;
+  position: relative;
+}
+
+.markdown-content .task-list-item-checkbox:checked {
+  background-color: #2dd4bf;
+}
+
+.markdown-content .task-list-item-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  color: #1c1917;
+  font-size: 0.75rem;
+  top: -0.125rem;
+  left: 0.125rem;
+}
+
+/* Alternative styling for checklists as rendered by Showdown */
+.markdown-content ul li input[type="checkbox"] {
+  margin-right: 0.5rem;
+  margin-top: 0.25rem;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #2dd4bf;
+  border-radius: 0.25rem;
+  background-color: #1c1917;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+}
+
+.markdown-content ul li input[type="checkbox"]:checked {
+  background-color: #2dd4bf;
+}
+
+.markdown-content ul li input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  color: #1c1917;
+  font-size: 0.75rem;
+  top: -0.125rem;
+  left: 0.125rem;
+}
+
+/* Remove default bullets for checklist items */
+.markdown-content ul li:has(input[type="checkbox"]) {
+  list-style-type: none;
+  margin-left: -1.5rem;
+}
+
+/* Specific styling for Showdown's task list output */
+.markdown-content ul.contains-task-list {
+  list-style-type: none;
+  padding-left: 1rem;
+}
+
+.markdown-content ul.contains-task-list li.task-list-item {
+  list-style-type: none;
+  padding-left: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Nested lists */
+.markdown-content ul ul,
+.markdown-content ol ol,
+.markdown-content ul ol,
+.markdown-content ol ul {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
   
   /* Links */
   .markdown-content a {

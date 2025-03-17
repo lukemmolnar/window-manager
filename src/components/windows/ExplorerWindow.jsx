@@ -1,5 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, BookOpen, Edit, Eye, Plus, FolderPlus, X, Globe, Lock, FileEdit, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  FolderOpen, FileText, ChevronRight, ChevronDown, File, Coffee, Code, 
+  BookOpen, Edit, Eye, Plus, FolderPlus, X, Globe, Lock, FileEdit, Trash2,
+  List, ListOrdered, CheckSquare, Bold, Italic, Code as CodeIcon, Link, Heading
+} from 'lucide-react';
 import showdown from 'showdown';
 import path from 'path-browserify';
 import API_CONFIG from '../../config/api';
@@ -59,19 +63,30 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   const [dropTarget, setDropTarget] = useState(null);
   const [isMoving, setIsMoving] = useState(false);
   
-  // For auto-save functionality
+  // For auto-save functionality and editor references
   const saveTimeoutRef = useRef(null);
   const createInputRef = useRef(null);
   const renameInputRef = useRef(null);
+  const textareaRef = useRef(null);
   
-  // Initialize Showdown converter for Markdown
+  // Initialize Showdown converter for Markdown with enhanced options
   const converter = new showdown.Converter({
     tables: true,
     tasklists: true,
     strikethrough: true,
     emoji: true,
-    breaks: true  // Enable line breaks to be rendered as <br> tags
+    breaks: true,  // Enable line breaks to be rendered as <br> tags
+    simpleLineBreaks: true,
+    openLinksInNewWindow: true,
+    backslashEscapesHTMLTags: true,
+    ghCodeBlocks: true,
+    ghCompatibleHeaderId: true,
+    ghMentions: true,
+    smoothLivePreview: true
   });
+  
+  // Enable additional extensions
+  converter.setFlavor('github');
 
   // Helper function to expand all parent folders of a path
   const expandParentFolders = (filePath) => {
@@ -345,6 +360,283 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       console.error('Error saving file:', error);
       setErrorMessage(`Error saving file: ${error.message}`);
       setSaveStatus('error');
+    }
+  };
+  
+  // Insert markdown syntax at cursor position
+  const insertMarkdown = (prefix, suffix = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = fileContent;
+    
+    // If text is selected, wrap it with prefix and suffix
+    if (start !== end) {
+      const selectedText = text.substring(start, end);
+      const newContent = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
+      setFileContent(newContent);
+      
+      // Set cursor position after the inserted text
+      setTimeout(() => {
+        textarea.selectionStart = start + prefix.length;
+        textarea.selectionEnd = end + prefix.length;
+        textarea.focus();
+      }, 0);
+    } else {
+      // No selection, just insert at cursor
+      const newContent = text.substring(0, start) + prefix + suffix + text.substring(start);
+      setFileContent(newContent);
+      
+      // Move cursor between prefix and suffix
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + prefix.length;
+        textarea.focus();
+      }, 0);
+    }
+  };
+  
+  // Insert list items
+  const insertList = (listPrefix) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = fileContent;
+    
+    // If text is selected, apply list formatting to each line
+    if (start !== end) {
+      const selectedText = text.substring(start, end);
+      const lines = selectedText.split('\n');
+      
+      // Format each line as a list item
+      const formattedLines = lines.map(line => {
+        // Skip empty lines
+        if (line.trim() === '') return line;
+        
+        // For numbered lists, increment the number for each line
+        if (listPrefix === '1. ') {
+          const index = lines.indexOf(line) + 1;
+          return `${index}. ${line}`;
+        }
+        
+        return `${listPrefix}${line}`;
+      });
+      
+      const newContent = text.substring(0, start) + formattedLines.join('\n') + text.substring(end);
+      setFileContent(newContent);
+      
+      // Set cursor position after the inserted text
+      setTimeout(() => {
+        textarea.selectionStart = start;
+        textarea.selectionEnd = start + formattedLines.join('\n').length;
+        textarea.focus();
+      }, 0);
+    } else {
+      // No selection, just insert at cursor
+      const newContent = text.substring(0, start) + listPrefix + text.substring(start);
+      setFileContent(newContent);
+      
+      // Move cursor after the inserted prefix
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + listPrefix.length;
+        textarea.focus();
+      }, 0);
+    }
+  };
+  
+  // Get the current line of text at cursor position
+  const getCurrentLine = (text, cursorPos) => {
+    const textBeforeCursor = text.substring(0, cursorPos);
+    const lineStartPos = textBeforeCursor.lastIndexOf('\n') + 1;
+    const lineEndPos = text.indexOf('\n', cursorPos);
+    const actualLineEndPos = lineEndPos !== -1 ? lineEndPos : text.length;
+    return text.substring(lineStartPos, actualLineEndPos);
+  };
+  
+  // Handle keyboard events in the editor
+  const handleEditorKeyDown = (e) => {
+    // Handle keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      // Ctrl+B or Cmd+B for bold
+      if (e.key === 'b') {
+        e.preventDefault();
+        insertMarkdown('**', '**');
+        return;
+      }
+      
+      // Ctrl+I or Cmd+I for italic
+      if (e.key === 'i') {
+        e.preventDefault();
+        insertMarkdown('*', '*');
+        return;
+      }
+      
+      // Ctrl+Shift+L for unordered list
+      if (e.shiftKey && e.key === 'L') {
+        e.preventDefault();
+        insertList('- ');
+        return;
+      }
+      
+      // Ctrl+Shift+O for ordered list
+      if (e.shiftKey && e.key === 'O') {
+        e.preventDefault();
+        insertList('1. ');
+        return;
+      }
+      
+      // Ctrl+Shift+C for checklist
+      if (e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        insertList('- [ ] ');
+        return;
+      }
+    }
+    
+    // Auto-continue lists on Enter
+    if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      
+      const cursorPos = textarea.selectionStart;
+      const text = fileContent;
+      const currentLine = getCurrentLine(text, cursorPos);
+      
+      // Check for list patterns
+      const bulletListMatch = currentLine.match(/^(\s*)(-|\*|\+)\s+(.*)/);
+      const numberedListMatch = currentLine.match(/^(\s*)(\d+)\.?\s+(.*)/);
+      const checklistMatch = currentLine.match(/^(\s*)(-|\*|\+)\s+\[([ xX])\]\s+(.*)/);
+      
+      if (bulletListMatch || numberedListMatch || checklistMatch) {
+        // Get the indentation and list marker
+        let indentation, marker, content;
+        
+        if (checklistMatch) {
+          indentation = checklistMatch[1];
+          marker = checklistMatch[2];
+          const checkState = checklistMatch[3];
+          content = checklistMatch[4];
+          
+          // If the checklist item is empty, remove the list marker
+          if (content.trim() === '') {
+            e.preventDefault();
+            const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+            const newContent = text.substring(0, lineStart) + text.substring(cursorPos);
+            setFileContent(newContent);
+            setTimeout(() => {
+              textarea.selectionStart = textarea.selectionEnd = lineStart;
+              textarea.focus();
+            }, 0);
+            return;
+          }
+          
+          // Continue the checklist with an unchecked box
+          e.preventDefault();
+          const newListItem = `\n${indentation}${marker} [ ] `;
+          insertMarkdown(newListItem);
+          return;
+        } else if (bulletListMatch) {
+          indentation = bulletListMatch[1];
+          marker = bulletListMatch[2];
+          content = bulletListMatch[3];
+          
+          // If the list item is empty, remove the list marker
+          if (content.trim() === '') {
+            e.preventDefault();
+            const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+            const newContent = text.substring(0, lineStart) + text.substring(cursorPos);
+            setFileContent(newContent);
+            setTimeout(() => {
+              textarea.selectionStart = textarea.selectionEnd = lineStart;
+              textarea.focus();
+            }, 0);
+            return;
+          }
+          
+          // Continue the bullet list
+          e.preventDefault();
+          const newListItem = `\n${indentation}${marker} `;
+          insertMarkdown(newListItem);
+          return;
+        } else if (numberedListMatch) {
+          indentation = numberedListMatch[1];
+          const number = parseInt(numberedListMatch[2], 10);
+          content = numberedListMatch[3];
+          
+          // If the list item is empty, remove the list marker
+          if (content.trim() === '') {
+            e.preventDefault();
+            const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+            const newContent = text.substring(0, lineStart) + text.substring(cursorPos);
+            setFileContent(newContent);
+            setTimeout(() => {
+              textarea.selectionStart = textarea.selectionEnd = lineStart;
+              textarea.focus();
+            }, 0);
+            return;
+          }
+          
+          // Continue the numbered list with incremented number
+          e.preventDefault();
+          const newListItem = `\n${indentation}${number + 1}. `;
+          insertMarkdown(newListItem);
+          return;
+        }
+      }
+    }
+    
+    // Handle tab for indentation in lists
+    if (e.key === 'Tab') {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      
+      const cursorPos = textarea.selectionStart;
+      const text = fileContent;
+      const currentLine = getCurrentLine(text, cursorPos);
+      
+      // Check if we're in a list item
+      const listMatch = currentLine.match(/^(\s*)(-|\*|\+|\d+\.|\[[ xX]\])\s+/);
+      if (listMatch) {
+        e.preventDefault();
+        
+        // Add or remove indentation based on shift key
+        if (e.shiftKey) {
+          // Outdent: remove 2 spaces from the beginning if they exist
+          if (currentLine.startsWith('  ')) {
+            const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+            const lineEnd = text.indexOf('\n', cursorPos);
+            const actualLineEnd = lineEnd !== -1 ? lineEnd : text.length;
+            
+            const newContent = text.substring(0, lineStart) + currentLine.substring(2) + text.substring(actualLineEnd);
+            setFileContent(newContent);
+            
+            // Adjust cursor position
+            const newCursorPos = cursorPos - 2;
+            setTimeout(() => {
+              textarea.selectionStart = textarea.selectionEnd = newCursorPos > lineStart ? newCursorPos : lineStart;
+              textarea.focus();
+            }, 0);
+          }
+        } else {
+          // Indent: add 2 spaces at the beginning
+          const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+          const lineEnd = text.indexOf('\n', cursorPos);
+          const actualLineEnd = lineEnd !== -1 ? lineEnd : text.length;
+          
+          const newContent = text.substring(0, lineStart) + '  ' + currentLine + text.substring(actualLineEnd);
+          setFileContent(newContent);
+          
+          // Adjust cursor position
+          const newCursorPos = cursorPos + 2;
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+            textarea.focus();
+          }, 0);
+        }
+      }
     }
   };
   
@@ -1470,13 +1762,78 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
                 </div>
               ) : editMode && selectedFile.name.endsWith('.md') && isAdmin ? (
                 // Editor mode - only for markdown files and admin users
-                <div className="flex-1 p-2">
-                  <textarea
-                    className="w-full h-full bg-stone-800 text-teal-50 p-4 resize-none focus:outline-none font-mono"
-                    value={fileContent}
-                    onChange={handleMarkdownChange}
-                    placeholder="# Start typing your markdown here..."
-                  />
+                <div className="flex-1 flex flex-col">
+                  {/* Markdown toolbar */}
+                  <div className="p-2 border-b border-stone-700 bg-stone-800 flex flex-wrap gap-2">
+                    <button 
+                      onClick={() => insertMarkdown('### ')}
+                      className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                      title="Heading"
+                    >
+                      <Heading size={16} />
+                    </button>
+                    <button 
+                      onClick={() => insertMarkdown('**', '**')}
+                      className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                      title="Bold"
+                    >
+                      <Bold size={16} />
+                    </button>
+                    <button 
+                      onClick={() => insertMarkdown('*', '*')}
+                      className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                      title="Italic"
+                    >
+                      <Italic size={16} />
+                    </button>
+                    <button 
+                      onClick={() => insertMarkdown('`', '`')}
+                      className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                      title="Inline Code"
+                    >
+                      <CodeIcon size={16} />
+                    </button>
+                    <button 
+                      onClick={() => insertMarkdown('[', '](url)')}
+                      className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                      title="Link"
+                    >
+                      <Link size={16} />
+                    </button>
+                    <span className="border-r border-stone-700 h-6"></span>
+                    <button 
+                      onClick={() => insertList('- ')}
+                      className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                      title="Bullet List"
+                    >
+                      <List size={16} />
+                    </button>
+                    <button 
+                      onClick={() => insertList('1. ')}
+                      className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                      title="Numbered List"
+                    >
+                      <ListOrdered size={16} />
+                    </button>
+                    <button 
+                      onClick={() => insertList('- [ ] ')}
+                      className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                      title="Checklist"
+                    >
+                      <CheckSquare size={16} />
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 p-2">
+                    <textarea
+                      ref={textareaRef}
+                      className="w-full h-full bg-stone-800 text-teal-50 p-4 resize-none focus:outline-none font-mono"
+                      value={fileContent}
+                      onChange={handleMarkdownChange}
+                      onKeyDown={handleEditorKeyDown}
+                      placeholder="# Start typing your markdown here..."
+                    />
+                  </div>
                 </div>
               ) : showPreview ? (
                 // Preview mode
