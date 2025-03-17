@@ -1,55 +1,93 @@
-# Move Mode Documentation
+# File Drag-and-Drop Functionality
+
+This document describes the drag-and-drop functionality implemented in the ExplorerWindow component, which allows users to move files and folders by dragging and dropping them.
 
 ## Overview
 
-Move Mode is a feature that allows users to swap the positions of two windows in the window manager. This is useful for rearranging the layout of windows without having to close and recreate them.
+The drag-and-drop functionality enables admin users to move files and folders within the file explorer by dragging them to a different folder. This provides a more intuitive and user-friendly way to organize files compared to using commands or buttons.
 
-## Implementation
+## Implementation Details
 
-Move Mode is implemented using the following components:
+### Frontend (ExplorerWindow.jsx)
 
-1. **State Management**: The `useWindowManager` hook manages the state for Move Mode, including:
-   - `isMoveMode`: A boolean indicating whether Move Mode is active
-   - `moveSourceWindowId`: The ID of the first selected window (the source window)
+1. **State Variables**:
+   - `draggedItem`: Tracks the item being dragged
+   - `dropTarget`: Tracks the folder where the item can be dropped
+   - `isMoving`: Indicates if a move operation is in progress
 
-2. **Keyboard Shortcuts**: 
-   - `Ctrl+M`: Toggle Move Mode on/off
-   - `Enter`: Select a window in Move Mode
-   - `Ctrl+Arrow Keys`: Navigate between windows
+2. **Event Handlers**:
+   - `handleDragStart`: Triggered when a user starts dragging a file or folder
+   - `handleDragOver`: Triggered when a dragged item is over a potential drop target
+   - `handleDragLeave`: Triggered when a dragged item leaves a potential drop target
+   - `handleDrop`: Triggered when a dragged item is dropped on a valid target
 
 3. **Visual Feedback**:
-   - Active window in Move Mode: Green border
-   - First selected window: Blue border
-   - Normal active window: Teal border
+   - CSS classes provide visual feedback during drag operations:
+     - `.dragging`: Applied to the item being dragged
+     - `.drop-target`: Applied to folders that can accept the dragged item
+
+4. **Restrictions**:
+   - Only admin users can drag and drop files
+   - Files can only be dropped into directories
+   - Files cannot be dropped onto themselves
+   - Files cannot be dropped into their current parent directory
+
+### Backend (server-files.js)
+
+The backend supports file movement through the `/api/files/move` endpoint, which:
+
+1. Validates source and destination paths
+2. Handles both public and private files
+3. Prevents invalid operations (e.g., moving from public to private folders)
+4. Checks for name conflicts at the destination
+5. Performs the actual file move operation using Node.js fs.renameSync
+
+## CSS Styling
+
+Custom CSS styles in ExplorerWindow.css provide visual feedback during drag operations:
+
+```css
+[draggable] {
+  cursor: grab;
+}
+
+[draggable]:active {
+  cursor: grabbing;
+}
+
+.drop-target {
+  background-color: rgba(20, 184, 166, 0.2) !important;
+  border: 2px dashed rgb(20, 184, 166) !important;
+  border-radius: 0.25rem;
+}
+
+.dragging {
+  opacity: 0.5;
+  background-color: rgba(20, 184, 166, 0.1);
+}
+```
 
 ## Usage
 
-1. Press `Ctrl+M` to enter Move Mode
-   - The active window's border will turn green to indicate Move Mode is active
+1. Admin users can drag any file or folder by clicking and holding on it
+2. While dragging, folders will highlight when hovered over to indicate they are valid drop targets
+3. Dropping the file or folder into a highlighted folder will move it to that location
+4. The file tree will automatically refresh to show the updated file structure
 
-2. Press `Enter` to select the first window
-   - The selected window's border will turn blue to indicate it's the source window
+## Error Handling
 
-3. Use `Ctrl+Arrow` keys to navigate to another window
-   - The active window's border will be green (Move Mode is still active)
+The implementation includes comprehensive error handling:
 
-4. Press `Enter` again to swap the windows
-   - The windows will swap positions
-   - Move Mode will automatically exit after the swap
+1. Client-side validation prevents invalid drop operations
+2. Server-side validation ensures the move operation is valid
+3. Error messages are displayed to the user if a move operation fails
+4. The UI state is reset if an error occurs during the move operation
 
-## Technical Details
+## Future Enhancements
 
-The window swapping is implemented in the `swapWindows` function in the `useWindowManager` hook. This function:
+Potential future enhancements to the drag-and-drop functionality:
 
-1. Takes the source and target window IDs
-2. Creates a deep copy of the current window tree
-3. Finds the source and target nodes in the tree
-4. Swaps the window types and states between the nodes
-5. Updates the workspace with the new tree
-6. Exits Move Mode and resets the source window ID
-
-## Limitations
-
-- Move Mode only swaps the window content and state, not the actual window positions in the tree structure
-- The window sizes remain the same after swapping
-- Move Mode automatically exits after a swap, requiring the user to re-enter Move Mode for multiple swaps
+1. Multi-select and drag multiple files at once
+2. Copy files with a modifier key (e.g., Ctrl+drag)
+3. Drag files from the file explorer to other components (e.g., editor)
+4. Drag files from outside the application into the file explorer

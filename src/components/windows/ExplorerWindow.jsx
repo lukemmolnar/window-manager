@@ -54,6 +54,11 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // State for drag and drop
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+  const [isMoving, setIsMoving] = useState(false);
+  
   // For auto-save functionality
   const saveTimeoutRef = useRef(null);
   const createInputRef = useRef(null);
@@ -647,6 +652,141 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     setErrorMessage('');
   };
   
+  // Handle drag start event
+  const handleDragStart = (e, item) => {
+    if (!isAdmin) return;
+    
+    setDraggedItem(item);
+    e.dataTransfer.setData('text/plain', item.path);
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Add dragging class to the element
+    e.currentTarget.classList.add('dragging');
+    
+    // Remove the class after a short delay to ensure it's applied
+    setTimeout(() => {
+      if (e.currentTarget) {
+        e.currentTarget.classList.remove('dragging');
+      }
+    }, 100);
+  };
+  
+  // Handle drag over event
+  const handleDragOver = (e, folder) => {
+    if (!isAdmin || !draggedItem) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only allow dropping into directories
+    if (folder.type === 'directory') {
+      setDropTarget(folder);
+      e.dataTransfer.dropEffect = 'move';
+      
+      // Add drop-target class to the element
+      e.currentTarget.classList.add('drop-target');
+    }
+  };
+  
+  // Handle drag leave event
+  const handleDragLeave = (e) => {
+    if (!isAdmin) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget(null);
+    
+    // Remove drop-target class from the element
+    e.currentTarget.classList.remove('drop-target');
+  };
+  
+  // Handle drop event
+  const handleDrop = async (e, targetFolder) => {
+    if (!isAdmin || !draggedItem || !targetFolder) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Reset drop target
+    setDropTarget(null);
+    
+    // Remove drop-target class from the element
+    e.currentTarget.classList.remove('drop-target');
+    
+    // Only allow dropping into directories
+    if (targetFolder.type !== 'directory') {
+      return;
+    }
+    
+    // Check if dropping on itself
+    if (draggedItem.path === targetFolder.path) {
+      return;
+    }
+    
+    // Check if dropping in current location (parent folder is the same)
+    const draggedParent = getParentDirectoryPath(draggedItem.path);
+    if (draggedParent === targetFolder.path) {
+      return;
+    }
+    
+    try {
+      setIsMoving(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsMoving(false);
+        return;
+      }
+      
+      // Call the API to move the file
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_MOVE}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sourcePath: draggedItem.path,
+          destinationPath: targetFolder.path
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to move ${draggedItem.type}: ${response.statusText}`);
+      }
+      
+      // If the moved item was selected, clear the selection
+      if (selectedFile && selectedFile.path === draggedItem.path) {
+        setSelectedFile(null);
+        setFileContent('');
+        setShowPreview(false);
+        if (editMode) {
+          setEditMode(false);
+        }
+      }
+      
+      // Refresh the appropriate file list
+      if (draggedItem.isPublic) {
+        fetchPublicDirectoryContents('/', true);
+      } else {
+        fetchDirectoryContents('/', true);
+      }
+      
+      // Clear drag state
+      setDraggedItem(null);
+      setIsMoving(false);
+    } catch (error) {
+      console.error(`Error moving ${draggedItem.type}:`, error);
+      setErrorMessage(`Failed to move ${draggedItem.type}: ${error.message}`);
+      setDraggedItem(null);
+      setIsMoving(false);
+    }
+  };
+  
   // Delete a file or folder
   const deleteItem = async () => {
     if (!itemToDelete) {
@@ -886,8 +1026,13 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
               className={`flex items-center justify-between py-1 px-1 rounded hover:bg-stone-700 cursor-pointer group ${
                 isActive ? 'bg-stone-800 text-teal-300 font-bold' : 
                 isExpanded ? 'text-teal-300' : 'text-teal-400'
-              }`}
+              } ${dropTarget && dropTarget.path === item.path ? 'bg-teal-900 border border-teal-500' : ''}`}
               onClick={() => toggleFolder(item.path, item)}
+              draggable={isAdmin}
+              onDragStart={(e) => handleDragStart(e, item)}
+              onDragOver={(e) => handleDragOver(e, item)}
+              onDragLeave={(e) => handleDragLeave(e)}
+              onDrop={(e) => handleDrop(e, item)}
             >
               <div className="flex items-center">
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -936,6 +1081,8 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
             key={item.path} 
             className={`flex items-center justify-between py-1 px-1 ml-4 rounded cursor-pointer hover:bg-stone-700 group ${isSelected ? 'bg-stone-700 text-teal-300' : 'text-teal-50'}`}
             onClick={() => handleFileSelect(item)}
+            draggable={isAdmin}
+            onDragStart={(e) => handleDragStart(e, item)}
           >
             <div className="flex items-center">
               {getFileIcon(item.name)}

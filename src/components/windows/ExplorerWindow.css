@@ -124,3 +124,25 @@
   .markdown-content a:hover {
     color: #2dd4bf;
   }
+
+/* Drag and drop styles */
+[draggable] {
+  cursor: grab;
+}
+
+[draggable]:active {
+  cursor: grabbing;
+}
+
+/* Style for the drop target when dragging over */
+.drop-target {
+  background-color: rgba(20, 184, 166, 0.2) !important;
+  border: 2px dashed rgb(20, 184, 166) !important;
+  border-radius: 0.25rem;
+}
+
+/* Style for the item being dragged */
+.dragging {
+  opacity: 0.5;
+  background-color: rgba(20, 184, 166, 0.1);
+}
