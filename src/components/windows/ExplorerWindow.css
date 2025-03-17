@@ -1,7 +1,7 @@
 /* Markdown content styling */
 .markdown-content {
     color: #f0f9ff; /* Light blue-white for readability */
-    line-height: 1.6;
+    line-height: 1;
     font-family: 'Oxygen Mono', monospace;
     padding: 1rem;
     white-space: pre-wrap; /* Preserve line breaks */
@@ -92,7 +92,7 @@
     margin: 1rem 0;
     font-family: 'Oxygen Mono', monospace;
     font-size: 0.875rem;
-    line-height: 1.5;
+    line-height: 1;
   }
   
   .markdown-content code {
