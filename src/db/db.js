@@ -64,6 +64,14 @@ export const initDB = () => {
           console.log(`Created ${STORES.ACTIVE_WINDOWS} object store`);
         }
       }
+      
+      if (oldVersion < 3) {
+        // New stores added in version 3
+        if (!db.objectStoreNames.contains(STORES.CANVAS_STATES)) {
+          db.createObjectStore(STORES.CANVAS_STATES, { keyPath: 'id' });
+          console.log(`Created ${STORES.CANVAS_STATES} object store`);
+        }
+      }
     };
   });
 };

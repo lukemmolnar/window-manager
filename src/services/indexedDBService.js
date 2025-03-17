@@ -250,6 +250,47 @@ export const deleteExplorerState = async (id) => {
   return deleteData(STORES.EXPLORER_STATES, id);
 };
 
+// ========== Canvas State Functions ==========
+
+/**
+ * Save a canvas state to IndexedDB
+ * @param {Object} canvasState - The canvas state to save
+ * @returns {Promise<any>} A promise that resolves to the result of the operation
+ */
+export const saveCanvasState = async (canvasState) => {
+  await ensureDBInitialized();
+  return saveData(STORES.CANVAS_STATES, canvasState);
+};
+
+/**
+ * Get a canvas state from IndexedDB
+ * @param {string|number} id - The ID of the canvas state to retrieve
+ * @returns {Promise<Object>} A promise that resolves to the canvas state
+ */
+export const getCanvasState = async (id) => {
+  await ensureDBInitialized();
+  return getData(STORES.CANVAS_STATES, id);
+};
+
+/**
+ * Get all canvas states from IndexedDB
+ * @returns {Promise<Array>} A promise that resolves to an array of all canvas states
+ */
+export const getAllCanvasStates = async () => {
+  await ensureDBInitialized();
+  return getAllData(STORES.CANVAS_STATES);
+};
+
+/**
+ * Delete a canvas state from IndexedDB
+ * @param {string|number} id - The ID of the canvas state to delete
+ * @returns {Promise<void>} A promise that resolves when the canvas state is deleted
+ */
+export const deleteCanvasState = async (id) => {
+  await ensureDBInitialized();
+  return deleteData(STORES.CANVAS_STATES, id);
+};
+
 // ========== Active Window Functions ==========
 
 /**

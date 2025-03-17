@@ -5,5 +5,6 @@ export const WINDOW_TYPES = {
     TERMINAL: 'terminal',
     AUDIO: 'audio',
     CHAT: 'chat',  // Add chat window type
-    ADMIN: 'admin' // Add admin window type
+    ADMIN: 'admin', // Add admin window type
+    CANVAS: 'canvas' // Add canvas window type
   };
