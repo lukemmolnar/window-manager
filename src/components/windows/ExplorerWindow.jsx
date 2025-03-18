@@ -980,6 +980,23 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     }
   };
   
+  // Handle drag over for the file tree container (to allow dropping to root)
+  const handleContainerDragOver = (e) => {
+    if (!isAdmin || !draggedItem) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Set root as the drop target
+    const rootFolder = {
+      type: 'directory',
+      path: draggedItem.isPublic ? '/public' : '/',
+      name: 'Root'
+    };
+    setDropTarget(rootFolder);
+    e.dataTransfer.dropEffect = 'move';
+  };
+  
   // Handle drag leave event
   const handleDragLeave = (e) => {
     if (!isAdmin) return;
@@ -990,6 +1007,15 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     
     // Remove drop-target class from the element
     e.currentTarget.classList.remove('drop-target');
+  };
+  
+  // Handle drag leave for the container
+  const handleContainerDragLeave = (e) => {
+    if (!isAdmin) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget(null);
   };
   
   // Handle drop event
@@ -1074,6 +1100,83 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     } catch (error) {
       console.error(`Error moving ${draggedItem.type}:`, error);
       setErrorMessage(`Failed to move ${draggedItem.type}: ${error.message}`);
+      setDraggedItem(null);
+      setIsMoving(false);
+    }
+  };
+  
+  // Handle drop event for the container (moving to root)
+  const handleContainerDrop = async (e) => {
+    if (!isAdmin || !draggedItem || !dropTarget) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Process the drop using the dropTarget which was set in handleContainerDragOver
+    const targetFolder = dropTarget;
+    
+    // Reset drop target
+    setDropTarget(null);
+    
+    // Check if dropping in current location (parent folder is the same)
+    const draggedParent = getParentDirectoryPath(draggedItem.path);
+    if (draggedParent === targetFolder.path) {
+      return;
+    }
+    
+    try {
+      setIsMoving(true);
+      setErrorMessage('');
+      
+      // Get the authentication token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setErrorMessage('Authentication required. Please log in.');
+        setIsMoving(false);
+        return;
+      }
+      
+      // Call the API to move the file
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_MOVE}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sourcePath: draggedItem.path,
+          destinationPath: targetFolder.path
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to move ${draggedItem.type}: ${response.statusText}`);
+      }
+      
+      // If the moved item was selected, clear the selection
+      if (selectedFile && selectedFile.path === draggedItem.path) {
+        setSelectedFile(null);
+        setFileContent('');
+        setShowPreview(false);
+        if (editMode) {
+          setEditMode(false);
+        }
+      }
+      
+      // Refresh the appropriate file list
+      if (draggedItem.isPublic) {
+        fetchPublicDirectoryContents('/', true);
+      } else {
+        fetchDirectoryContents('/', true);
+      }
+      
+      // Clear drag state
+      setDraggedItem(null);
+      setIsMoving(false);
+    } catch (error) {
+      console.error(`Error moving ${draggedItem.type} to root:`, error);
+      setErrorMessage(`Failed to move ${draggedItem.type} to root: ${error.message}`);
       setDraggedItem(null);
       setIsMoving(false);
     }
@@ -1543,7 +1646,12 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
             )}
           </div>
           
-          <div className="flex-1 overflow-auto">
+          <div 
+            className="flex-1 overflow-auto"
+            onDragOver={handleContainerDragOver}
+            onDragLeave={handleContainerDragLeave}
+            onDrop={handleContainerDrop}
+          >
             {isTreeLoading ? (
               <div className="flex items-center justify-center h-full">
                 <span className="text-teal-300">Loading files...</span>
