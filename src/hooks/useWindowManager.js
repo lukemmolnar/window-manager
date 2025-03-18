@@ -762,6 +762,56 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     const sourceWindowType = sourceNode.windowType;
     const targetWindowType = targetNode.windowType;
     
+    // Handle sessionStorage and localStorage swapping for chat windows
+    if (sourceWindowType === WINDOW_TYPES.CHAT || targetWindowType === WINDOW_TYPES.CHAT) {
+      console.log('Swapping chat window sessionStorage and localStorage entries');
+      
+      // Swap active room selections in sessionStorage
+      const sourceActiveRoom = sessionStorage.getItem(`chat_active_room_${sourceId}`);
+      const targetActiveRoom = sessionStorage.getItem(`chat_active_room_${targetId}`);
+      
+      console.log('Chat active rooms before swap:', { sourceActiveRoom, targetActiveRoom });
+      
+      if (sourceActiveRoom && targetWindowType === WINDOW_TYPES.CHAT) {
+        sessionStorage.setItem(`chat_active_room_${targetId}`, sourceActiveRoom);
+      }
+      
+      if (targetActiveRoom && sourceWindowType === WINDOW_TYPES.CHAT) {
+        sessionStorage.setItem(`chat_active_room_${sourceId}`, targetActiveRoom);
+      }
+      
+      // Get a list of all localStorage keys that might contain draft messages
+      const allKeys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        allKeys.push(localStorage.key(i));
+      }
+      
+      // Filter keys related to each window
+      const sourceKeys = allKeys.filter(key => key.startsWith(`chat_draft_${sourceId}_`));
+      const targetKeys = allKeys.filter(key => key.startsWith(`chat_draft_${targetId}_`));
+      
+      console.log('Draft message keys before swap:', { sourceKeys, targetKeys });
+      
+      // Swap draft messages in localStorage
+      if (targetWindowType === WINDOW_TYPES.CHAT) {
+        sourceKeys.forEach(key => {
+          const value = localStorage.getItem(key);
+          const roomId = key.split('_')[3]; // Extract room ID from key format "chat_draft_nodeId_roomId"
+          localStorage.setItem(`chat_draft_${targetId}_${roomId}`, value);
+        });
+      }
+      
+      if (sourceWindowType === WINDOW_TYPES.CHAT) {
+        targetKeys.forEach(key => {
+          const value = localStorage.getItem(key);
+          const roomId = key.split('_')[3]; // Extract room ID from key format "chat_draft_nodeId_roomId"
+          localStorage.setItem(`chat_draft_${sourceId}_${roomId}`, value);
+        });
+      }
+      
+      console.log('Successfully swapped chat window storage entries');
+    }
+    
     // Async function to handle the IndexedDB operations
     const swapIndexedDBStates = async () => {
       try {
