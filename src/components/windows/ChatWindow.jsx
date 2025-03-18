@@ -43,8 +43,9 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const [newRoomName, setNewRoomName] = useState('');
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
-  // Ref to track if state has been loaded from IndexedDB
+  // Refs to track loading state
   const stateLoadedRef = useRef(false);
+  const roomsLoadedRef = useRef(false);
   
   // Voice chat state
   const [voiceChannels, setVoiceChannels] = useState([]);
@@ -241,8 +242,34 @@ const ChatWindow = ({ isActive, nodeId }) => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setRooms(response.data);
+        roomsLoadedRef.current = true;
         
-        // If there are rooms and no active room, set the first one as active
+        // Get saved active room ID from sessionStorage
+        const savedRoomId = sessionStorage.getItem(`chat_active_room_${nodeId}`);
+        
+        if (savedRoomId && response.data.length > 0) {
+          // Try to find the saved room
+          const savedRoom = response.data.find(room => 
+            room.id === parseInt(savedRoomId, 10) || room.id === savedRoomId
+          );
+          
+          if (savedRoom) {
+            console.log(`Restoring saved room: ${savedRoom.name}`);
+            setActiveRoom(savedRoom);
+            
+            // Load any saved draft message for this room
+            const savedDraft = localStorage.getItem(`chat_draft_${nodeId}_${savedRoom.id}`);
+            if (savedDraft) {
+              setNewMessage(savedDraft);
+              setCharCount(savedDraft.length);
+            }
+            
+            return;
+          }
+        }
+        
+        // If no saved room was found or restored, and there are rooms but no active room,
+        // set the first one as active
         if (response.data.length > 0 && !activeRoom) {
           setActiveRoom(response.data[0]);
         }
@@ -252,24 +279,36 @@ const ChatWindow = ({ isActive, nodeId }) => {
     };
 
     fetchRooms();
-  }, [activeRoom]);
+  }, []); // Only run once on mount
 
-  // Save active room to IndexedDB when it changes
+  // Save active room to IndexedDB and sessionStorage when it changes
   useEffect(() => {
-    if (!activeRoom || !stateLoadedRef.current) return;
+    if (!activeRoom) return;
     
-    // Save the active room ID to IndexedDB
-    saveChatState({
-      id: nodeId,
-      content: {
-        activeRoomId: activeRoom.id
-      }
-    }).catch(error => {
-      console.error(`Failed to save chat state for window ${nodeId} to IndexedDB:`, error);
-    });
+    // Save to sessionStorage for immediate persistence across refreshes
+    sessionStorage.setItem(`chat_active_room_${nodeId}`, activeRoom.id);
     
-    console.log(`Saved active room ID ${activeRoom.id} to IndexedDB for window ${nodeId}`);
-  }, [activeRoom, nodeId]);
+    // Also save to IndexedDB for longer term storage if state is loaded
+    if (stateLoadedRef.current) {
+      saveChatState({
+        id: nodeId,
+        content: {
+          activeRoomId: activeRoom.id
+        }
+      }).catch(error => {
+        console.error(`Failed to save chat state for window ${nodeId} to IndexedDB:`, error);
+      });
+      
+      console.log(`Saved active room ID ${activeRoom.id} to IndexedDB for window ${nodeId}`);
+    }
+    
+    // Check for any saved draft message
+    const savedDraft = localStorage.getItem(`chat_draft_${nodeId}_${activeRoom.id}`);
+    if (savedDraft && newMessage !== savedDraft) {
+      setNewMessage(savedDraft);
+      setCharCount(savedDraft.length);
+    }
+  }, [activeRoom, nodeId, newMessage]);
 
   // Join room and fetch messages
   useEffect(() => {
@@ -742,6 +781,11 @@ const ChatWindow = ({ isActive, nodeId }) => {
     if (value.length <= MAX_CHARS) {
       setNewMessage(value);
       setCharCount(value.length);
+      
+      // Save draft message to localStorage
+      if (activeRoom) {
+        localStorage.setItem(`chat_draft_${nodeId}_${activeRoom.id}`, value);
+      }
     }
   };
 
