@@ -802,6 +802,8 @@ const ChatWindow = ({ isActive, nodeId }) => {
       );
       setNewMessage('');
       setCharCount(0);
+      // Clear the draft message from localStorage
+      localStorage.removeItem(`chat_draft_${nodeId}_${activeRoom.id}`);
     } catch (error) {
       console.error('Failed to send message:', error);
     }
