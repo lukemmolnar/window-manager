@@ -252,7 +252,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
 
   return (
     <div 
-      className="bg-stone-900 text-teal-400 font-mono text-sm h-full flex flex-col"
+      className="bg-stone-900 text-white font-mono text-sm h-full flex flex-col"
       onClick={handleTerminalClick}
     >
       <div ref={terminalRef} className="p-2 flex-1 overflow-auto whitespace-pre-wrap">
