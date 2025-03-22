@@ -168,7 +168,7 @@ const AdminWindow = ({ isActive }) => {
       
       // Use the register endpoint instead of users endpoint
       // If email is not provided, use a default placeholder
-      const email = createFormData.email || `${createFormData.username}@example.com`;
+      const email = createFormData.email || '';
       
       await axios.post(
         `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REGISTER}`,
@@ -624,7 +624,7 @@ const AdminWindow = ({ isActive }) => {
                           </button>
                           <button
                             onClick={() => handleDeleteUser(userItem.id)}
-                            className="px-3 py-1 hover:bg-stone-600 rounded text-sm"
+                            className="px-3 py-1 focus:outline-none text-sm"
                             disabled={loading}
                             title="Delete user"
                           >
