@@ -10,7 +10,7 @@ import { MoreVertical, Trash, Mic, MicOff, Phone, PhoneOff, Plus } from 'lucide-
 import SimplePeer from 'simple-peer';
 
 // Helper function to safely destroy a peer connection
-const safelyDestroyPeer = (peer) => {
+const safelyDestroyPeer = (peer, userId, destroyedPeersRef) => {
   if (!peer) return;
   
   try {
@@ -26,6 +26,12 @@ const safelyDestroyPeer = (peer) => {
     // Destroy the peer
     if (peer.destroy) {
       peer.destroy();
+      
+      // Mark this peer as destroyed if we have a userId and ref
+      if (userId && destroyedPeersRef?.current) {
+        console.log(`Marking peer ${userId} as destroyed`);
+        destroyedPeersRef.current.add(userId);
+      }
     }
   } catch (err) {
     console.error('Error safely destroying peer:', err);
@@ -61,6 +67,9 @@ const ChatWindow = ({ isActive, nodeId }) => {
   const speakingTimeoutRef = useRef(null);
   const joinSoundRef = useRef(null);
   const leaveSoundRef = useRef(null);
+  
+  // Track destroyed peers to prevent signaling to them
+  const destroyedPeersRef = useRef(new Set());
   
   // Helper function to create audio elements for remote streams
   const createAudioElement = (userId, stream) => {
@@ -626,7 +635,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
       // If we have a peer connection to this user, clean it up
       if (peers[data.userId]) {
         // Use our helper function to safely destroy the peer
-        safelyDestroyPeer(peers[data.userId]);
+        safelyDestroyPeer(peers[data.userId], data.userId, destroyedPeersRef);
         
         // Remove the audio element
         const audioElement = document.getElementById(`remote-audio-${data.userId}`);
@@ -663,10 +672,16 @@ const ChatWindow = ({ isActive, nodeId }) => {
       // If the signal is for us and we're in the same channel
       if (data.channelId === activeVoiceChannel?.id && data.fromUserId !== user.id) {
         
-        // If we already have a peer for this user
-        if (peers[data.fromUserId]) {
+        // If we already have a peer for this user and it's not in the destroyed list
+        if (peers[data.fromUserId] && !destroyedPeersRef.current.has(data.fromUserId)) {
           console.log('Signaling existing peer for user:', data.fromUserId);
-          peers[data.fromUserId].signal(data.signal);
+          try {
+            peers[data.fromUserId].signal(data.signal);
+          } catch (err) {
+            console.error('Error signaling peer, it may have been destroyed:', err);
+            // Mark this peer as destroyed to prevent future signaling attempts
+            destroyedPeersRef.current.add(data.fromUserId);
+          }
         } else {
           // Check if we have a valid stream
           if (!localStream || !localStream.active) {
@@ -930,12 +945,16 @@ const ChatWindow = ({ isActive, nodeId }) => {
     
     // Clean up peer connections safely using our helper function
     try {
-      Object.values(peers).forEach(peer => {
-        safelyDestroyPeer(peer);
+      // Get keys (user IDs) from the peers object to use with safelyDestroyPeer
+      Object.entries(peers).forEach(([userId, peer]) => {
+        safelyDestroyPeer(peer, userId, destroyedPeersRef);
       });
     } catch (err) {
       console.error('Error cleaning up peer connections:', err);
     }
+    
+    // Clear the destroyed peers set when leaving a channel
+    destroyedPeersRef.current = new Set();
     
     // Delay setting peers to empty to allow cleanup to complete
     setTimeout(() => {
