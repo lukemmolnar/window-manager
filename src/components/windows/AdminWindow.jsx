@@ -13,13 +13,11 @@ const AdminWindow = ({ isActive }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
     password: '',
     is_admin: false
   });
   const [createFormData, setCreateFormData] = useState({
     username: '',
-    email: '',
     password: '',
     is_admin: false
   });
@@ -77,7 +75,6 @@ const AdminWindow = ({ isActive }) => {
     setEditingUser(user.id);
     setFormData({
       username: user.username,
-      email: user.email || '', // Include email for editing
       password: '', // Don't populate password for security
       is_admin: user.is_admin === 1 || user.is_admin === true
     });
@@ -88,7 +85,6 @@ const AdminWindow = ({ isActive }) => {
     setEditingUser(null);
     setFormData({
       username: '',
-      email: '',
       password: '',
       is_admin: false
     });
@@ -118,10 +114,9 @@ const AdminWindow = ({ isActive }) => {
       setLoading(true);
       const token = localStorage.getItem('auth_token');
       
-      // Include all editable fields
+      // Build user data object
       const userData = {
         username: formData.username,
-        email: formData.email,
         is_admin: formData.is_admin
       };
       
@@ -141,7 +136,6 @@ const AdminWindow = ({ isActive }) => {
       setEditingUser(null);
       setFormData({
         username: '',
-        email: '',
         password: '',
         is_admin: false
       });
@@ -167,14 +161,10 @@ const AdminWindow = ({ isActive }) => {
       }
       
       // Use the register endpoint instead of users endpoint
-      // If email is not provided, use a default placeholder
-      const email = createFormData.email || '';
-      
       await axios.post(
         `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REGISTER}`,
         {
           username: createFormData.username,
-          email: email, // Use the email or placeholder
           password: createFormData.password
         }
       );
@@ -210,7 +200,6 @@ const AdminWindow = ({ isActive }) => {
       // Reset form and hide it
       setCreateFormData({
         username: '',
-        email: '',
         password: '',
         is_admin: false
       });
@@ -231,7 +220,6 @@ const AdminWindow = ({ isActive }) => {
       // Reset form data when opening
       setCreateFormData({
         username: '',
-        email: '',
         password: '',
         is_admin: false
       });
@@ -430,7 +418,7 @@ const AdminWindow = ({ isActive }) => {
       
       {/* Create User/Channel Button - Only shown when respective tab is active */}
       {activeTab === 'users' && (
-        <div className="p-2 border-b border-stone-700 flex justify-end">
+        <div className="p-2 flex justify-end">
           <button
             onClick={toggleCreateForm}
             className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded text-sm"
@@ -476,17 +464,6 @@ const AdminWindow = ({ isActive }) => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Email:</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={createFormData.email}
-                      onChange={handleCreateChange}
-                      className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                      placeholder="Enter email (optional)"
-                    />
-                  </div>
-                  <div>
                     <label className="block text-sm text-gray-400 mb-1">Password: <span className="text-red-500">*</span></label>
                     <input
                       type="password"
@@ -527,7 +504,6 @@ const AdminWindow = ({ isActive }) => {
               <thead>
                 <tr className="border-b border-stone-700">
                   <th className="text-left p-2">Username</th>
-                  <th className="text-left p-2">Email</th>
                   <th className="text-left p-2">Admin</th>
                   <th className="text-left p-2">Actions</th>
                 </tr>
@@ -546,20 +522,6 @@ const AdminWindow = ({ isActive }) => {
                         />
                       ) : (
                         userItem.username
-                      )}
-                    </td>
-                    <td className="p-2">
-                      {editingUser === userItem.id ? (
-                        <input
-                          type="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                          placeholder="Email (optional)"
-                        />
-                      ) : (
-                        userItem.email || '-'
                       )}
                     </td>
                     <td className="p-2">
