@@ -1,5 +1,6 @@
 import React from 'react';
 import { WINDOW_TYPES } from '../utils/windowTypes';
+import { COMMAND_ALIASES } from '../utils/commandAliases';
 
 /**
  * Higher-Order Component that adds command handling capabilities to window components.
@@ -26,7 +27,18 @@ const withCommandHandling = (WrappedComponent) => {
      */
     const handleCommand = (command) => {
       // Convert command to lowercase for case-insensitive comparison
-      const cmd = command.toLowerCase();
+      const cmdParts = command.toLowerCase().split(' ');
+      let cmd = cmdParts[0];
+      
+      // Check if the command is an alias and replace it
+      if (COMMAND_ALIASES[cmd]) {
+        cmd = COMMAND_ALIASES[cmd];
+        // If this was the first word of a multi-word command, replace it
+        if (cmdParts.length > 1) {
+          cmdParts[0] = cmd;
+          command = cmdParts.join(' ');
+        }
+      }
       
       // Check if the command matches any window type
       // This allows commands like 'terminal', 'editor', 'explorer', 'preview'

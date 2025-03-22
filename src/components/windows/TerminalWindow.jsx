@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAnnouncement } from '../../context/AnnouncementContext';
 import { useWindowState } from '../../context/WindowStateContext';
 import { saveTerminalState, getTerminalState } from '../../services/indexedDBService';
+import { COMMAND_ALIASES } from '../../utils/commandAliases';
 
 const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState, focusRef }) => {
   // Get user authentication info
@@ -124,7 +125,12 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     setCommandHistory(prev => [...prev, command]);
   
     const parts = command.split(' ');
-    const cmd = parts[0].toLowerCase();
+    let cmd = parts[0].toLowerCase();
+    
+    // Check if the command is an alias and replace it
+    if (COMMAND_ALIASES[cmd]) {
+      cmd = COMMAND_ALIASES[cmd];
+    }
   
     if (Object.keys(WINDOW_TYPES).some(type => type.toLowerCase() === cmd)) {
       const requestedType = WINDOW_TYPES[cmd.toUpperCase()];
@@ -183,16 +189,20 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         
       case 'help':
         const adminCommands = user?.is_admin ? 
-          '  admin        - Access admin panel\n  announcement "text" - Set a system-wide announcement\n' : 
+          '  admin (adm)  - Access admin panel\n  announcement (ann) "text" - Set a system-wide announcement\n' : 
           '';
         response = [
           'Commands:',
-          '  explorer     - Transform window into file explorer',
-          '  terminal     - Transform into terminal',
-          '  chat         - Transform into chat window',
+          '  explorer (ex) - Transform window into file explorer',
+          '  terminal (term) - Transform into terminal',
+          '  chat (ch)    - Transform into chat window',
+          '  editor (ed)  - Transform into code editor',
+          '  canvas (can) - Transform into canvas',
+          '  audio (aud)  - Transform into audio player',
           adminCommands,
-          '  help         - Show this help message',
-          '  clear        - Clear terminal output',
+          '  help (h)     - Show this help message',
+          '  clear (cl)   - Clear terminal output',
+          '  version (v)  - Show terminal version',
           '',
           'Keyboard shortcuts:',
           '  Ctrl + Enter       - Split vertically',
