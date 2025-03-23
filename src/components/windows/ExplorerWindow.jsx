@@ -655,9 +655,12 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         if (savedState && savedState.content && !stateLoadedRef.current) {
           console.log(`Loaded explorer state for window ${nodeId} from IndexedDB:`, savedState.content);
           
+          let restoredFile = null;
+          
           // Update state with saved values
           if (savedState.content.selectedFile) {
-            setSelectedFile(savedState.content.selectedFile);
+            restoredFile = savedState.content.selectedFile;
+            setSelectedFile(restoredFile);
           }
           
           if (savedState.content.expandedFolders) {
@@ -670,6 +673,21 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           
           // Mark as loaded
           stateLoadedRef.current = true;
+          
+          // If a file was restored and it's a markdown file, load its content
+          if (restoredFile && restoredFile.type === 'file' && restoredFile.name.endsWith('.md')) {
+            // Set the preview mode for markdown files
+            setShowPreview(true);
+            
+            // Load the file content based on whether it's a public or private file
+            if (restoredFile.isPublic) {
+              // Fetch public file content
+              fetchPublicFileContent(restoredFile.path);
+            } else if (isAdmin) {
+              // Fetch private file content (admin only)
+              fetchFileContent(restoredFile.path);
+            }
+          }
         }
       } catch (error) {
         console.error(`Failed to load explorer state for window ${nodeId} from IndexedDB:`, error);
@@ -677,7 +695,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     };
     
     loadExplorerState();
-  }, [nodeId]);
+  }, [nodeId, isAdmin]);
   
   // Handle window activation
   useEffect(() => {
