@@ -1143,7 +1143,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
                               e.stopPropagation();
                               handleDeleteMessage(msg.id);
                             }}
-                            className="text-white opacity-50 hover:opacity-100 focus:outline-none"
+                            className="text-stone-400 hover:text-stone-300 focus:outline-none"
                             title="Delete message"
                           >
                             <Trash size={16} />
