@@ -163,7 +163,7 @@ const WindowTreeRenderer = ({
       console.warn(`Window type "${node.windowType}" is no longer supported`);
       return (
         <div
-          className="absolute overflow-hidden border-2 border-red-500"
+          className="absolute overflow-hidden border-1 border-red-500"
           style={{
             left: `${available.x}%`,
             top: `${available.y}%`,
@@ -201,7 +201,7 @@ const WindowTreeRenderer = ({
 
     return (
       <div
-        className={`absolute overflow-hidden border-2 ${
+        className={`absolute overflow-hidden border-1 ${
           isFlashing ? 'border-red-600' : 
           isFirstSelectedWindow 
             ? 'border-blue-300' 

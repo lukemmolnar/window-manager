@@ -243,7 +243,7 @@ export const WindowManager = ({ defaultLayout = null }) => {
       
       return (
         <div
-          className={`absolute overflow-hidden border-2 ${
+          className={`absolute overflow-hidden border-1 ${
             isFlashing ? 'border-red-600' : 
             isFirstSelectedWindow ? 'border-blue-300' :
             isActive ? (
