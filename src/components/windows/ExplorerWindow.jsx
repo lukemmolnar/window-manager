@@ -728,10 +728,17 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     // Load public files for all users
     fetchPublicDirectoryContents();
     
-    // Load private files for admin users
-    if (isAdmin) {
-      fetchDirectoryContents();
-    }
+  // Load private files for admin users
+  if (isAdmin) {
+    fetchDirectoryContents().catch(error => {
+      console.error('Failed to load private files:', error);
+      // Set a specific error message for private files without affecting public files
+      setFiles([]);
+      if (activeTab === 'private') {
+        setErrorMessage('Failed to load private files. Please ensure your admin directory exists.');
+      }
+    });
+  }
   }, [isAdmin]);
 
   // Auto-save functionality with debounce
