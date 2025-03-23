@@ -30,19 +30,17 @@ const AdminWindow = ({ isActive }) => {
   const [newChannelName, setNewChannelName] = useState('');
   const [showCreateChannelForm, setShowCreateChannelForm] = useState(false);
 
-  // Fetch users when component mounts or becomes active
+  // Fetch users when component mounts
   useEffect(() => {
-    if (isActive) {
-      fetchUsers();
-    }
-  }, [isActive]);
+    fetchUsers();
+  }, []); // Empty dependency array means this runs once on mount
   
   // Load channels when tab changes to channels
   useEffect(() => {
-    if (isActive && activeTab === 'channels') {
+    if (activeTab === 'channels') {
       fetchChannels();
     }
-  }, [isActive, activeTab]);
+  }, [activeTab]);
   
   // Reset form visibility when switching tabs
   useEffect(() => {
