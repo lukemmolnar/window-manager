@@ -113,28 +113,29 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
           // Mark as loaded
           stateLoadedRef.current = true;
           
-  // If a file was restored, load its content (regardless of file type)
-  if (restoredFile && restoredFile.type === 'file') {
-    console.log(`[DEBUG] About to fetch content for ${restoredFile.path}`);
-    
-    // Set the preview mode for markdown files
-    if (restoredFile.name.endsWith('.md')) {
-      console.log(`[DEBUG] Setting preview mode for markdown file`);
-      setShowPreview(true);
-    }
-    
-    // Schedule file content fetch for the next event loop to ensure it runs
-    // after all state updates have been processed
-    setTimeout(() => {
-      console.log(`[DEBUG] Scheduled content fetch for ${restoredFile.path}`);
-      
-      // Use handleFileSelect to ensure all the necessary state updates happen
-      // This will trigger the content fetch as a side effect
-      handleFileSelect(restoredFile);
-    }, 0);
-  } else {
-    console.log(`[DEBUG] No file to restore content for`);
-  }
+          // If a file was restored, load its content (regardless of file type)
+          if (restoredFile && restoredFile.type === 'file') {
+            console.log(`[DEBUG] About to fetch content for ${restoredFile.path}`);
+            
+            // Set the preview mode for markdown files
+            if (restoredFile.name.endsWith('.md')) {
+              console.log(`[DEBUG] Setting preview mode for markdown file`);
+              setShowPreview(true);
+            }
+            
+            // Schedule file content fetch for the next event loop to ensure it runs
+            // after all state updates have been processed
+            setTimeout(() => {
+              console.log(`[DEBUG] Scheduled content fetch for ${restoredFile.path}`);
+              
+              // Use handleFileSelect to ensure all the necessary state updates happen
+              // This will trigger the content fetch as a side effect
+              // Pass true to skipTabSwitch to prevent tab switching during restoration
+              handleFileSelect(restoredFile, true);
+            }, 0);
+          } else {
+            console.log(`[DEBUG] No file to restore content for`);
+          }
         } else {
           console.log(`[DEBUG] No valid saved state found or state already loaded`);
         }
@@ -757,13 +758,15 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   };
   
   // Handle file selection
-  const handleFileSelect = (file) => {
-    // Check if this selection should change the active tab
-    if (file.setTab) {
-      setActiveTab(file.setTab);
-    } else if (file.isPublic !== undefined) {
-      // Update active tab based on file's isPublic property
-      setActiveTab(file.isPublic ? 'public' : 'private');
+  const handleFileSelect = (file, skipTabSwitch = false) => {
+    // Check if this selection should change the active tab, but skip when restoring files
+    if (!skipTabSwitch) {
+      if (file.setTab) {
+        setActiveTab(file.setTab);
+      } else if (file.isPublic !== undefined) {
+        // Update active tab based on file's isPublic property
+        setActiveTab(file.isPublic ? 'public' : 'private');
+      }
     }
 
     // If it's a directory, handle it differently
