@@ -1028,7 +1028,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
           ))}
         </div>
         
-        {/* Voice channels */}
+        {/* Voice channels
         {activeRoom && (
           <>
             <div className="p-2 border-t border-b border-stone-700 flex justify-between items-center">
@@ -1052,9 +1052,8 @@ const ChatWindow = ({ isActive, nodeId }) => {
                     ) : (
                       <Phone size={16} className="text-teal-400" />
                     )}
-                  </div>
+                  </div> 
                   
-                  {/* Voice participants */}
                   {voiceParticipants.length > 0 && channel.id === activeVoiceChannel?.id && (
                     <div className="mt-1 pl-2 border-l border-stone-700">
                       {voiceParticipants.map(participant => (
@@ -1092,7 +1091,7 @@ const ChatWindow = ({ isActive, nodeId }) => {
               ))}
             </div>
           </>
-        )}
+        )}*/}
       </div>
 
       {/* Chat area */}
