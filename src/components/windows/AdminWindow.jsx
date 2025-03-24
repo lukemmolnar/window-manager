@@ -332,7 +332,7 @@ const AdminWindow = ({ isActive }) => {
     }
   };
   
-  // Delete a user (or deactivate if delete endpoint is not available)
+  // Delete a user
   const handleDeleteUser = async (userId) => {
     // Confirm deletion
     if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
@@ -343,40 +343,17 @@ const AdminWindow = ({ isActive }) => {
       setLoading(true);
       const token = localStorage.getItem('auth_token');
       
-      // First try the DELETE endpoint
-      try {
-        await axios.delete(
-          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${userId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (deleteErr) {
-        // If DELETE fails, try to "deactivate" the user using PUT instead
-        // This is a workaround since the DELETE endpoint might not be available
-        console.log('Delete endpoint failed, trying deactivation via PUT instead');
-        
-        // Find the user to get their current data
-        const userToDeactivate = users.find(u => u.id === userId);
-        if (!userToDeactivate) {
-          throw new Error('User not found');
-        }
-        
-        // Update the user with a deactivated flag or similar
-        // We'll prepend "DEACTIVATED_" to the username to mark it as deleted
-        await axios.put(
-          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${userId}`,
-          {
-            username: `DEACTIVATED_${userToDeactivate.username}`,
-            is_admin: false // Remove admin privileges
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
+      // Use the DELETE endpoint
+      await axios.delete(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       
       // Refresh the user list
       await fetchUsers();
       setError(null);
     } catch (err) {
-      console.error('Failed to delete/deactivate user:', err);
+      console.error('Failed to delete user:', err);
       setError(err.response?.data?.message || 'Failed to delete user. Please try again.');
     } finally {
       setLoading(false);
