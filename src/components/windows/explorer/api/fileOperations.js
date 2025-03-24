@@ -214,6 +214,19 @@ export const saveFileContent = async (filePath, content) => {
   }
 };
 
+// Simple path join function for browser environment
+const joinPaths = (...parts) => {
+  // Filter out empty parts and normalize
+  const normalized = parts.map(part => {
+    if (part === undefined || part === null) return '';
+    // Remove leading/trailing slashes
+    return part.toString().replace(/^\/+|\/+$/g, '');
+  }).filter(Boolean);
+  
+  // Join with slashes and add leading slash
+  return '/' + normalized.join('/');
+};
+
 // Function to create a new file or folder
 export const createNewItem = async (activeTab, activeFolderPath, newItemName, createType) => {
   try {
@@ -226,17 +239,19 @@ export const createNewItem = async (activeTab, activeFolderPath, newItemName, cr
     // Determine if we're creating in the public folder or private folder
     const isPublicFolder = activeTab === 'public';
     
-    const path = require('path-browserify');
-    
     // Construct the full path for the new item
     let newItemPath;
     if (isPublicFolder) {
       // For public folder, prefix with /public if not already included
       const publicPrefix = activeFolderPath.startsWith('/public') ? '' : '/public';
-      newItemPath = path.join(publicPrefix, activeFolderPath, newItemName.trim()).replace(/\\/g, '/');
+      // Remove any leading slash from activeFolderPath if it exists and if using publicPrefix
+      const folderPath = publicPrefix && activeFolderPath.startsWith('/') 
+        ? activeFolderPath.substring(1) 
+        : activeFolderPath;
+      newItemPath = joinPaths(publicPrefix, folderPath, newItemName.trim());
     } else {
       // For private folder (admin only)
-      newItemPath = path.join(activeFolderPath, newItemName.trim()).replace(/\\/g, '/');
+      newItemPath = joinPaths(activeFolderPath, newItemName.trim());
     }
     
     // Create the new file or folder
