@@ -6,5 +6,6 @@ export const WINDOW_TYPES = {
     AUDIO: 'audio',
     CHAT: 'chat',  // Add chat window type
     ADMIN: 'admin', // Add admin window type
-    CANVAS: 'canvas' // Add canvas window type
+    CANVAS: 'canvas', // Add canvas window type
+    DICE: 'dice' // Add dice window type
   };

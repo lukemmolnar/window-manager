@@ -19,5 +19,7 @@ export const COMMAND_ALIASES = {
   'cl': 'clear',
   'h': 'help',
   'v': 'version',
-  'ann': 'announcement'
+  'ann': 'announcement',
+  'r': 'roll',
+  'd': 'roll'
 };

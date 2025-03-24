@@ -5,6 +5,7 @@ import { useAnnouncement } from '../../context/AnnouncementContext';
 import { useWindowState } from '../../context/WindowStateContext';
 import { saveTerminalState, getTerminalState } from '../../services/indexedDBService';
 import { COMMAND_ALIASES } from '../../utils/commandAliases';
+import { parseDiceExpression, rollDice, formatRollResult, isValidDiceType } from '../../utils/diceUtils';
 
 const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState, focusRef }) => {
   // Get user authentication info
@@ -199,7 +200,9 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           '  editor (ed)  - Transform into code editor',
           '  canvas (can) - Transform into canvas',
           '  audio (aud)  - Transform into audio player',
+          '  dice        - Transform into interactive dice roller',
           adminCommands,
+          '  roll (r, d)  - Roll dice (e.g., roll 2d6+3)',
           '  help (h)     - Show this help message',
           '  clear (cl)   - Clear terminal output',
           '  version (v)  - Show terminal version',
@@ -219,6 +222,44 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   
       case 'version':
         response = 'SLUMNET Terminal v1.0.0';
+        break;
+        
+      case 'roll':
+        // Extract dice expression from command
+        const diceExpression = parts.slice(1).join('').trim();
+        
+        if (!diceExpression) {
+          response = 'Usage: roll <dice expression> (e.g., roll 2d6+3)';
+          break;
+        }
+        
+        // Parse the dice expression
+        const parsedDice = parseDiceExpression(diceExpression);
+        
+        if (!parsedDice) {
+          response = 'Invalid dice expression. Use format: NdS+M (e.g., 2d6+3)';
+          break;
+        }
+        
+        const { numDice, diceType, modifier } = parsedDice;
+        
+        // Validate dice type
+        if (!isValidDiceType(diceType)) {
+          response = 'Invalid dice type. Please use standard dice types (d4, d6, d8, d10, d12, d20, d100)';
+          break;
+        }
+        
+        // Validate number of dice
+        if (numDice < 1 || numDice > 20) {
+          response = 'Please use between 1 and 20 dice';
+          break;
+        }
+        
+        // Roll the dice
+        const result = rollDice(diceType, numDice, modifier);
+        
+        // Format the results
+        response = formatRollResult(result);
         break;
   
       default:

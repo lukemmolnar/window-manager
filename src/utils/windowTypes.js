@@ -1,5 +1,5 @@
 // src/utils/windowTypes.js
-import { FolderOpen, Code, Terminal as TerminalIcon, Eye, MessageSquare, Shield, Layout } from 'lucide-react';
+import { FolderOpen, Code, Terminal as TerminalIcon, Eye, MessageSquare, Shield, Layout, Dices } from 'lucide-react';
 import { WINDOW_TYPES } from './constants';
 
 // Import individually to avoid circular dependency
@@ -10,7 +10,8 @@ import {
   EnhancedAudioWindow,
   EnhancedChatWindow,
   EnhancedAdminWindow,
-  EnhancedCanvasWindow
+  EnhancedCanvasWindow,
+  EnhancedDiceWindow
 } from '../components/windows';
 
 export { WINDOW_TYPES };
@@ -50,5 +51,10 @@ export const WINDOW_CONTENT = {
     title: 'Canvas',
     icon: Layout,
     component: EnhancedCanvasWindow
+  },
+  [WINDOW_TYPES.DICE]: {
+    title: 'Dice Roller',
+    icon: Dices,
+    component: EnhancedDiceWindow
   }
 };
