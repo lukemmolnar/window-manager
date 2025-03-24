@@ -758,6 +758,14 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Handle file selection
   const handleFileSelect = (file) => {
+    // Check if this selection should change the active tab
+    if (file.setTab) {
+      setActiveTab(file.setTab);
+    } else if (file.isPublic !== undefined) {
+      // Update active tab based on file's isPublic property
+      setActiveTab(file.isPublic ? 'public' : 'private');
+    }
+
     // If it's a directory, handle it differently
     if (file.type === 'directory') {
       handleFolderSelect(file);

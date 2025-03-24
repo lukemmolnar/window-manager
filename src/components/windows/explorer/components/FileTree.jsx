@@ -170,7 +170,18 @@ const FileTree = ({
           {/* Tabs for switching between public and private files */}
           <div className="flex ml-4">
             <button
-              onClick={() => activeTab === 'public' ? null : handleFileSelect({ path: '/', type: 'directory', name: 'Root', isPublic: true })}
+              onClick={() => {
+                if (activeTab !== 'public') {
+                  // First set the active tab, then select the root folder
+                  handleFileSelect({ 
+                    path: '/', 
+                    type: 'directory', 
+                    name: 'Root', 
+                    isPublic: true,
+                    setTab: 'public' // Add flag to explicitly set the tab
+                  });
+                }
+              }}
               className={`px-2 py-1 rounded-t text-xs flex items-center gap-1 ${
                 activeTab === 'public' 
                   ? 'bg-stone-700 text-teal-300' 
@@ -184,7 +195,17 @@ const FileTree = ({
             
             {isAdmin && (
               <button
-                onClick={() => activeTab === 'private' ? null : handleFileSelect({ path: '/', type: 'directory', name: 'Root' })}
+                onClick={() => {
+                  if (activeTab !== 'private') {
+                    // First set the active tab, then select the root folder
+                    handleFileSelect({ 
+                      path: '/', 
+                      type: 'directory', 
+                      name: 'Root',
+                      setTab: 'private' // Add flag to explicitly set the tab
+                    });
+                  }
+                }}
                 className={`px-2 py-1 rounded-t text-xs flex items-center gap-1 ml-1 ${
                   activeTab === 'private' 
                     ? 'bg-stone-700 text-teal-300' 
