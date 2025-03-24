@@ -1,5 +1,5 @@
 import TerminalWindow from './TerminalWindow';
-import ExplorerWindow from './ExplorerWindow';
+import ExplorerWindow from './explorer/ExplorerWindow';
 import EditorWindow from './EditorWindow';
 import withCommandHandling from '../../hocs/withCommandHandling';
 import withWindowState from '../../hocs/withWindowState';
