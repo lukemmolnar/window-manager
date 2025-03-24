@@ -80,49 +80,66 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   // Load explorer state from IndexedDB on mount
   useEffect(() => {
     const loadExplorerState = async () => {
+      console.log(`[DEBUG] Starting to load explorer state for window ${nodeId}`);
       try {
         // Try to load explorer state from IndexedDB
         const savedState = await getExplorerState(nodeId);
+        console.log(`[DEBUG] Retrieved state from IndexedDB:`, savedState);
         
         if (savedState && savedState.content && !stateLoadedRef.current) {
-          console.log(`Loaded explorer state for window ${nodeId} from IndexedDB:`, savedState.content);
+          console.log(`[DEBUG] Valid saved state found for window ${nodeId}:`, savedState.content);
           
           let restoredFile = null;
           
           // Update state with saved values
           if (savedState.content.selectedFile) {
             restoredFile = savedState.content.selectedFile;
+            console.log(`[DEBUG] Restoring selected file:`, restoredFile);
             setSelectedFile(restoredFile);
+          } else {
+            console.log(`[DEBUG] No selected file to restore`);
           }
           
           if (savedState.content.expandedFolders) {
+            console.log(`[DEBUG] Restoring expanded folders`);
             setExpandedFolders(savedState.content.expandedFolders);
           }
           
           if (savedState.content.activeTab) {
+            console.log(`[DEBUG] Restoring active tab: ${savedState.content.activeTab}`);
             setActiveTab(savedState.content.activeTab);
           }
           
           // Mark as loaded
           stateLoadedRef.current = true;
           
-          // If a file was restored and it's a markdown file, load its content
-          if (restoredFile && restoredFile.type === 'file' && restoredFile.name.endsWith('.md')) {
-            // Set the preview mode for markdown files
-            setShowPreview(true);
-            
-            // Load the file content based on whether it's a public or private file
-            if (restoredFile.isPublic) {
-              // Fetch public file content
-              handleFetchPublicFileContent(restoredFile.path);
-            } else if (isAdmin) {
-              // Fetch private file content (admin only)
-              handleFetchFileContent(restoredFile.path);
-            }
-          }
+  // If a file was restored, load its content (regardless of file type)
+  if (restoredFile && restoredFile.type === 'file') {
+    console.log(`[DEBUG] About to fetch content for ${restoredFile.path}`);
+    
+    // Set the preview mode for markdown files
+    if (restoredFile.name.endsWith('.md')) {
+      console.log(`[DEBUG] Setting preview mode for markdown file`);
+      setShowPreview(true);
+    }
+    
+    // Schedule file content fetch for the next event loop to ensure it runs
+    // after all state updates have been processed
+    setTimeout(() => {
+      console.log(`[DEBUG] Scheduled content fetch for ${restoredFile.path}`);
+      
+      // Use handleFileSelect to ensure all the necessary state updates happen
+      // This will trigger the content fetch as a side effect
+      handleFileSelect(restoredFile);
+    }, 0);
+  } else {
+    console.log(`[DEBUG] No file to restore content for`);
+  }
+        } else {
+          console.log(`[DEBUG] No valid saved state found or state already loaded`);
         }
       } catch (error) {
-        console.error(`Failed to load explorer state for window ${nodeId} from IndexedDB:`, error);
+        console.error(`[DEBUG] Failed to load explorer state:`, error);
       }
     };
     
@@ -757,18 +774,19 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
       setEditMode(false);
     }
     
-    // If it's a markdown file, fetch its content and show preview
+    // Fetch content for all file types
+    if (file.isPublic) {
+      // Fetch public file content
+      handleFetchPublicFileContent(file.path);
+    } else {
+      // Fetch private file content (admin only)
+      handleFetchFileContent(file.path);
+    }
+    
+    // Only set preview mode for markdown files
     if (file.name.endsWith('.md')) {
-      if (file.isPublic) {
-        // Fetch public file content
-        handleFetchPublicFileContent(file.path);
-      } else {
-        // Fetch private file content (admin only)
-        handleFetchFileContent(file.path);
-      }
       setShowPreview(true);
     } else {
-      setFileContent('');
       setShowPreview(false);
     }
   };

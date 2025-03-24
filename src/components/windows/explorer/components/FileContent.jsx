@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { FileText, Edit, Eye, Bold, Italic, Code as CodeIcon, Link, Heading, List, ListOrdered, CheckSquare } from 'lucide-react';
 import { handleEditorKeyDown, convertMarkdownToHtml } from '../utils/markdownUtils';
 
@@ -17,6 +17,31 @@ const FileContent = ({
   handleMarkdownChange,
   handleSaveFileContent
 }) => {
+  // Debug logging
+  console.log('[DEBUG] FileContent rendered with props:', {
+    selectedFile,
+    isContentLoading,
+    fileContentLength: fileContent?.length || 0,
+    hasContent: !!fileContent,
+    showPreview,
+    editMode,
+    saveStatus
+  });
+
+  // Add an effect to log when file content changes
+  useEffect(() => {
+    console.log('[DEBUG] FileContent - fileContent changed:', {
+      length: fileContent?.length || 0,
+      preview: fileContent?.substring(0, 50),
+      hasContent: !!fileContent
+    });
+  }, [fileContent]);
+
+  // Add an effect to log when selected file changes
+  useEffect(() => {
+    console.log('[DEBUG] FileContent - selectedFile changed:', selectedFile);
+  }, [selectedFile]);
+
   const textareaRef = useRef(null);
 
   // Insert markdown syntax at cursor position
@@ -233,7 +258,7 @@ const FileContent = ({
                 />
               </div>
             </div>
-          ) : showPreview ? (
+          ) : (
             // Preview mode
             <div className="flex-1 overflow-auto p-4">
               <div className="markdown-preview text-teal-50">
@@ -251,16 +276,16 @@ const FileContent = ({
                 )}
               </div>
             </div>
-          ) : null}
+          )}
         </>
       ) : (
         // No file selected
         <div className="flex items-center justify-center h-full text-stone-600">
           <div className="text-center">
             <FileText size={48} className="mx-auto mb-4" />
-            <p>Select a markdown file to preview</p>
-            <p className="text-xs mt-2">Use the 'preview' command to toggle preview mode</p>
-            {isAdmin && <p className="text-xs mt-1">Admin users can use the 'edit' command to edit markdown files</p>}
+            <p>Select a file to view</p>
+            <p className="text-xs mt-2">All file types are supported for viewing</p>
+            {isAdmin && <p className="text-xs mt-1">Admin users can edit markdown (.md) files</p>}
           </div>
         </div>
       )}

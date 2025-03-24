@@ -52,16 +52,21 @@ export const fetchPublicDirectoryContents = async (publicPath = '/', refreshAll 
 
 // Function to fetch public file content
 export const fetchPublicFileContent = async (filePath) => {
+  console.log(`[DEBUG] fetchPublicFileContent called with path: ${filePath}`);
   try {
     // Get the authentication token
     const token = localStorage.getItem('auth_token');
     if (!token) {
+      console.log('[DEBUG] Public file fetch - No auth token found');
       throw new Error('Authentication required. Please log in.');
     }
     
     // Fetch public file content from the server
+    const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILE_CONTENT}?path=${encodeURIComponent(filePath)}`;
+    console.log(`[DEBUG] Public file fetch - Requesting URL: ${url}`);
+    
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILE_CONTENT}?path=${encodeURIComponent(filePath)}`,
+      url,
       {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -69,17 +74,23 @@ export const fetchPublicFileContent = async (filePath) => {
       }
     );
     
+    console.log(`[DEBUG] Public file fetch - Response status: ${response.status}`);
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.log(`[DEBUG] Public file fetch - Error response: ${errorText}`);
       throw new Error(`Failed to load file content: ${response.statusText}`);
     }
     
     const data = await response.json();
+    console.log(`[DEBUG] Public file fetch - Content received length: ${data.content?.length || 0} characters`);
+    
     return {
       content: data.content,
       error: null
     };
   } catch (error) {
-    console.error('Error fetching public file content:', error);
+    console.error('[DEBUG] Error fetching public file content:', error);
     return {
       content: '',
       error: error.message || 'Error loading file'
@@ -143,16 +154,21 @@ export const fetchDirectoryContents = async (path = '/', refreshAll = false) => 
 
 // Function to fetch file content
 export const fetchFileContent = async (filePath) => {
+  console.log(`[DEBUG] fetchFileContent called with path: ${filePath}`);
   try {
     // Get the authentication token
     const token = localStorage.getItem('auth_token');
     if (!token) {
+      console.log('[DEBUG] Private file fetch - No auth token found');
       throw new Error('Authentication required. Please log in.');
     }
     
     // Fetch file content from the server
+    const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_CONTENT}?path=${encodeURIComponent(filePath)}`;
+    console.log(`[DEBUG] Private file fetch - Requesting URL: ${url}`);
+    
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_CONTENT}?path=${encodeURIComponent(filePath)}`,
+      url,
       {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -160,22 +176,29 @@ export const fetchFileContent = async (filePath) => {
       }
     );
     
+    console.log(`[DEBUG] Private file fetch - Response status: ${response.status}`);
+    
     if (!response.ok) {
       // If response is 403, it means the user doesn't have admin access
       if (response.status === 403) {
+        console.log('[DEBUG] Private file fetch - Access denied (403)');
         throw new Error('Admin access required to view file content.');
       } else {
+        const errorText = await response.text();
+        console.log(`[DEBUG] Private file fetch - Error response: ${errorText}`);
         throw new Error(`Failed to load file content: ${response.statusText}`);
       }
     }
     
     const data = await response.json();
+    console.log(`[DEBUG] Private file fetch - Content received length: ${data.content?.length || 0} characters`);
+    
     return {
       content: data.content,
       error: null
     };
   } catch (error) {
-    console.error('Error fetching file content:', error);
+    console.error('[DEBUG] Error fetching private file content:', error);
     return {
       content: '',
       error: error.message || 'Error loading file'
