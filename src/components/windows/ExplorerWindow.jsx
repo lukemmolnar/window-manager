@@ -728,18 +728,32 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
     // Load public files for all users
     fetchPublicDirectoryContents();
     
-  // Load private files for admin users
-  if (isAdmin) {
-    fetchDirectoryContents().catch(error => {
-      console.error('Failed to load private files:', error);
-      // Set a specific error message for private files without affecting public files
-      setFiles([]);
-      if (activeTab === 'private') {
-        setErrorMessage('Failed to load private files. Please ensure your admin directory exists.');
-      }
-    });
-  }
+    // Load private files for admin users
+    if (isAdmin) {
+      fetchDirectoryContents().catch(error => {
+        console.error('Failed to load private files:', error);
+        // Set a specific error message for private files without affecting public files
+        setFiles([]);
+        if (activeTab === 'private') {
+          setErrorMessage('Failed to load private files. Please ensure your admin directory exists.');
+        }
+      });
+    }
   }, [isAdmin]);
+
+  // Reset content states when switching tabs
+  useEffect(() => {
+    // Clear file content and reset view states when changing tabs
+    setSelectedFile(null);
+    setFileContent('');
+    setShowPreview(false);
+    setEditMode(false);
+    setSaveStatus('saved');
+    setErrorMessage('');
+    
+    // Reset current path to root for the selected tab
+    setCurrentPath('/');
+  }, [activeTab]);
 
   // Auto-save functionality with debounce
   useEffect(() => {
