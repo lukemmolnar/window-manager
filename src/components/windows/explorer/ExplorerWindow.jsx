@@ -1,5 +1,4 @@
 import React from 'react';
-import { FolderPlus, Plus } from 'lucide-react';
 import useExplorerState from './state/useExplorerState';
 import FileTree from './components/FileTree';
 import FileContent from './components/FileContent';
@@ -29,6 +28,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           handleFileSelect={explorerState.handleFileSelect}
           openRenameDialog={explorerState.openRenameDialog}
           openDeleteDialog={explorerState.openDeleteDialog}
+          openCreateDialog={explorerState.openCreateDialog}
           handleDragStart={explorerState.handleDragStart}
           handleDragOver={explorerState.handleDragOver}
           handleDragLeave={explorerState.handleDragLeave}
@@ -39,25 +39,6 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           dropTarget={explorerState.dropTarget}
         />
         
-        {/* Admin-only file creation buttons */}
-        {explorerState.isAdmin && (
-          <div className="flex gap-2 absolute top-2 left-2">
-            <button
-              onClick={() => explorerState.openCreateDialog('file')}
-              className="p-1 rounded hover:bg-stone-700 text-teal-400"
-              title="Create new file"
-            >
-              <Plus size={16} />
-            </button>
-            <button
-              onClick={() => explorerState.openCreateDialog('directory')}
-              className="p-1 rounded hover:bg-stone-700 text-teal-400"
-              title="Create new folder"
-            >
-              <FolderPlus size={16} />
-            </button>
-          </div>
-        )}
         
         {/* File content panel */}
         <FileContent

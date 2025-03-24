@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   FolderOpen, ChevronRight, ChevronDown, File, Coffee, Code, 
-  BookOpen, FileText, Globe, Lock, FileEdit, Trash2, Music, Image, Figma
+  BookOpen, FileText, Globe, Lock, FileEdit, Trash2, Music, Image, Figma,
+  FolderPlus, Plus
 } from 'lucide-react';
 import { getFileIconName } from '../utils/fileUtils';
 
@@ -19,6 +20,7 @@ const FileTree = ({
   handleFileSelect,
   openRenameDialog,
   openDeleteDialog,
+  openCreateDialog,
   handleDragStart,
   handleDragOver,
   handleDragLeave,
@@ -196,6 +198,26 @@ const FileTree = ({
             )}
           </div>
         </div>
+        
+        {/* Admin-only file creation buttons */}
+        {isAdmin && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => openCreateDialog('file')}
+              className="p-1 rounded hover:bg-stone-700 text-teal-400"
+              title="Create new file"
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              onClick={() => openCreateDialog('directory')}
+              className="p-1 rounded hover:bg-stone-700 text-teal-400"
+              title="Create new folder"
+            >
+              <FolderPlus size={16} />
+            </button>
+          </div>
+        )}
       </div>
       
       <div 
