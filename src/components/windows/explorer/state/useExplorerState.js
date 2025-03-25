@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useWindowState } from '../../../../context/WindowStateContext';
 import { WINDOW_TYPES } from '../../../../utils/windowTypes';
@@ -29,8 +29,13 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   // Get window state context for additional persistence
   const { setActiveWindow } = useWindowState();
   
-  // Ref to track if state has been loaded from IndexedDB
+  // Refs to track state loading and saving
   const stateLoadedRef = useRef(false);
+  const explorerSaveTimeoutRef = useRef(null); // New ref for debounced explorer state saving
+  
+  // Reference to store the saved state that needs to be restored after files are loaded
+  const pendingStateRestoreRef = useRef(null);
+  const fileLoadedRef = useRef(false);
   
   // Use state from windowState or initialize with defaults
   const [files, setFiles] = useState([]);
@@ -89,17 +94,10 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
         if (savedState && savedState.content && !stateLoadedRef.current) {
           console.log(`[DEBUG] Valid saved state found for window ${nodeId}:`, savedState.content);
           
-          let restoredFile = null;
+          // Store the saved state in the ref for later restoration after files are loaded
+          pendingStateRestoreRef.current = savedState.content;
           
-          // Update state with saved values
-          if (savedState.content.selectedFile) {
-            restoredFile = savedState.content.selectedFile;
-            console.log(`[DEBUG] Restoring selected file:`, restoredFile);
-            setSelectedFile(restoredFile);
-          } else {
-            console.log(`[DEBUG] No selected file to restore`);
-          }
-          
+          // Restore expanded folders and active tab immediately
           if (savedState.content.expandedFolders) {
             console.log(`[DEBUG] Restoring expanded folders`);
             setExpandedFolders(savedState.content.expandedFolders);
@@ -112,40 +110,20 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
           
           // Mark as loaded
           stateLoadedRef.current = true;
-          
-          // If a file was restored, load its content (regardless of file type)
-          if (restoredFile && restoredFile.type === 'file') {
-            console.log(`[DEBUG] About to fetch content for ${restoredFile.path}`);
-            
-            // Set the preview mode for markdown files
-            if (restoredFile.name.endsWith('.md')) {
-              console.log(`[DEBUG] Setting preview mode for markdown file`);
-              setShowPreview(true);
-            }
-            
-            // Schedule file content fetch for the next event loop to ensure it runs
-            // after all state updates have been processed
-            setTimeout(() => {
-              console.log(`[DEBUG] Scheduled content fetch for ${restoredFile.path}`);
-              
-              // Use handleFileSelect to ensure all the necessary state updates happen
-              // This will trigger the content fetch as a side effect
-              // Pass true to skipTabSwitch to prevent tab switching during restoration
-              handleFileSelect(restoredFile, true);
-            }, 0);
-          } else {
-            console.log(`[DEBUG] No file to restore content for`);
-          }
         } else {
           console.log(`[DEBUG] No valid saved state found or state already loaded`);
+          // Even if no state is loaded, mark as loaded to allow future saves
+          stateLoadedRef.current = true;
         }
       } catch (error) {
         console.error(`[DEBUG] Failed to load explorer state:`, error);
+        // Ensure we still mark state as loaded even if there's an error
+        stateLoadedRef.current = true;
       }
     };
     
     loadExplorerState();
-  }, [nodeId, isAdmin]);
+  }, [nodeId]);
   
   // Handle window activation
   useEffect(() => {
@@ -157,39 +135,119 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Save explorer state to IndexedDB when it changes
   useEffect(() => {
+    // Early return if state hasn't been loaded yet (prevents overwriting with default values)
     if (!stateLoadedRef.current) return;
     
-    // Save the explorer state to IndexedDB
-    saveExplorerState({
-      id: nodeId,
-      content: {
+    // Clear any existing timeout
+    if (explorerSaveTimeoutRef.current) {
+      clearTimeout(explorerSaveTimeoutRef.current);
+    }
+    
+    // Save the explorer state to IndexedDB with debounce
+    explorerSaveTimeoutRef.current = setTimeout(() => {
+      console.log(`[DEBUG] Saving explorer state for window ${nodeId}:`, {
         selectedFile,
         expandedFolders,
         activeTab
-      }
-    }).catch(error => {
-      console.error(`Failed to save explorer state for window ${nodeId} to IndexedDB:`, error);
-    });
+      });
+      
+      saveExplorerState({
+        id: nodeId,
+        content: {
+          selectedFile,
+          expandedFolders,
+          activeTab
+        }
+      }).catch(error => {
+        console.error(`[DEBUG] Failed to save explorer state for window ${nodeId} to IndexedDB:`, error);
+      });
+    }, 300); // 300ms debounce
     
+    // Clear timeout on cleanup
+    return () => {
+      if (explorerSaveTimeoutRef.current) {
+        clearTimeout(explorerSaveTimeoutRef.current);
+      }
+    };
   }, [selectedFile, expandedFolders, activeTab, nodeId]);
 
-  // Load initial directory contents
+  // Load initial directory contents and restore selected file afterward
   useEffect(() => {
-    // Load public files for all users
-    handleFetchPublicDirectoryContents();
+    console.log('[DEBUG] Starting to load directory contents');
     
-    // Load private files for admin users
-    if (isAdmin) {
-      handleFetchDirectoryContents().catch(error => {
-        console.error('Failed to load private files:', error);
-        // Set a specific error message for private files without affecting public files
-        setFiles([]);
-        if (activeTab === 'private') {
-          setErrorMessage('Failed to load private files. Please ensure your admin directory exists.');
+    // First, load the files
+    const loadFilesAndRestoreSelection = async () => {
+      try {
+        // Load public files for all users
+        await handleFetchPublicDirectoryContents('/', true);
+        
+        // Load private files for admin users (if applicable)
+        if (isAdmin) {
+          try {
+            await handleFetchDirectoryContents('/', true);
+          } catch (error) {
+            console.error('Failed to load private files:', error);
+            setFiles([]);
+            if (activeTab === 'private') {
+              setErrorMessage('Failed to load private files. Please ensure your admin directory exists.');
+            }
+          }
         }
-      });
-    }
-  }, [isAdmin]);
+        
+        // Mark files as loaded
+        fileLoadedRef.current = true;
+        
+        // Now that files are loaded, restore the selected file if we have one pending
+        if (pendingStateRestoreRef.current && pendingStateRestoreRef.current.selectedFile) {
+          const restoredFile = pendingStateRestoreRef.current.selectedFile;
+          console.log(`[DEBUG] Now restoring selected file after files are loaded:`, restoredFile);
+          
+          // Set the selected file
+          setSelectedFile(restoredFile);
+          
+          // Update the current path to ensure parent directories are visible
+          if (restoredFile.type === 'file') {
+            // For files, set the current path to the parent directory
+            const parentPath = getParentDirectoryPath(restoredFile.path);
+            setCurrentPath(parentPath);
+          } else {
+            // For directories, set the current path to the directory itself
+            setCurrentPath(restoredFile.path);
+          }
+          
+          // Ensure parent folders are expanded
+          setExpandedFolders(prev => expandParentFolders(restoredFile.path, prev));
+          
+          // If it's a file, load its content
+          if (restoredFile.type === 'file') {
+            console.log(`[DEBUG] Loading content for restored file: ${restoredFile.path}`);
+            
+            // Set the preview mode for markdown files
+            if (restoredFile.name.endsWith('.md')) {
+              console.log(`[DEBUG] Setting preview mode for markdown file`);
+              setShowPreview(true);
+            }
+            
+            // Use handleFileSelect to load the file content
+            // Use setTimeout to ensure this happens after state updates
+            setTimeout(() => {
+              console.log(`[DEBUG] Executing delayed file selection for: ${restoredFile.path}`);
+              handleFileSelect(restoredFile, true);
+            }, 100);
+          }
+          
+          // Clear the pending restore
+          pendingStateRestoreRef.current = null;
+        } else {
+          console.log('[DEBUG] No file to restore or files not loaded yet');
+        }
+      } catch (error) {
+        console.error('[DEBUG] Error in loadFilesAndRestoreSelection:', error);
+      }
+    };
+    
+    loadFilesAndRestoreSelection();
+  }, [isAdmin, activeTab]);
 
   // Reset content states when switching tabs
   useEffect(() => {
@@ -270,6 +328,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     }
     
     setIsTreeLoading(false);
+    return result; // Return result so we can chain promises
   };
   
   // Fetch public file content
@@ -314,6 +373,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     }
     
     setIsTreeLoading(false);
+    return result; // Return result so we can chain promises
   };
   
   // Fetch private file content
@@ -777,8 +837,12 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     
     setSelectedFile(file);
     
-    // We don't change the current path when selecting a file
-    // This prevents the file tree from reloading unnecessarily
+    // Make sure parent folders are expanded so the file is visible on reload
+    setExpandedFolders(prev => expandParentFolders(file.path, prev));
+    
+    // Set current path to the parent directory for better context
+    const parentPath = getParentDirectoryPath(file.path);
+    setCurrentPath(parentPath);
     
     // Reset edit mode when selecting a new file
     if (editMode) {
@@ -839,8 +903,8 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     // - delete: delete selected file or folder (admin only)
     // - public: switch to public files tab
     // - private: switch to private files tab (admin only)
+    
     if (cmd === 'refresh') {
-      // Refresh the appropriate file list based on the active tab
       if (activeTab === 'public') {
         handleFetchPublicDirectoryContents('/', true);
       } else {
@@ -849,7 +913,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     } else if (cmd === 'preview' && selectedFile?.name.endsWith('.md')) {
       setShowPreview(!showPreview);
       if (editMode) {
-        setEditMode(false); // Exit edit mode when switching to preview
+        setEditMode(false);
       }
     } else if (cmd === 'edit' && selectedFile?.name.endsWith('.md')) {
       toggleEditMode();
@@ -859,19 +923,20 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
       openCreateDialog('file');
     } else if (cmd === 'new-folder' && isAdmin) {
       openCreateDialog('directory');
-    } else if (cmd === 'rename' && isAdmin && selectedFile) {
+    } else if (cmd === 'rename' && selectedFile && isAdmin) {
       openRenameDialog(selectedFile);
-    } else if (cmd === 'delete' && isAdmin && selectedFile) {
+    } else if (cmd === 'delete' && selectedFile && isAdmin) {
       openDeleteDialog(selectedFile);
     } else if (cmd === 'public') {
       setActiveTab('public');
     } else if (cmd === 'private' && isAdmin) {
       setActiveTab('private');
+    } else {
+      setErrorMessage(`Unknown command: ${cmd}`);
     }
   };
 
   return {
-    // State
     files,
     publicFiles,
     currentPath,
@@ -886,7 +951,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     editMode,
     saveStatus,
     showCreateDialog,
-    createType,
+    createType, 
     newItemName,
     isCreating,
     showRenameDialog,
@@ -900,24 +965,13 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     dropTarget,
     isMoving,
     converter,
-    isAdmin,
-    
-    // State setters
-    setNewItemName,
-    setNewName,
-    setFileContent,
-    
-    // Methods
     handleFetchPublicDirectoryContents,
     handleFetchDirectoryContents,
-    handleFileSelect,
-    toggleFolder,
     handleSaveFileContent,
-    toggleEditMode,
-    handleMarkdownChange,
+    toggleFolder,
+    createNewItem,
     openCreateDialog,
     closeCreateDialog,
-    createNewItem,
     openRenameDialog,
     closeRenameDialog,
     renameItem,
@@ -931,7 +985,15 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     handleContainerDragLeave,
     handleDrop,
     handleContainerDrop,
-    handleCommand
+    handleFileSelect,
+    toggleEditMode,
+    handleMarkdownChange,
+    handleCommand,
+    setNewItemName,
+    setNewName,
+    setErrorMessage,
+    setFileContent,
+    setSelectedFile
   };
 };
 
