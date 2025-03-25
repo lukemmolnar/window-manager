@@ -148,7 +148,8 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
       console.log(`[DEBUG] Saving explorer state for window ${nodeId}:`, {
         selectedFile,
         expandedFolders,
-        activeTab
+        activeTab,
+        editMode
       });
       
       saveExplorerState({
@@ -156,7 +157,8 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
         content: {
           selectedFile,
           expandedFolders,
-          activeTab
+          activeTab,
+          editMode
         }
       }).catch(error => {
         console.error(`[DEBUG] Failed to save explorer state for window ${nodeId} to IndexedDB:`, error);
@@ -169,7 +171,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
         clearTimeout(explorerSaveTimeoutRef.current);
       }
     };
-  }, [selectedFile, expandedFolders, activeTab, nodeId]);
+  }, [selectedFile, expandedFolders, activeTab, editMode, nodeId]);
 
   // Load initial directory contents and restore selected file afterward
   useEffect(() => {
@@ -226,6 +228,12 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
             if (restoredFile.name.endsWith('.md')) {
               console.log(`[DEBUG] Setting preview mode for markdown file`);
               setShowPreview(true);
+              
+              // Also restore edit mode if it was saved
+              if (pendingStateRestoreRef.current.editMode && isAdmin) {
+                console.log(`[DEBUG] Restoring edit mode: ${pendingStateRestoreRef.current.editMode}`);
+                setEditMode(pendingStateRestoreRef.current.editMode);
+              }
             }
             
             // Use handleFileSelect to load the file content
