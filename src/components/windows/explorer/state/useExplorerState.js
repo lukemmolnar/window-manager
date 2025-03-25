@@ -965,6 +965,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     dropTarget,
     isMoving,
     converter,
+    isAdmin,
     handleFetchPublicDirectoryContents,
     handleFetchDirectoryContents,
     handleSaveFileContent,
