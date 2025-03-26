@@ -6,6 +6,7 @@ import { AuthScreen } from './components/auth';
 import { useWindowManager } from './hooks/useWindowManager';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAuth } from './context/AuthContext';
+import { ActiveUsersProvider } from './context/ActiveUsersContext';
 import { WINDOW_CONTENT, WINDOW_TYPES } from './utils/windowTypes';
 
 /**
@@ -88,7 +89,7 @@ function App() {
     );
   }
   
-  // If not authenticated, show the auth screen
+// If not authenticated, show the auth screen
   if (!isAuthenticated) {
     return <AuthScreen />;
   }
@@ -118,21 +119,23 @@ function App() {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col">
-      {/* Global command bar with user info */}
-      <CommandBar 
-        onCommand={handleCommand}
-        currentWorkspaceIndex={currentWorkspaceIndex}
-        switchWorkspace={switchWorkspace}
-        user={user}
-        onLogout={logout}
-      />
-      
-      {/* Main content area */}
-      <div className="flex-1 relative">
-        {renderContent()}
+    <ActiveUsersProvider>
+      <div className="w-full h-screen flex flex-col">
+        {/* Global command bar with user info */}
+        <CommandBar 
+          onCommand={handleCommand}
+          currentWorkspaceIndex={currentWorkspaceIndex}
+          switchWorkspace={switchWorkspace}
+          user={user}
+          onLogout={logout}
+        />
+        
+        {/* Main content area */}
+        <div className="flex-1 relative">
+          {renderContent()}
+        </div>
       </div>
-    </div>
+    </ActiveUsersProvider>
   );
 }
 

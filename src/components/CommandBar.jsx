@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useAnnouncement } from '../context/AnnouncementContext';
+import { useActiveUsers } from '../context/ActiveUsersContext';
 
 export const CommandBar = ({ 
   currentWorkspaceIndex = 0,
@@ -9,6 +10,7 @@ export const CommandBar = ({
 }) => {
   console.log('CommandBar render, currentWorkspaceIndex:', currentWorkspaceIndex);
   const { announcement } = useAnnouncement();
+  const { activeUserCount } = useActiveUsers();
   const announcementRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -55,7 +57,8 @@ export const CommandBar = ({
       {user && (
         <div className="flex items-center border-l border-stone-600 ml-2 pl-2">
           <span className="text-white text-sm font-mono mr-2">
-            {user?.username || 'User'}
+            <span className="text-teal-400 mr-1">({activeUserCount} active users)</span>
+            {user?.username || 'User'} 
           </span>
           <button 
             onClick={onLogout}
