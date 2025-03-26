@@ -22,11 +22,6 @@ export const WINDOW_CONTENT = {
     icon: FolderOpen,
     component: EnhancedExplorerWindow
   },
-  [WINDOW_TYPES.EDITOR]: {
-    title: 'Code Editor',
-    icon: Code,
-    component: EnhancedEditorWindow
-  },
   [WINDOW_TYPES.TERMINAL]: {
     title: 'Terminal',
     icon: TerminalIcon,
@@ -51,10 +46,5 @@ export const WINDOW_CONTENT = {
     title: 'Canvas',
     icon: Layout,
     component: EnhancedCanvasWindow
-  },
-  [WINDOW_TYPES.DICE]: {
-    title: 'Dice Roller',
-    icon: Dices,
-    component: EnhancedDiceWindow
   }
 };
