@@ -38,6 +38,19 @@ const safelyDestroyPeer = (peer, userId, destroyedPeersRef) => {
   }
 };
 
+// Parse a command input
+const parseCommand = (input) => {
+  // Check if this is a command (starts with /)
+  if (!input.startsWith('/')) return null;
+  
+  // Split the input into command and arguments
+  const parts = input.substring(1).trim().split(/\s+/);
+  const command = parts[0].toLowerCase();
+  const args = parts.slice(1);
+  
+  return { command, args };
+};
+
 const ChatWindow = ({ isActive, nodeId }) => {
   const { user } = useAuth();
   const { setActiveWindow } = useWindowState();
@@ -187,15 +200,41 @@ const ChatWindow = ({ isActive, nodeId }) => {
       // Remove the deleted voice channel from the list
       setVoiceChannels(prev => prev.filter(channel => channel.id !== data.id));
     };
+
+    const handleMessagesCleared = (data) => {
+      if (activeRoom && activeRoom.id === data.roomId) {
+        // If this is for our current room, clear the messages
+        if (data.count === 'all') {
+          setMessages([]);
+        } else {
+          // Remove the most recent N messages
+          const messageCount = parseInt(data.count, 10);
+          if (!isNaN(messageCount)) {
+            setMessages(prev => prev.slice(0, Math.max(0, prev.length - messageCount)));
+          }
+        }
+        
+        // Add a system message
+        setMessages(prev => [...prev, {
+          id: 'system-' + Date.now(),
+          username: 'System',
+          message: `Messages have been cleared by an admin.`,
+          created_at: new Date().toISOString(),
+          isSystem: true
+        }]);
+      }
+    };
     
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('room_deleted', handleRoomDeleted);
     socket.on('voice_channel_deleted', handleVoiceChannelDeleted);
+    socket.on('messages_cleared', handleMessagesCleared);
     
     return () => {
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('room_deleted', handleRoomDeleted);
       socket.off('voice_channel_deleted', handleVoiceChannelDeleted);
+      socket.off('messages_cleared', handleMessagesCleared);
     };
   }, [socket, activeRoom, activeVoiceChannel]);
 
@@ -610,6 +649,8 @@ const ChatWindow = ({ isActive, nodeId }) => {
           }
       }
     };
+
+    
     
     // Handle when a user leaves a voice channel
     const handleUserLeftVoice = (data) => {
@@ -804,25 +845,116 @@ const ChatWindow = ({ isActive, nodeId }) => {
     }
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !activeRoom) return;
+    // Command execution function
+    const executeCommand = async (parsedCommand) => {
+      const { command, args } = parsedCommand;
+      
+      // Handle different commands
+      switch (command) {
+        case 'clear':
+        case 'delete':
+          // Check if user is admin
+          if (!user?.is_admin) {
+            // Add system message that only admins can use this command
+            setMessages(prev => [...prev, {
+              id: 'system-' + Date.now(),
+              username: 'System',
+              message: 'Command failed: Admin privileges required',
+              created_at: new Date().toISOString(),
+              isSystem: true
+            }]);
+            return;
+          }
+          
+          try {
+            let count = 'all';
+            if (args.length > 0) {
+              count = args[0].toLowerCase() === 'all' ? 'all' : parseInt(args[0], 10);
+              if (count !== 'all' && (isNaN(count) || count <= 0)) {
+                setMessages(prev => [...prev, {
+                  id: 'system-' + Date.now(),
+                  username: 'System',
+                  message: 'Invalid count. Usage: /clear [count|all]',
+                  created_at: new Date().toISOString(),
+                  isSystem: true
+                }]);
+                return;
+              }
+            }
+            
+            // Call the API to delete messages
+            const token = localStorage.getItem('auth_token');
+            const response = await axios.delete(
+              `${API_CONFIG.BASE_URL}/chat/rooms/${activeRoom.id}/messages?count=${count}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            // Add system message about successful deletion
+            setMessages(prev => [...prev, {
+              id: 'system-' + Date.now(),
+              username: 'System',
+              message: `${response.data.count} messages have been deleted from this channel.`,
+              created_at: new Date().toISOString(),
+              isSystem: true
+            }]);
+          } catch (error) {
+            console.error('Failed to clear messages:', error);
+            setMessages(prev => [...prev, {
+              id: 'system-' + Date.now(),
+              username: 'System',
+              message: `Failed to clear messages: ${error.response?.data?.message || error.message}`,
+              created_at: new Date().toISOString(),
+              isSystem: true
+            }]);
+          }
+          break;
+          
+        // Add other commands here in the future if needed
+        
+        default:
+          // Unknown command
+          setMessages(prev => [...prev, {
+            id: 'system-' + Date.now(),
+            username: 'System',
+            message: `Unknown command: /${command}`,
+            created_at: new Date().toISOString(),
+            isSystem: true
+          }]);
+      }
+    };
 
-    try {
-      const token = localStorage.getItem('auth_token');
-      await axios.post(
-        `${API_CONFIG.BASE_URL}/chat/rooms/${activeRoom.id}/messages`,
-        { message: newMessage },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setNewMessage('');
-      setCharCount(0);
-      // Clear the draft message from localStorage
-      localStorage.removeItem(`chat_draft_${nodeId}_${activeRoom.id}`);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    }
-  };
+    const handleSendMessage = async (e) => {
+      e.preventDefault();
+      if (!newMessage.trim() || !activeRoom) return;
+  
+      // Check if this is a command
+      const parsedCommand = parseCommand(newMessage);
+      if (parsedCommand) {
+        // This is a command, handle it with executeCommand
+        await executeCommand(parsedCommand);
+        setNewMessage('');
+        setCharCount(0);
+        // Clear the draft message from localStorage
+        localStorage.removeItem(`chat_draft_${nodeId}_${activeRoom.id}`);
+        return;
+      }
+  
+      // This is a regular message, send it to the server
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.post(
+          `${API_CONFIG.BASE_URL}/chat/rooms/${activeRoom.id}/messages`,
+          { message: newMessage },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setNewMessage('');
+        setCharCount(0);
+        // Clear the draft message from localStorage
+        localStorage.removeItem(`chat_draft_${nodeId}_${activeRoom.id}`);
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      }
+    };
 
   const handleCreateRoom = async (e) => {
     e.preventDefault();
