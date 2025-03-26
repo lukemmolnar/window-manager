@@ -82,10 +82,27 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   // Create markdown converter
   const converter = createMarkdownConverter();
 
-  // Load explorer state from IndexedDB on mount
+  // Track previous node ID to detect window swaps
+  const prevNodeIdRef = useRef(nodeId);
+
+  // Load explorer state from IndexedDB on mount or when nodeId changes
   useEffect(() => {
     const loadExplorerState = async () => {
       console.log(`[DEBUG] Starting to load explorer state for window ${nodeId}`);
+      
+      // If nodeId changed but it's not the first load, it likely means a window swap occurred
+      const isSwapDetected = prevNodeIdRef.current !== nodeId && prevNodeIdRef.current !== null;
+      if (isSwapDetected) {
+        console.log(`[DEBUG] Node ID changed from ${prevNodeIdRef.current} to ${nodeId}, possible window swap detected`);
+        // Reset the state loaded flag to force a reload after a swap
+        stateLoadedRef.current = false;
+        // Clear any pending state
+        pendingStateRestoreRef.current = null;
+      }
+      
+      // Update prevNodeIdRef for future comparisons
+      prevNodeIdRef.current = nodeId;
+      
       try {
         // Try to load explorer state from IndexedDB
         const savedState = await getExplorerState(nodeId);
@@ -108,6 +125,11 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
             setActiveTab(savedState.content.activeTab);
           }
           
+          if (savedState.content.editMode !== undefined && isAdmin) {
+            console.log(`[DEBUG] Restoring edit mode: ${savedState.content.editMode}`);
+            setEditMode(savedState.content.editMode);
+          }
+          
           // Mark as loaded
           stateLoadedRef.current = true;
         } else {
@@ -123,7 +145,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     };
     
     loadExplorerState();
-  }, [nodeId]);
+  }, [nodeId, isAdmin]);
   
   // Handle window activation
   useEffect(() => {

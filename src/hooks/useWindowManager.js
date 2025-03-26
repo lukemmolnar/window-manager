@@ -745,7 +745,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
   }, [activeNodeId, rootNode, isResizeMode, updateWorkspace, wouldViolateMinSize, currentWorkspaceIndex]);
   
   // Function to swap two windows in the tree
-  const swapWindows = useCallback((sourceId, targetId) => {
+  const swapWindows = useCallback(async (sourceId, targetId) => {
     if (!sourceId || !targetId || sourceId === targetId) return;
 
     console.log('Swapping windows:', sourceId, targetId);
@@ -812,162 +812,194 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       console.log('Successfully swapped chat window storage entries');
     }
     
-    // Async function to handle the IndexedDB operations
-    const swapIndexedDBStates = async () => {
-      try {
-        console.log('Swapping IndexedDB states for window types:', sourceWindowType, targetWindowType);
-        
-        // Import necessary functions to handle specific window types
-        const { 
-          getExplorerState, saveExplorerState,
-          getTerminalState, saveTerminalState,
-          getChatState, saveChatState,
-          getCanvasState, saveCanvasState,
-          getWindowState, saveWindowState
-        } = await import('../services/indexedDBService');
-        
-        // Get current states from IndexedDB
-        let sourceExplorerState = null;
-        let targetExplorerState = null;
-        let sourceTerminalState = null;
-        let targetTerminalState = null;
-        let sourceChatState = null;
-        let targetChatState = null;
-        let sourceCanvasState = null;
-        let targetCanvasState = null;
-        let sourceGenericState = null;
-        let targetGenericState = null;
-        
-        // Get Explorer states if applicable
-        if (sourceWindowType === WINDOW_TYPES.EXPLORER || targetWindowType === WINDOW_TYPES.EXPLORER) {
-          sourceExplorerState = await getExplorerState(sourceId);
-          targetExplorerState = await getExplorerState(targetId);
-          console.log('Explorer states:', { sourceExplorerState, targetExplorerState });
-        }
-        
-        // Get Terminal states if applicable
-        if (sourceWindowType === WINDOW_TYPES.TERMINAL || targetWindowType === WINDOW_TYPES.TERMINAL) {
-          sourceTerminalState = await getTerminalState(sourceId);
-          targetTerminalState = await getTerminalState(targetId);
-          console.log('Terminal states:', { sourceTerminalState, targetTerminalState });
-        }
-        
-        // Get Chat states if applicable
-        if (sourceWindowType === WINDOW_TYPES.CHAT || targetWindowType === WINDOW_TYPES.CHAT) {
-          sourceChatState = await getChatState(sourceId);
-          targetChatState = await getChatState(targetId);
-          console.log('Chat states:', { sourceChatState, targetChatState });
-        }
-        
-        // Get Canvas states if applicable
-        if (sourceWindowType === WINDOW_TYPES.CANVAS || targetWindowType === WINDOW_TYPES.CANVAS) {
-          sourceCanvasState = await getCanvasState(sourceId);
-          targetCanvasState = await getCanvasState(targetId);
-          console.log('Canvas states:', { sourceCanvasState, targetCanvasState });
-        }
-        
-        // Get generic window states
-        sourceGenericState = await getWindowState(sourceId);
-        targetGenericState = await getWindowState(targetId);
-        console.log('Generic window states:', { sourceGenericState, targetGenericState });
-        
-        // Now swap the states in IndexedDB
-        
-        // Swap Explorer states
-        if (sourceExplorerState && targetWindowType === WINDOW_TYPES.EXPLORER) {
-          await saveExplorerState({
-            id: targetId,
-            content: sourceExplorerState.content
-          });
-          console.log('Saved source explorer state to target');
-        }
-        
-        if (targetExplorerState && sourceWindowType === WINDOW_TYPES.EXPLORER) {
-          await saveExplorerState({
-            id: sourceId,
-            content: targetExplorerState.content
-          });
-          console.log('Saved target explorer state to source');
-        }
-        
-        // Swap Terminal states
-        if (sourceTerminalState && targetWindowType === WINDOW_TYPES.TERMINAL) {
-          await saveTerminalState({
-            id: targetId,
-            content: sourceTerminalState.content
-          });
-          console.log('Saved source terminal state to target');
-        }
-        
-        if (targetTerminalState && sourceWindowType === WINDOW_TYPES.TERMINAL) {
-          await saveTerminalState({
-            id: sourceId,
-            content: targetTerminalState.content
-          });
-          console.log('Saved target terminal state to source');
-        }
-        
-        // Swap Chat states
-        if (sourceChatState && targetWindowType === WINDOW_TYPES.CHAT) {
-          await saveChatState({
-            id: targetId,
-            content: sourceChatState.content
-          });
-          console.log('Saved source chat state to target');
-        }
-        
-        if (targetChatState && sourceWindowType === WINDOW_TYPES.CHAT) {
-          await saveChatState({
-            id: sourceId,
-            content: targetChatState.content
-          });
-          console.log('Saved target chat state to source');
-        }
-        
-        // Swap Canvas states
-        if (sourceCanvasState && targetWindowType === WINDOW_TYPES.CANVAS) {
-          await saveCanvasState({
-            id: targetId,
-            content: sourceCanvasState.content
-          });
-          console.log('Saved source canvas state to target');
-        }
-        
-        if (targetCanvasState && sourceWindowType === WINDOW_TYPES.CANVAS) {
-          await saveCanvasState({
-            id: sourceId,
-            content: targetCanvasState.content
-          });
-          console.log('Saved target canvas state to source');
-        }
-        
-        // Swap generic window states
-        if (sourceGenericState) {
-          await saveWindowState({
-            id: targetId,
-            type: sourceWindowType,
-            content: sourceGenericState.content
-          });
-          console.log('Saved source generic state to target');
-        }
-        
-        if (targetGenericState) {
-          await saveWindowState({
-            id: sourceId,
-            type: targetWindowType,
-            content: targetGenericState.content
-          });
-          console.log('Saved target generic state to source');
-        }
-        
-        console.log('Successfully swapped all IndexedDB states');
-      } catch (error) {
-        console.error('Error swapping IndexedDB states:', error);
+    // Wait for IndexedDB operations to complete before continuing
+    try {
+      console.log('Starting IndexedDB state swap, waiting for completion...');
+      
+      // Import necessary functions to handle specific window types
+      const { 
+        getExplorerState, saveExplorerState,
+        getTerminalState, saveTerminalState,
+        getChatState, saveChatState,
+        getCanvasState, saveCanvasState,
+        getWindowState, saveWindowState,
+        removeExplorerState, removeWindowState
+      } = await import('../services/indexedDBService');
+      
+      console.log('Swapping IndexedDB states for window types:', sourceWindowType, targetWindowType);
+      
+      // Get current states from IndexedDB
+      let sourceExplorerState = null;
+      let targetExplorerState = null;
+      let sourceTerminalState = null;
+      let targetTerminalState = null;
+      let sourceChatState = null;
+      let targetChatState = null;
+      let sourceCanvasState = null;
+      let targetCanvasState = null;
+      let sourceGenericState = null;
+      let targetGenericState = null;
+      
+      // Get Explorer states if applicable
+      if (sourceWindowType === WINDOW_TYPES.EXPLORER || targetWindowType === WINDOW_TYPES.EXPLORER) {
+        sourceExplorerState = await getExplorerState(sourceId);
+        targetExplorerState = await getExplorerState(targetId);
+        console.log('Explorer states:', { sourceExplorerState, targetExplorerState });
       }
-    };
-    
-    // Start the async operation to swap IndexedDB states
-    swapIndexedDBStates();
+      
+      // Get Terminal states if applicable
+      if (sourceWindowType === WINDOW_TYPES.TERMINAL || targetWindowType === WINDOW_TYPES.TERMINAL) {
+        sourceTerminalState = await getTerminalState(sourceId);
+        targetTerminalState = await getTerminalState(targetId);
+        console.log('Terminal states:', { sourceTerminalState, targetTerminalState });
+      }
+      
+      // Get Chat states if applicable
+      if (sourceWindowType === WINDOW_TYPES.CHAT || targetWindowType === WINDOW_TYPES.CHAT) {
+        sourceChatState = await getChatState(sourceId);
+        targetChatState = await getChatState(targetId);
+        console.log('Chat states:', { sourceChatState, targetChatState });
+      }
+      
+      // Get Canvas states if applicable
+      if (sourceWindowType === WINDOW_TYPES.CANVAS || targetWindowType === WINDOW_TYPES.CANVAS) {
+        sourceCanvasState = await getCanvasState(sourceId);
+        targetCanvasState = await getCanvasState(targetId);
+        console.log('Canvas states:', { sourceCanvasState, targetCanvasState });
+      }
+      
+      // Get generic window states
+      sourceGenericState = await getWindowState(sourceId);
+      targetGenericState = await getWindowState(targetId);
+      console.log('Generic window states:', { sourceGenericState, targetGenericState });
+      
+      // First, remove existing states to prevent any conflicts
+      if (sourceWindowType === WINDOW_TYPES.EXPLORER) {
+        await removeExplorerState(sourceId);
+      }
+      if (targetWindowType === WINDOW_TYPES.EXPLORER) {
+        await removeExplorerState(targetId);
+      }
+      
+      // Remove generic states
+      await removeWindowState(sourceId);
+      await removeWindowState(targetId);
+      
+      // For explorer windows, we need to handle special state swapping
+      // We need to save a temporary state with the correct IDs
+      const tempSourceId = `temp_${sourceId}`;
+      const tempTargetId = `temp_${targetId}`;
+      
+      // Now swap the states in IndexedDB
+      
+      // Swap Explorer states
+      if (sourceExplorerState && targetWindowType === WINDOW_TYPES.EXPLORER) {
+        // First save source to temp
+        await saveExplorerState({
+          id: tempSourceId,
+          content: sourceExplorerState.content
+        });
+      }
+      
+      if (targetExplorerState && sourceWindowType === WINDOW_TYPES.EXPLORER) {
+        // First save target to temp
+        await saveExplorerState({
+          id: tempTargetId,
+          content: targetExplorerState.content
+        });
+      }
+      
+      // Now move from temp to final locations
+      if (sourceExplorerState && targetWindowType === WINDOW_TYPES.EXPLORER) {
+        await saveExplorerState({
+          id: targetId,
+          content: sourceExplorerState.content
+        });
+        console.log('Saved source explorer state to target');
+      }
+      
+      if (targetExplorerState && sourceWindowType === WINDOW_TYPES.EXPLORER) {
+        await saveExplorerState({
+          id: sourceId,
+          content: targetExplorerState.content
+        });
+        console.log('Saved target explorer state to source');
+      }
+      
+      // Swap Terminal states
+      if (sourceTerminalState && targetWindowType === WINDOW_TYPES.TERMINAL) {
+        await saveTerminalState({
+          id: targetId,
+          content: sourceTerminalState.content
+        });
+        console.log('Saved source terminal state to target');
+      }
+      
+      if (targetTerminalState && sourceWindowType === WINDOW_TYPES.TERMINAL) {
+        await saveTerminalState({
+          id: sourceId,
+          content: targetTerminalState.content
+        });
+        console.log('Saved target terminal state to source');
+      }
+      
+      // Swap Chat states
+      if (sourceChatState && targetWindowType === WINDOW_TYPES.CHAT) {
+        await saveChatState({
+          id: targetId,
+          content: sourceChatState.content
+        });
+        console.log('Saved source chat state to target');
+      }
+      
+      if (targetChatState && sourceWindowType === WINDOW_TYPES.CHAT) {
+        await saveChatState({
+          id: sourceId,
+          content: targetChatState.content
+        });
+        console.log('Saved target chat state to source');
+      }
+      
+      // Swap Canvas states
+      if (sourceCanvasState && targetWindowType === WINDOW_TYPES.CANVAS) {
+        await saveCanvasState({
+          id: targetId,
+          content: sourceCanvasState.content
+        });
+        console.log('Saved source canvas state to target');
+      }
+      
+      if (targetCanvasState && sourceWindowType === WINDOW_TYPES.CANVAS) {
+        await saveCanvasState({
+          id: sourceId,
+          content: targetCanvasState.content
+        });
+        console.log('Saved target canvas state to source');
+      }
+      
+      // Swap generic window states
+      if (sourceGenericState) {
+        await saveWindowState({
+          id: targetId,
+          type: sourceWindowType,
+          content: sourceGenericState.content
+        });
+        console.log('Saved source generic state to target');
+      }
+      
+      if (targetGenericState) {
+        await saveWindowState({
+          id: sourceId,
+          type: targetWindowType,
+          content: targetGenericState.content
+        });
+        console.log('Saved target generic state to source');
+      }
+      
+      console.log('Successfully swapped all IndexedDB states');
+    } catch (error) {
+      console.error('Error swapping IndexedDB states:', error);
+    }
 
     // Update the in-memory workspace state
     updateWorkspace(currentWorkspaceIndex, workspace => {
@@ -998,6 +1030,11 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     // Exit move mode after swapping
     setIsMoveMode(false);
     setMoveSourceWindowId(null);
+    
+    // Add small delay to ensure state changes propagate correctly
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log('Window swap complete');
   }, [updateWorkspace, currentWorkspaceIndex, rootNode]);
 
   // Add direct keyboard event listener for move mode
