@@ -58,13 +58,14 @@ export const CommandBar = ({
         <>
           {/* Active users section */}
           <div className="flex items-center border-l border-stone-600 ml-2 pl-2">
-            <span className="text-teal-400 text-sm font-mono">
-              {activeUserCount}<svg className="inline-block h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
-            </span>
+            <div className="flex items-center text-teal-400 text-sm font-mono">
+              <span className="leading-none">{activeUserCount}</span>
+              <svg className="h-3 w-3 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+            </div>
           </div>
           
           {/* Username and logout section */}
-          <div className="flex items-center border-l border-stone-600 ml-2 pl-2">
+          <div className="flex items-center pl-2">
             <span className="text-white text-sm font-mono mr-2">
               {user?.username || 'User'} 
             </span>
