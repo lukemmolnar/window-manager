@@ -61,6 +61,15 @@ export function ActiveUsersProvider({ children }) {
     
     socket.on('connect', () => {
       console.log('ActiveUsers Socket.IO connected, ID:', socket.id);
+      
+      // Send authentication token on connect
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        console.log('Authenticating ActiveUsers socket connection');
+        socket.emit('authenticate', token);
+      } else {
+        console.warn('No auth token available for socket authentication');
+      }
     });
     
     socket.on('connect_error', (err) => {
@@ -96,8 +105,11 @@ export function ActiveUsersProvider({ children }) {
           }).catch(error => {
             console.error('Failed to report activity:', error);
           });
+          
+          // Also report activity via socket for immediate update
+          socket.emit('user_activity');
         }
-      }, 30000); // Wait 30 seconds before reporting activity to avoid flooding
+      }, 300); // Wait 30 seconds before reporting activity to avoid flooding
     };
     
     // Add event listeners for user activity
