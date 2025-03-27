@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import API_CONFIG from '../config/api';
 import { useAuth } from './AuthContext';
@@ -15,6 +15,7 @@ const ACTIVITY_EVENTS = [
 export function ActiveUsersProvider({ children }) {
   const [activeUserCount, setActiveUserCount] = useState(0);
   const { isAuthenticated, user } = useAuth();
+  const socketRef = useRef(null);
   
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -58,6 +59,9 @@ export function ActiveUsersProvider({ children }) {
       transports: ['websocket', 'polling'],
       path: '/socket.io' // Default Socket.IO path
     });
+    
+    // Store socket reference for external access
+    socketRef.current = socket;
     
     socket.on('connect', () => {
       console.log('ActiveUsers Socket.IO connected, ID:', socket.id);
@@ -109,7 +113,7 @@ export function ActiveUsersProvider({ children }) {
           // Also report activity via socket for immediate update
           socket.emit('user_activity');
         }
-      }, 300); // Wait 30 seconds before reporting activity to avoid flooding
+      }, 30000); // Wait 30 seconds before reporting activity to avoid flooding
     };
     
     // Add event listeners for user activity

@@ -73,7 +73,23 @@ export function AuthProvider({ children }) {
   };
 
   // Logout function (without window state clearing)
-  const logout = () => {
+  const logout = async () => {
+    const token = localStorage.getItem('auth_token');
+    
+    if (token) {
+      try {
+        // Call server logout endpoint to remove user from active users
+        await axios.post(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGOUT}`, 
+          {}, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('Logged out on server');
+      } catch (err) {
+        console.error('Error logging out on server:', err);
+      }
+    }
+    
     localStorage.removeItem('auth_token');
     setUser(null);
     setError(null);
@@ -122,12 +138,28 @@ export function AuthProviderWithWindowState({ children }) {
   const auth = useContext(InternalAuthContext);
   
   // Create a new logout function that also clears window states and workspaces
-  const logoutWithClear = () => {
-    auth.logout();
+  const logoutWithClear = async () => {
+    // First call the enhanced logout that includes API call
+    await auth.logout();
     clearWindowStates();
     
     // Reset workspaces to initial state
     setWorkspaces(initialWorkspaces);
+    
+    // Force a refresh of the active users count
+    // This will ensure the UI updates immediately
+    setTimeout(() => {
+      // After a small delay, force a refresh of the active users count via API
+      axios.get(`${API_CONFIG.BASE_URL}/active-users`)
+        .then(response => {
+          // We don't need to do anything with the response
+          // The ActiveUsersContext will handle the socket event
+          console.log('Forced refresh of active users count after logout');
+        })
+        .catch(error => {
+          console.error('Error refreshing active users after logout:', error);
+        });
+    }, 500);
   };
   
   // Create a new login function that also reloads window states and workspaces

@@ -8,6 +8,7 @@ const API_CONFIG = {
     LOGIN: '/login',
     REGISTER: '/register',
     PROFILE: '/profile',
+    LOGOUT: '/logout',
     ANNOUNCEMENT: '/announcement',
     // Chat endpoints
     CHAT_ROOMS: '/chat/rooms',
