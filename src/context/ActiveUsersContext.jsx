@@ -31,11 +31,49 @@ export function ActiveUsersProvider({ children }) {
     
     fetchActiveUsers();
     
-    // Set up Socket.IO connection
-    const socket = io(window.location.origin);
+    // Extract the origin from the BASE_URL or use window.location.origin
+    const getSocketUrl = () => {
+      // If BASE_URL is a full URL (starts with http)
+      if (API_CONFIG.BASE_URL.startsWith('http')) {
+        try {
+          const url = new URL(API_CONFIG.BASE_URL);
+          console.log('ActiveUsers using Socket.IO URL from BASE_URL origin:', url.origin);
+          return url.origin; // Just the protocol, hostname, and port
+        } catch (e) {
+          console.error('ActiveUsers invalid BASE_URL format:', e);
+        }
+      }
+      // Otherwise use the current origin
+      console.log('ActiveUsers using Socket.IO URL from window.location.origin:', window.location.origin);
+      return window.location.origin;
+    };
+    
+    // Improved Socket.IO connection with correct URL
+    const socketUrl = getSocketUrl();
+    console.log('ActiveUsers connecting Socket.IO to:', socketUrl);
+    
+    const socket = io(socketUrl, {
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      transports: ['websocket', 'polling'],
+      path: '/socket.io' // Default Socket.IO path
+    });
+    
+    socket.on('connect', () => {
+      console.log('ActiveUsers Socket.IO connected, ID:', socket.id);
+    });
+    
+    socket.on('connect_error', (err) => {
+      console.error('ActiveUsers Socket.IO connection error:', err);
+      console.error('Connection details:', {
+        url: socketUrl,
+        transport: socket.io.engine?.transport?.name
+      });
+    });
     
     // Listen for active user count updates
     socket.on('active_users_update', (data) => {
+      console.log('Received active users update:', data);
       setActiveUserCount(data.count);
     });
     
