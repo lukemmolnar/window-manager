@@ -107,12 +107,52 @@ export function ActiveUsersProvider({ children }) {
         socketRef.current.emit('user_activity');
       } else {
         console.warn('Socket not connected when trying to report activity');
+        
         // If socket is disconnected, try to reconnect and then emit
         if (socketRef.current) {
+          console.log('Attempting to reconnect socket...');
           socketRef.current.connect();
+          
+          // After reconnection attempt, try to emit activity again
+          setTimeout(() => {
+            if (socketRef.current && socketRef.current.connected) {
+              console.log('Socket reconnected, reporting activity');
+              socketRef.current.emit('user_activity');
+            } else {
+              console.error('Socket reconnection failed, falling back to HTTP API');
+              // Fallback to HTTP API if socket reconnection fails
+              const token = localStorage.getItem('auth_token');
+              if (token) {
+                axios.post(`${API_CONFIG.BASE_URL}/activity`, {}, {
+                  headers: { Authorization: `Bearer ${token}` }
+                }).catch(error => {
+                  console.error('Failed to report activity via HTTP:', error);
+                });
+              }
+            }
+          }, 1000); // Wait 1 second for reconnection attempt
         }
       }
     }, 30000); // Wait 30 seconds before reporting activity to avoid flooding
+    
+    // Also report activity immediately if returning to app after a long time
+    // This helps with faster updates when a user returns from being inactive
+    if (socketRef.current && socketRef.current.connected && isAuthenticated) {
+      const lastActive = localStorage.getItem('lastActiveTimestamp');
+      const now = Date.now();
+      
+      if (lastActive) {
+        const inactiveDuration = now - parseInt(lastActive, 10);
+        // If user was inactive for more than 5 minutes (but less than timeout)
+        if (inactiveDuration > 5 * 60 * 1000) {
+          console.log(`User returning after ${Math.round(inactiveDuration/1000)}s inactivity, reporting activity immediately`);
+          socketRef.current.emit('user_activity');
+        }
+      }
+      
+      // Update last active timestamp
+      localStorage.setItem('lastActiveTimestamp', now.toString());
+    }
   };
     
     // Add event listeners for user activity
