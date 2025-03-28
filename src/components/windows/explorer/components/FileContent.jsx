@@ -149,15 +149,6 @@ const FileContent = ({
             {/* Only show edit/preview toggle for markdown files and admin users */}
             {selectedFile.name.endsWith('.md') && isAdmin && (
               <div className="flex gap-2">
-                <button 
-                  onClick={toggleEditMode}
-                  className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${editMode ? 'bg-teal-700 text-teal-100' : 'bg-stone-800 hover:bg-stone-700'}`}
-                  title={editMode ? "Switch to preview mode" : "Switch to edit mode"}
-                >
-                  {editMode ? <Eye size={14} /> : <Edit size={14} />}
-                  {editMode ? 'Preview' : 'Edit'}
-                </button>
-                
                 {editMode && (
                   <button 
                     onClick={handleSaveFileContent}
@@ -167,6 +158,14 @@ const FileContent = ({
                     Save
                   </button>
                 )}
+                <button 
+                  onClick={toggleEditMode}
+                  className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${editMode ? 'bg-teal-700 text-teal-100' : 'bg-stone-800 hover:bg-stone-700'}`}
+                  title={editMode ? "Switch to preview mode" : "Switch to edit mode"}
+                >
+                  {editMode ? <Eye size={14} /> : <Edit size={14} />}
+                  {editMode ? 'Preview' : 'Edit'}
+                </button>
               </div>
             )}
           </div>
