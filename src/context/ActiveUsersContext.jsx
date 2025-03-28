@@ -93,28 +93,27 @@ export function ActiveUsersProvider({ children }) {
     // Track user activity
     let activityTimeout;
     
-    const reportActivity = () => {
-      // Clear any pending timeout
-      if (activityTimeout) {
-        clearTimeout(activityTimeout);
-      }
-      
-      // Set a new timeout to report activity
-      activityTimeout = setTimeout(() => {
-        // Make API call to report activity
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          axios.post(`${API_CONFIG.BASE_URL}/activity`, {}, {
-            headers: { Authorization: `Bearer ${token}` }
-          }).catch(error => {
-            console.error('Failed to report activity:', error);
-          });
-          
-          // Also report activity via socket for immediate update
-          socket.emit('user_activity');
+  const reportActivity = () => {
+    // Clear any pending timeout
+    if (activityTimeout) {
+      clearTimeout(activityTimeout);
+    }
+    
+    // Set a new timeout to report activity
+    activityTimeout = setTimeout(() => {
+      // Report activity via socket only for more efficient, real-time updates
+      if (socketRef.current && socketRef.current.connected) {
+        console.log('Reporting user activity via socket');
+        socketRef.current.emit('user_activity');
+      } else {
+        console.warn('Socket not connected when trying to report activity');
+        // If socket is disconnected, try to reconnect and then emit
+        if (socketRef.current) {
+          socketRef.current.connect();
         }
-      }, 30000); // Wait 30 seconds before reporting activity to avoid flooding
-    };
+      }
+    }, 30000); // Wait 30 seconds before reporting activity to avoid flooding
+  };
     
     // Add event listeners for user activity
     ACTIVITY_EVENTS.forEach(eventType => {
