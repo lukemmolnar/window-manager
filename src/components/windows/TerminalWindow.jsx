@@ -197,8 +197,6 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           '  explorer (ex) - Transform window into file explorer',
           '  terminal (term) - Transform into terminal',
           '  chat (ch) - Transform into chat window',
-          '  canvas (can) - Transform into canvas',
-          '  audio (aud) - Transform into audio player',
           adminCommands,
           '  roll (r, d) - Roll dice (e.g., roll 2d6+3)',
           '  help (h) - Show this help message',
@@ -211,7 +209,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           '  Ctrl + Backspace - Close window',
           '  Ctrl + Q - Resize mode',
           '  Ctrl + M - Move mode',
-          '  Ctrl + alt + [arrow key] - Move workspaces'
+          '  Ctrl + alt + [arrow key] - Move workspaces',
+          '  Ctrl + [arrow key] - Move active window',
         ].join('\n');
         break;
   

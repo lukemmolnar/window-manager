@@ -41,10 +41,5 @@ export const WINDOW_CONTENT = {
     title: 'Admin Panel',
     icon: Shield,
     component: EnhancedAdminWindow
-  },
-  [WINDOW_TYPES.CANVAS]: {
-    title: 'Canvas',
-    icon: Layout,
-    component: EnhancedCanvasWindow
   }
 };
