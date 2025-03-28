@@ -1,6 +1,5 @@
 import TerminalWindow from './TerminalWindow';
 import ExplorerWindow from './explorer/ExplorerWindow';
-import EditorWindow from './EditorWindow';
 import withCommandHandling from '../../hocs/withCommandHandling';
 import withWindowState from '../../hocs/withWindowState';
 import withCommandInput from '../../hocs/withCommandInput';
@@ -17,7 +16,6 @@ export const EnhancedTerminalWindow = withWindowState(withCommandHandling(Termin
 export const EnhancedExplorerWindow = withWindowState(withCommandHandling(ExplorerWindow), WINDOW_TYPES.EXPLORER);
 
 // For other windows, add the command input
-export const EnhancedEditorWindow = withWindowState(withCommandHandling(withCommandInput(EditorWindow)), WINDOW_TYPES.EDITOR);
 export const EnhancedAudioWindow = withWindowState(withCommandHandling(withCommandInput(AudioWindow)), WINDOW_TYPES.AUDIO);
 export const EnhancedChatWindow = withWindowState(withCommandHandling(withCommandInput(ChatWindow)), WINDOW_TYPES.CHAT);
 export const EnhancedAdminWindow = withWindowState(withCommandHandling(withCommandInput(AdminWindow)), WINDOW_TYPES.ADMIN);
@@ -25,4 +23,4 @@ export const EnhancedCanvasWindow = withWindowState(withCommandHandling(CanvasWi
 export const EnhancedDiceWindow = withWindowState(withCommandHandling(DiceWindow), WINDOW_TYPES.DICE);
 
 // Also export the base components in case they're needed
-export { TerminalWindow, ExplorerWindow, EditorWindow, ChatWindow, AdminWindow, CanvasWindow, DiceWindow };
+export { TerminalWindow, ExplorerWindow, ChatWindow, AdminWindow, CanvasWindow, DiceWindow };

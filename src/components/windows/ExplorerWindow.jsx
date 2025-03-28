@@ -2024,7 +2024,6 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           type="text"
           onKeyDown={handleCommand}
           className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
-          placeholder={isAdmin ? "Commands: refresh, preview, edit, save, new-file, new-folder, rename, delete, public, private" : "Commands: refresh, preview, public"}
         />
       </div>
     </div>

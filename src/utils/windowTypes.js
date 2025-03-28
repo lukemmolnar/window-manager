@@ -5,7 +5,6 @@ import { WINDOW_TYPES } from './constants';
 // Import individually to avoid circular dependency
 import { 
   EnhancedTerminalWindow,
-  EnhancedEditorWindow,
   EnhancedExplorerWindow,
   EnhancedAudioWindow,
   EnhancedChatWindow,
