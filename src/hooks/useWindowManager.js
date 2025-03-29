@@ -464,9 +464,11 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       return;
     }
   
+  // Update workspace with the new split and set the new window as active
   updateWorkspace(currentWorkspaceIndex, workspace => ({
     ...workspace,
-    root: splitNodeById(workspace.root, nodeId, direction, newWindow)
+    root: splitNodeById(workspace.root, nodeId, direction, newWindow),
+    activeNodeId: newWindow.id // Automatically make the new window active
   }));
   }, [updateWorkspace, getWindowState, setWindowState, rootNode, calculatePixelDimensions, currentWorkspaceIndex]);
 
@@ -545,9 +547,9 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       return;
     }
     
-    // Use splitWindow which already has minimum size checks
+    // Use splitWindow which already has minimum size checks and now automatically sets the new window as active
     splitWindow(activeNodeId, 'vertical', newNode);
-    setActiveNodeId(newNode.id);
+    // setActiveNodeId call is removed as splitWindow now handles this automatically
   }, [rootNode, activeNodeId, updateWorkspace, setActiveNodeId, setWindowState, calculatePixelDimensions, splitWindow, currentWorkspaceIndex]);
 
   const closeWindow = useCallback((nodeId) => {
@@ -631,6 +633,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       case 'split':
         if (activeNodeId) {
           const direction = parts[1] === 'vertical' ? 'vertical' : 'horizontal';
+          // splitWindow automatically makes the new window active
           splitWindow(activeNodeId, direction);
         }
         break;
