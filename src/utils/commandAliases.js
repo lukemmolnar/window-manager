@@ -21,5 +21,6 @@ export const COMMAND_ALIASES = {
   'v': 'version',
   'ann': 'announcement',
   'r': 'roll',
-  'd': 'roll'
+  'd': 'roll',
+  'dbg': 'debug'
 };

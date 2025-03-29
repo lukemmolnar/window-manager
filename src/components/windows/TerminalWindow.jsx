@@ -6,6 +6,7 @@ import { useWindowState } from '../../context/WindowStateContext';
 import { saveTerminalState, getTerminalState } from '../../services/indexedDBService';
 import { COMMAND_ALIASES } from '../../utils/commandAliases';
 import { parseDiceExpression, rollDice, formatRollResult, isValidDiceType } from '../../utils/diceUtils';
+import DebugLogger from '../../utils/debugLogger';
 
 const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowState, updateWindowState, focusRef }) => {
   // Get user authentication info
@@ -190,7 +191,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         
       case 'help':
         const adminCommands = user?.is_admin ? 
-          '  admin (adm)  - Access admin panel\n  announcement (ann) "text" - Set a system-wide announcement\n' : 
+          '  admin (adm)  - Access admin panel\n  announcement (ann) "text" - Set a system-wide announcement\n  debug (dbg) - Toggle debug mode (console logs)\n' : 
           '';
         response = [
           'Commands:',
@@ -220,6 +221,20 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   
       case 'version':
         response = 'SLUMNET Terminal v1.0.0';
+        break;
+        
+      case 'debug':
+        // Check if user is admin
+        if (!user?.is_admin) {
+          response = 'Access denied: Admin privileges required';
+          break;
+        }
+        
+        // Toggle debug mode
+        const debugEnabled = DebugLogger.toggleDebug();
+        response = debugEnabled 
+          ? 'Debug mode enabled. Console logs are now visible.' 
+          : 'Debug mode disabled. Console logs are now hidden.';
         break;
         
       case 'roll':
