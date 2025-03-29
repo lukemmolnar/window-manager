@@ -7,6 +7,8 @@ import {
   findNodeById, 
   findAllWindowIds,
   updateSplitRatio,
+  findSiblingWindowId,
+  findFirstWindowId
 } from '../utils/treeUtils';
 import { getWindowBounds } from '../utils/windowUtils';
 import { useWindowState } from '../context/WindowStateContext';
@@ -556,6 +558,7 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     // Clean up window state when closing a window
     removeWindowState(nodeId);
     
+    // Special case: If closing the only window in the workspace
     if (rootNode.type === 'window' && rootNode.id === nodeId) {
       updateWorkspace(currentWorkspaceIndex, {
         root: null,
@@ -564,11 +567,17 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
       return;
     }
 
+    // Before removing the node, try to find its sibling for activating it later
+    const siblingWindowId = findSiblingWindowId(rootNode, nodeId);
+    console.log(`Found sibling window ID for ${nodeId}: ${siblingWindowId}`);
+    
     const newRoot = JSON.parse(JSON.stringify(rootNode));
     const result = removeNodeById(newRoot, nodeId);
     
     if (activeNodeId === nodeId && result) {
-      const nextWindowId = findAllWindowIds(result)[0] || null;
+      // If the closed window was active, activate its sibling if possible
+      // Otherwise fall back to the first window in the tree
+      const nextWindowId = siblingWindowId || findAllWindowIds(result)[0] || null;
       updateWorkspace(currentWorkspaceIndex, {
         root: result,
         activeNodeId: nextWindowId

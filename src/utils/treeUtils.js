@@ -112,3 +112,38 @@ export const updateSplitRatio = (node, splitId, newRatio) => {
     updateSplitRatio(node.second, splitId, newRatio);
   }
 };
+
+/**
+ * Finds the sibling window ID of a given window ID
+ * Used to determine which window should be active after closing a window
+ * @param {Node} node - Current node in the tree
+ * @param {string} targetId - ID of the window to find the sibling of
+ * @returns {string|null} ID of the sibling window, or null if not found
+ */
+export const findSiblingWindowId = (node, targetId) => {
+  if (!node) return null;
+  
+  if (node.type === 'split') {
+    // Check if the target is a direct child of this split
+    if (node.first.type === 'window' && node.first.id === targetId) {
+      // Return the ID of the first window found in the second branch
+      return node.second.type === 'window' 
+        ? node.second.id 
+        : findFirstWindowId(node.second);
+    }
+    if (node.second.type === 'window' && node.second.id === targetId) {
+      // Return the ID of the first window found in the first branch
+      return node.first.type === 'window' 
+        ? node.first.id 
+        : findFirstWindowId(node.first);
+    }
+    
+    // Otherwise, recursively check both branches
+    const firstResult = findSiblingWindowId(node.first, targetId);
+    if (firstResult) return firstResult;
+    
+    return findSiblingWindowId(node.second, targetId);
+  }
+  
+  return null;
+};
