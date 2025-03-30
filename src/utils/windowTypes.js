@@ -26,11 +26,6 @@ export const WINDOW_CONTENT = {
     icon: TerminalIcon,
     component: EnhancedTerminalWindow
   },
-  [WINDOW_TYPES.AUDIO]: {
-    title: 'Audio Player',
-    icon: Eye,
-    component: EnhancedAudioWindow
-  },
   [WINDOW_TYPES.CHAT]: {
     title: 'Chat',
     icon: MessageSquare,
