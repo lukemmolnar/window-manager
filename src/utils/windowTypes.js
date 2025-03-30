@@ -26,6 +26,10 @@ export const WINDOW_CONTENT = {
     icon: TerminalIcon,
     component: EnhancedTerminalWindow
   },
+  [WINDOW_TYPES.CANVAS]: {
+    title: 'Canvas',
+    component: EnhancedCanvasWindow
+  },
   [WINDOW_TYPES.CHAT]: {
     title: 'Chat',
     icon: MessageSquare,
