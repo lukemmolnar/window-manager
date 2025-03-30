@@ -73,3 +73,13 @@ jobs:
         
         # Copy files
         scp -r dist/* deployment-server:/var/www/public_site/
+        
+        # Set cache control headers for index.html
+        ssh deployment-server "echo 'Cache-Control: no-cache, no-store, must-revalidate' > /var/www/public_site/.htaccess"
+        ssh deployment-server "echo 'Pragma: no-cache' >> /var/www/public_site/.htaccess"
+        ssh deployment-server "echo 'Expires: 0' >> /var/www/public_site/.htaccess"
+        
+        # Set long-term caching for hashed assets
+        ssh deployment-server "echo '<FilesMatch \"\.([0-9a-f]{8,})\.((js|css|jpg|jpeg|png|gif|webp|svg|woff2))$\">' >> /var/www/public_site/.htaccess"
+        ssh deployment-server "echo '  Header set Cache-Control \"public, max-age=31536000, immutable\"' >> /var/www/public_site/.htaccess"
+        ssh deployment-server "echo '</FilesMatch>' >> /var/www/public_site/.htaccess"

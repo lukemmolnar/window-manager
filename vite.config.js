@@ -47,6 +47,14 @@ export default defineConfig({
           'simple-peer': ['simple-peer']
         }
       }
-    }
+    },
+    // Enable content hashing in filenames for cache busting
+    assetsDir: 'assets',
+    sourcemap: true,
+    manifest: true,
+    // Use content hashing to force cache invalidation when files change
+    chunkFileNames: 'assets/js/[name]-[hash].js',
+    entryFileNames: 'assets/js/[name]-[hash].js',
+    assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'
   }
 })

@@ -9,7 +9,6 @@ import {
   EnhancedAudioWindow,
   EnhancedChatWindow,
   EnhancedAdminWindow,
-  EnhancedCanvasWindow,
   EnhancedDiceWindow
 } from '../components/windows';
 
@@ -25,10 +24,6 @@ export const WINDOW_CONTENT = {
     title: 'Terminal',
     icon: TerminalIcon,
     component: EnhancedTerminalWindow
-  },
-  [WINDOW_TYPES.CANVAS]: {
-    title: 'Canvas',
-    component: EnhancedCanvasWindow
   },
   [WINDOW_TYPES.CHAT]: {
     title: 'Chat',
