@@ -24,10 +24,16 @@ export const COMMAND_ALIASES = {
   'd': 'roll',
   'dbg': 'debug',
   
-  // Party command aliases
+  // Party command aliases (new style)
+  'p': 'party',
+  'pc': 'party create',
+  'pj': 'party join',
+  'pl': 'party leave',
+  'pls': 'party list',
+  'pi': 'party info',
+  
+  // Legacy party command aliases (for backwards compatibility)
   'cp': 'create-party',
   'jp': 'join-party',
-  'lp': 'leave-party',
-  'p': 'party',
-  'pl': 'parties list'
+  'lp': 'leave-party'
 };
