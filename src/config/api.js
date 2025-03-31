@@ -37,7 +37,12 @@ const API_CONFIG = {
     FILE_MOVE: '/files/move',
     // Public file endpoints
     PUBLIC_FILES_LIST: '/public-files',
-    PUBLIC_FILE_CONTENT: '/public-files/content'
+    PUBLIC_FILE_CONTENT: '/public-files/content',
+    // Party endpoints
+    PARTIES: '/parties',
+    PARTIES_CURRENT: '/parties/current',
+    PARTY_JOIN: '/parties/:id/join',
+    PARTY_LEAVE: '/parties/:id/leave'
   }
 };
 

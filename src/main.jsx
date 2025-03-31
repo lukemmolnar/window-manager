@@ -13,6 +13,7 @@ import { WindowStateProvider } from './context/WindowStateContext'
 import { WorkspaceProvider } from './context/WorkspaceContext'
 import { AuthProvider, AuthProviderWithWindowState } from './context/AuthContext'
 import { AnnouncementProvider } from './context/AnnouncementContext'
+import PartyProvider from './context/PartyContext'
 import DebugLogger from './utils/debugLogger'
 
 // Initialize debug logger (disables logs by default)
@@ -33,7 +34,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <WorkspaceProvider>
           <AuthProviderWithWindowState>
             <AnnouncementProvider>
-              <App />
+              <PartyProvider>
+                <App />
+              </PartyProvider>
             </AnnouncementProvider>
           </AuthProviderWithWindowState>
         </WorkspaceProvider>

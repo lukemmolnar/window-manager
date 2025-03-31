@@ -22,5 +22,12 @@ export const COMMAND_ALIASES = {
   'ann': 'announcement',
   'r': 'roll',
   'd': 'roll',
-  'dbg': 'debug'
+  'dbg': 'debug',
+  
+  // Party command aliases
+  'cp': 'create-party',
+  'jp': 'join-party',
+  'lp': 'leave-party',
+  'p': 'party',
+  'pl': 'parties list'
 };
