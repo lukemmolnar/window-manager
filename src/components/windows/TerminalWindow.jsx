@@ -525,11 +525,11 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       className="bg-stone-900 text-white font-mono text-sm h-full flex flex-col"
       onClick={handleTerminalClick}
     >
-      <div ref={terminalRef} className="p-2 flex-1 overflow-auto whitespace-pre-wrap">
-        {history.map((line, i) => (
-          <div key={i}>{line}</div>
-        ))}
-      </div>
+<div ref={terminalRef} className="p-2 flex-1 overflow-auto whitespace-pre-wrap">
+  {history.map((line, i) => (
+    <div key={i} className={`mb-2 ${line.startsWith('$ ') ? 'text-teal-400' : ''}`}>{line}</div>
+  ))}
+</div>
 
       <div className="p-2 flex items-center gap-2 border-t border-stone-700">
         <span className="mr-2">$</span>
