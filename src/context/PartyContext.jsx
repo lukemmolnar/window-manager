@@ -171,6 +171,52 @@ export const PartyProvider = ({ children }) => {
     }
   };
 
+  const deleteParty = async (partyId) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PARTIES}/${partyId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Remove the party from the local state
+      setParties(prev => prev.filter(party => party.id !== partyId));
+      
+      // If user is in this party, clear the current party
+      if (currentParty && currentParty.id === partyId) {
+        setCurrentParty(null);
+        setPartyMembers([]);
+      }
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting party:', err);
+      const errorMessage = err.response?.data?.message || 'Failed to delete party';
+      setError(errorMessage);
+      return { success: false, message: errorMessage };
+    }
+  };
+
+  // Listen for party deleted events
+  useEffect(() => {
+    if (socket) {
+      socket.on('party_deleted', (data) => {
+        // Update parties list
+        setParties(prev => prev.filter(party => party.id !== data.id));
+        
+        // If user was in this party, clear current party
+        if (currentParty && currentParty.id === data.id) {
+          setCurrentParty(null);
+          setPartyMembers([]);
+        }
+      });
+      
+      return () => {
+        socket.off('party_deleted');
+      };
+    }
+  }, [socket, currentParty]);
+
   const value = {
     currentParty,
     partyMembers,
@@ -180,6 +226,7 @@ export const PartyProvider = ({ children }) => {
     joinParty,
     leaveParty,
     createParty,
+    deleteParty,
     refreshParty: fetchCurrentParty,
     refreshParties: fetchParties
   };
