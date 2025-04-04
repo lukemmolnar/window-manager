@@ -774,6 +774,9 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     const sourceWindowType = sourceNode.windowType;
     const targetWindowType = targetNode.windowType;
     
+    // Create a map to store window states that will be preserved across swaps
+    const stateMap = {};
+    
     // Handle sessionStorage and localStorage swapping for chat windows
     if (sourceWindowType === WINDOW_TYPES.CHAT || targetWindowType === WINDOW_TYPES.CHAT) {
       console.log('Swapping chat window sessionStorage and localStorage entries');
@@ -835,175 +838,195 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
         getChatState, saveChatState,
         getCanvasState, saveCanvasState,
         getWindowState, saveWindowState,
-        removeExplorerState, removeWindowState
+        deleteExplorerState, deleteWindowState
       } = await import('../services/indexedDBService');
       
       console.log('Swapping IndexedDB states for window types:', sourceWindowType, targetWindowType);
       
-      // Get current states from IndexedDB
-      let sourceExplorerState = null;
-      let targetExplorerState = null;
-      let sourceTerminalState = null;
-      let targetTerminalState = null;
-      let sourceChatState = null;
-      let targetChatState = null;
-      let sourceCanvasState = null;
-      let targetCanvasState = null;
-      let sourceGenericState = null;
-      let targetGenericState = null;
+      // Get current states from IndexedDB and store in our state map
+      // This ensures we don't lose state during the swap process
       
       // Get Explorer states if applicable
-      if (sourceWindowType === WINDOW_TYPES.EXPLORER || targetWindowType === WINDOW_TYPES.EXPLORER) {
-        sourceExplorerState = await getExplorerState(sourceId);
-        targetExplorerState = await getExplorerState(targetId);
-        console.log('Explorer states:', { sourceExplorerState, targetExplorerState });
+      if (sourceWindowType === WINDOW_TYPES.EXPLORER) {
+        const state = await getExplorerState(sourceId);
+        if (state && state.content) {
+          stateMap[`explorer_${sourceId}`] = state.content;
+          console.log('Saved source explorer state:', state.content);
+        }
+      }
+      
+      if (targetWindowType === WINDOW_TYPES.EXPLORER) {
+        const state = await getExplorerState(targetId);
+        if (state && state.content) {
+          stateMap[`explorer_${targetId}`] = state.content;
+          console.log('Saved target explorer state:', state.content);
+        }
       }
       
       // Get Terminal states if applicable
-      if (sourceWindowType === WINDOW_TYPES.TERMINAL || targetWindowType === WINDOW_TYPES.TERMINAL) {
-        sourceTerminalState = await getTerminalState(sourceId);
-        targetTerminalState = await getTerminalState(targetId);
-        console.log('Terminal states:', { sourceTerminalState, targetTerminalState });
+      if (sourceWindowType === WINDOW_TYPES.TERMINAL) {
+        const state = await getTerminalState(sourceId);
+        if (state && state.content) {
+          stateMap[`terminal_${sourceId}`] = state.content;
+          console.log('Saved source terminal state:', state.content);
+        }
+      }
+      
+      if (targetWindowType === WINDOW_TYPES.TERMINAL) {
+        const state = await getTerminalState(targetId);
+        if (state && state.content) {
+          stateMap[`terminal_${targetId}`] = state.content;
+          console.log('Saved target terminal state:', state.content);
+        }
       }
       
       // Get Chat states if applicable
-      if (sourceWindowType === WINDOW_TYPES.CHAT || targetWindowType === WINDOW_TYPES.CHAT) {
-        sourceChatState = await getChatState(sourceId);
-        targetChatState = await getChatState(targetId);
-        console.log('Chat states:', { sourceChatState, targetChatState });
+      if (sourceWindowType === WINDOW_TYPES.CHAT) {
+        const state = await getChatState(sourceId);
+        if (state && state.content) {
+          stateMap[`chat_${sourceId}`] = state.content;
+          console.log('Saved source chat state:', state.content);
+        }
+      }
+      
+      if (targetWindowType === WINDOW_TYPES.CHAT) {
+        const state = await getChatState(targetId);
+        if (state && state.content) {
+          stateMap[`chat_${targetId}`] = state.content;
+          console.log('Saved target chat state:', state.content);
+        }
       }
       
       // Get Canvas states if applicable
-      if (sourceWindowType === WINDOW_TYPES.CANVAS || targetWindowType === WINDOW_TYPES.CANVAS) {
-        sourceCanvasState = await getCanvasState(sourceId);
-        targetCanvasState = await getCanvasState(targetId);
-        console.log('Canvas states:', { sourceCanvasState, targetCanvasState });
+      if (sourceWindowType === WINDOW_TYPES.CANVAS) {
+        const state = await getCanvasState(sourceId);
+        if (state && state.content) {
+          stateMap[`canvas_${sourceId}`] = state.content;
+          console.log('Saved source canvas state:', state.content);
+        }
+      }
+      
+      if (targetWindowType === WINDOW_TYPES.CANVAS) {
+        const state = await getCanvasState(targetId);
+        if (state && state.content) {
+          stateMap[`canvas_${targetId}`] = state.content;
+          console.log('Saved target canvas state:', state.content);
+        }
       }
       
       // Get generic window states
-      sourceGenericState = await getWindowState(sourceId);
-      targetGenericState = await getWindowState(targetId);
-      console.log('Generic window states:', { sourceGenericState, targetGenericState });
+      const sourceGenericState = await getWindowState(sourceId);
+      if (sourceGenericState && sourceGenericState.content) {
+        stateMap[`generic_${sourceId}`] = sourceGenericState.content;
+        console.log('Saved source generic state:', sourceGenericState.content);
+      }
       
-      // First, remove existing states to prevent any conflicts
+      const targetGenericState = await getWindowState(targetId);
+      if (targetGenericState && targetGenericState.content) {
+        stateMap[`generic_${targetId}`] = targetGenericState.content;
+        console.log('Saved target generic state:', targetGenericState.content);
+      }
+      
+      // We now have all states backed up in our stateMap
+      // Next, we'll remove existing states to prepare for swapping
+      
+      // Remove explorer states
       if (sourceWindowType === WINDOW_TYPES.EXPLORER) {
-        await removeExplorerState(sourceId);
+        await deleteExplorerState(sourceId);
       }
       if (targetWindowType === WINDOW_TYPES.EXPLORER) {
-        await removeExplorerState(targetId);
+        await deleteExplorerState(targetId);
       }
       
       // Remove generic states
-      await removeWindowState(sourceId);
-      await removeWindowState(targetId);
+      await deleteWindowState(sourceId);
+      await deleteWindowState(targetId);
       
-      // For explorer windows, we need to handle special state swapping
-      // We need to save a temporary state with the correct IDs
-      const tempSourceId = `temp_${sourceId}`;
-      const tempTargetId = `temp_${targetId}`;
-      
-      // Now swap the states in IndexedDB
+      // Now we'll write back the swapped states
       
       // Swap Explorer states
-      if (sourceExplorerState && targetWindowType === WINDOW_TYPES.EXPLORER) {
-        // First save source to temp
-        await saveExplorerState({
-          id: tempSourceId,
-          content: sourceExplorerState.content
-        });
-      }
-      
-      if (targetExplorerState && sourceWindowType === WINDOW_TYPES.EXPLORER) {
-        // First save target to temp
-        await saveExplorerState({
-          id: tempTargetId,
-          content: targetExplorerState.content
-        });
-      }
-      
-      // Now move from temp to final locations
-      if (sourceExplorerState && targetWindowType === WINDOW_TYPES.EXPLORER) {
+      if (sourceWindowType === WINDOW_TYPES.EXPLORER && stateMap[`explorer_${sourceId}`]) {
         await saveExplorerState({
           id: targetId,
-          content: sourceExplorerState.content
+          content: stateMap[`explorer_${sourceId}`]
         });
         console.log('Saved source explorer state to target');
       }
       
-      if (targetExplorerState && sourceWindowType === WINDOW_TYPES.EXPLORER) {
+      if (targetWindowType === WINDOW_TYPES.EXPLORER && stateMap[`explorer_${targetId}`]) {
         await saveExplorerState({
           id: sourceId,
-          content: targetExplorerState.content
+          content: stateMap[`explorer_${targetId}`]
         });
         console.log('Saved target explorer state to source');
       }
       
       // Swap Terminal states
-      if (sourceTerminalState && targetWindowType === WINDOW_TYPES.TERMINAL) {
+      if (sourceWindowType === WINDOW_TYPES.TERMINAL && stateMap[`terminal_${sourceId}`]) {
         await saveTerminalState({
           id: targetId,
-          content: sourceTerminalState.content
+          content: stateMap[`terminal_${sourceId}`]
         });
         console.log('Saved source terminal state to target');
       }
       
-      if (targetTerminalState && sourceWindowType === WINDOW_TYPES.TERMINAL) {
+      if (targetWindowType === WINDOW_TYPES.TERMINAL && stateMap[`terminal_${targetId}`]) {
         await saveTerminalState({
           id: sourceId,
-          content: targetTerminalState.content
+          content: stateMap[`terminal_${targetId}`]
         });
         console.log('Saved target terminal state to source');
       }
       
       // Swap Chat states
-      if (sourceChatState && targetWindowType === WINDOW_TYPES.CHAT) {
+      if (sourceWindowType === WINDOW_TYPES.CHAT && stateMap[`chat_${sourceId}`]) {
         await saveChatState({
           id: targetId,
-          content: sourceChatState.content
+          content: stateMap[`chat_${sourceId}`]
         });
         console.log('Saved source chat state to target');
       }
       
-      if (targetChatState && sourceWindowType === WINDOW_TYPES.CHAT) {
+      if (targetWindowType === WINDOW_TYPES.CHAT && stateMap[`chat_${targetId}`]) {
         await saveChatState({
           id: sourceId,
-          content: targetChatState.content
+          content: stateMap[`chat_${targetId}`]
         });
         console.log('Saved target chat state to source');
       }
       
       // Swap Canvas states
-      if (sourceCanvasState && targetWindowType === WINDOW_TYPES.CANVAS) {
+      if (sourceWindowType === WINDOW_TYPES.CANVAS && stateMap[`canvas_${sourceId}`]) {
         await saveCanvasState({
           id: targetId,
-          content: sourceCanvasState.content
+          content: stateMap[`canvas_${sourceId}`]
         });
         console.log('Saved source canvas state to target');
       }
       
-      if (targetCanvasState && sourceWindowType === WINDOW_TYPES.CANVAS) {
+      if (targetWindowType === WINDOW_TYPES.CANVAS && stateMap[`canvas_${targetId}`]) {
         await saveCanvasState({
           id: sourceId,
-          content: targetCanvasState.content
+          content: stateMap[`canvas_${targetId}`]
         });
         console.log('Saved target canvas state to source');
       }
       
       // Swap generic window states
-      if (sourceGenericState) {
+      if (stateMap[`generic_${sourceId}`]) {
         await saveWindowState({
           id: targetId,
           type: sourceWindowType,
-          content: sourceGenericState.content
+          content: stateMap[`generic_${sourceId}`]
         });
         console.log('Saved source generic state to target');
       }
       
-      if (targetGenericState) {
+      if (stateMap[`generic_${targetId}`]) {
         await saveWindowState({
           id: sourceId,
           type: targetWindowType,
-          content: targetGenericState.content
+          content: stateMap[`generic_${targetId}`]
         });
         console.log('Saved target generic state to source');
       }
