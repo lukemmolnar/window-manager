@@ -24,7 +24,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     leaveParty, 
     createParty, 
     refreshParty,
-    refreshParties
+    refreshParties,
+    deleteParty
   } = useParty();
   
   // Ref for managing scrolling
@@ -216,6 +217,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           '    party leave (pl) - Leave your current party',
           '    party list (pls) - List all available parties',
           '    party info (pi) - Show your current party info',
+          '    party delete <id> (pd) - Delete a party (admin only)',
           '    party (p) - Show your current party info (shorthand for party info)',
           '  roll (r, d) - Roll dice (e.g., roll 2d6+3)',
           '  help (h) - Show this help message',
@@ -403,9 +405,42 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
                 response = 'Error fetching current party. Please try again.';
               }
               break;
+
+            case 'delete':
+              // Check if user is admin
+              if (!user?.is_admin) {
+                response = 'Access denied: Admin privileges required';
+                break;
+              }
+              
+              if (parts.length < 3) {
+                response = 'Usage: party delete <party_id>';
+                break;
+              }
+              
+              const partyIdToDelete = parseInt(parts[2]);
+              if (isNaN(partyIdToDelete)) {
+                response = 'Invalid party ID. Please provide a valid numeric ID.';
+                break;
+              }
+              
+              setHistory(prev => [...prev, `Deleting party with ID ${partyIdToDelete}...`]);
+              
+              try {
+                const result = await deleteParty(partyIdToDelete);
+                if (result.success) {
+                  response = `Party with ID ${partyIdToDelete} has been deleted successfully.`;
+                } else {
+                  response = `Failed to delete party: ${result.message || 'Unknown error'}`;
+                }
+              } catch (error) {
+                console.error('Error deleting party:', error);
+                response = 'Error deleting party. Please try again.';
+              }
+              break;
               
             default:
-              response = 'Unknown party subcommand. Available subcommands: create, join, leave, list, info';
+              response = 'Unknown party subcommand. Available subcommands: create, join, leave, list, info, delete';
           }
         } else {
           // No subcommand, show current party info
