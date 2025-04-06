@@ -152,14 +152,28 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       return;
     }
     
-    // Note: All other commands should be handled by the command system
+    // Create recursive executeCommand function for legacy redirects
+    const executeCommandFn = async (cmdStr) => {
+      // Don't add the command to history since it's an internal redirect
+      return await processCommand(cmdStr);
+    };
     
     // Create the execution context with all necessary terminal state and functions
     const context = {
+      // Original command text
+      original: command,
+      
+      // User and authentication
       user,
+      
+      // Window management
       nodeId,
       transformWindow,
+      
+      // Announcement management
       updateAnnouncement,
+      
+      // Party system
       parties,
       currentParty,
       joinParty,
@@ -168,11 +182,21 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       refreshParty,
       refreshParties,
       deleteParty,
+      
+      // Dice utilities
       parseDiceExpression,
       rollDice,
       formatRollResult,
       isValidDiceType,
-      clearTerminal: () => setHistory([''])
+      
+      // Debug utilities
+      debugLogger: DebugLogger,
+      
+      // Terminal management
+      clearTerminal: () => setHistory(['']),
+      
+      // Recursive command execution (for legacy redirects)
+      executeCommand: executeCommandFn
     };
     
     try {
