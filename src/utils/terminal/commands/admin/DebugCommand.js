@@ -9,7 +9,7 @@ export class DebugCommand extends Command {
     super();
     this.name = 'debug';
     this.aliases = ['dbg'];
-    this.description = 'Toggle debug mode (console logs) - admin only';
+    this.description = 'Toggle debug mode - (admin only)';
     this.usage = 'debug';
     this.category = 'Admin';
     this.args = [];
