@@ -98,12 +98,11 @@ export const formatRollResult = (rollResult) => {
 };
 
 /**
- * Validate if a dice type is standard
+ * Validate if a dice type is valid
  * @param {number} diceType - The dice type to validate
- * @returns {boolean} Whether the dice type is standard
+ * @returns {boolean} Whether the dice type is valid
  */
 export const isValidDiceType = (diceType) => {
-  // Standard D&D dice types
-  const standardDiceTypes = [4, 6, 8, 10, 12, 20, 100];
-  return standardDiceTypes.includes(diceType);
+  // Allow any dice from d2 to d100
+  return diceType >= 2 && diceType <= 100;
 };

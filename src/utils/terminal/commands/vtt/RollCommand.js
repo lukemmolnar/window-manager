@@ -45,7 +45,7 @@ export class RollCommand extends Command {
     
     // Validate dice type
     if (!context.isValidDiceType(diceType)) {
-      return 'Invalid dice type. Please use standard dice types (d4, d6, d8, d10, d12, d20, d100)';
+      return 'Invalid dice type. Please use dice with 2-100 sides (e.g., d2, d6, d20, d37, d100)';
     }
     
     // Validate number of dice

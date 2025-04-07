@@ -116,16 +116,16 @@ const DiceWindow = ({ nodeId, onCommand, windowState, updateWindowState }) => {
       const parsedDiceType = parseInt(match[2], 10);
       const parsedModifier = match[3] ? parseInt(match[3], 10) : 0;
       
-      // Check if the dice type is valid
-      if (diceTypes.includes(parsedDiceType) || parsedDiceType === 100) {
-        setNumDice(parsedNumDice);
-        setDiceType(parsedDiceType);
-        setModifier(parsedModifier);
-        rollDice();
-      } else {
-        // Invalid dice type
-        console.log("Invalid dice type. Please use standard dice types (d4, d6, d8, d10, d12, d20, d100)");
-      }
+    // Check if the dice type is valid (between 2 and 100)
+    if (parsedDiceType >= 2 && parsedDiceType <= 100) {
+      setNumDice(parsedNumDice);
+      setDiceType(parsedDiceType);
+      setModifier(parsedModifier);
+      rollDice();
+    } else {
+      // Invalid dice type
+      console.log("Invalid dice type. Please use dice with 2-100 sides (e.g., d2, d6, d20, d37, d100)");
+    }
     } else {
       // Pass any other commands to the parent handler
       if (onCommand) {
