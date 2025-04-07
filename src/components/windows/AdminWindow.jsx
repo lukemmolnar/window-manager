@@ -14,12 +14,14 @@ const AdminWindow = ({ isActive }) => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    is_admin: false
+    is_admin: false,
+    has_file_access: false
   });
   const [createFormData, setCreateFormData] = useState({
     username: '',
     password: '',
-    is_admin: false
+    is_admin: false,
+    has_file_access: false
   });
   
   // Chat channels state
@@ -74,7 +76,9 @@ const AdminWindow = ({ isActive }) => {
     setFormData({
       username: user.username,
       password: '', // Don't populate password for security
-      is_admin: user.is_admin === 1 || user.is_admin === true
+      is_admin: user.is_admin === 1 || user.is_admin === true,
+      has_file_access: user.has_file_access === 1 || user.has_file_access === true,
+      storage_quota: user.storage_quota || 52428800 // Default to 50MB (52428800 bytes)
     });
   };
 
@@ -84,7 +88,8 @@ const AdminWindow = ({ isActive }) => {
     setFormData({
       username: '',
       password: '',
-      is_admin: false
+      is_admin: false,
+      has_file_access: false
     });
   };
 
@@ -115,7 +120,9 @@ const AdminWindow = ({ isActive }) => {
       // Build user data object
       const userData = {
         username: formData.username,
-        is_admin: formData.is_admin
+        is_admin: formData.is_admin,
+        has_file_access: formData.has_file_access,
+        storage_quota: formData.storage_quota
       };
       
       // Only include password in the request if it was changed
@@ -135,7 +142,8 @@ const AdminWindow = ({ isActive }) => {
       setFormData({
         username: '',
         password: '',
-        is_admin: false
+        is_admin: false,
+        has_file_access: false
       });
     } catch (err) {
       console.error('Failed to update user:', err);
@@ -167,8 +175,8 @@ const AdminWindow = ({ isActive }) => {
         }
       );
       
-      // If admin status needs to be set, we need to do that in a separate request
-      if (createFormData.is_admin) {
+      // If admin status or file access permissions need to be set, we need to do that in a separate request
+      if (createFormData.is_admin || createFormData.has_file_access) {
         try {
           // Get the newly created user
           const usersResponse = await axios.get(
@@ -179,10 +187,14 @@ const AdminWindow = ({ isActive }) => {
           const newUser = usersResponse.data.find(u => u.username === createFormData.username);
           
           if (newUser) {
-            // Update the user to make them an admin
+            // Update the user with admin status and file access permissions
             await axios.put(
               `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${newUser.id}`,
-              { is_admin: true },
+              { 
+                is_admin: createFormData.is_admin,
+                has_file_access: createFormData.has_file_access,
+                storage_quota: createFormData.storage_quota || 52428800 // Default to 50MB
+              },
               { headers: { Authorization: `Bearer ${token}` } }
             );
           }
@@ -199,7 +211,8 @@ const AdminWindow = ({ isActive }) => {
       setCreateFormData({
         username: '',
         password: '',
-        is_admin: false
+        is_admin: false,
+        has_file_access: false
       });
       setShowCreateForm(false);
       setError(null);
@@ -219,7 +232,8 @@ const AdminWindow = ({ isActive }) => {
       setCreateFormData({
         username: '',
         password: '',
-        is_admin: false
+        is_admin: false,
+        has_file_access: false
       });
     }
   };
@@ -449,7 +463,7 @@ const AdminWindow = ({ isActive }) => {
                       placeholder="Enter password"
                     />
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex flex-col space-y-2">
                     <label className="flex items-center text-sm text-gray-400">
                       <input
                         type="checkbox"
@@ -460,6 +474,41 @@ const AdminWindow = ({ isActive }) => {
                       />
                       Admin User
                     </label>
+                    <label className="flex items-center text-sm text-gray-400">
+                      <input
+                        type="checkbox"
+                        name="has_file_access"
+                        checked={createFormData.has_file_access}
+                        onChange={handleCreateChange}
+                        className="form-checkbox h-5 w-5 text-teal-500 mr-2"
+                      />
+                      Private File Access
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Storage Quota:</label>
+                    <div className="flex items-center">
+                      <input
+                        type="number"
+                        name="storage_quota"
+                        value={Math.round((createFormData.storage_quota || 52428800) / 1048576)}
+                        onChange={(e) => {
+                          const mbValue = parseInt(e.target.value) || 0;
+                          handleCreateChange({
+                            target: {
+                              name: 'storage_quota',
+                              value: mbValue * 1048576, // Convert MB to bytes
+                              type: 'number'
+                            }
+                          });
+                        }}
+                        className="bg-stone-700 text-white px-2 py-1 rounded w-20 mr-2"
+                        min="0"
+                        step="1"
+                        disabled={createFormData.is_admin}
+                      />
+                      <span className="text-sm text-gray-400">MB {createFormData.is_admin && "(Unlimited for admins)"}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -480,6 +529,8 @@ const AdminWindow = ({ isActive }) => {
                 <tr className="border-b border-stone-700">
                   <th className="text-left p-2">Username</th>
                   <th className="text-left p-2">Admin</th>
+                  <th className="text-left p-2">File Access</th>
+                  <th className="text-left p-2">Storage Quota</th>
                   <th className="text-left p-2">Actions</th>
                 </tr>
               </thead>
@@ -510,6 +561,48 @@ const AdminWindow = ({ isActive }) => {
                         />
                       ) : (
                         userItem.is_admin === 1 || userItem.is_admin === true ? 'Yes' : 'No'
+                      )}
+                    </td>
+                    <td className="p-2">
+                      {editingUser === userItem.id ? (
+                        <input
+                          type="checkbox"
+                          name="has_file_access"
+                          checked={formData.has_file_access}
+                          onChange={handleChange}
+                          className="form-checkbox h-5 w-5 text-teal-500"
+                        />
+                      ) : (
+                        userItem.has_file_access === 1 || userItem.has_file_access === true ? 'Yes' : 'No'
+                      )}
+                    </td>
+                    <td className="p-2">
+                      {editingUser === userItem.id ? (
+                        <div className="flex items-center">
+                          <input
+                            type="number"
+                            name="storage_quota"
+                            value={Math.round((formData.storage_quota || 52428800) / 1048576)}
+                            onChange={(e) => {
+                              const mbValue = parseInt(e.target.value) || 0;
+                              handleChange({
+                                target: {
+                                  name: 'storage_quota',
+                                  value: mbValue * 1048576, // Convert MB to bytes
+                                  type: 'number'
+                                }
+                              });
+                            }}
+                            className="bg-stone-700 text-white px-2 py-1 rounded w-20 mr-2"
+                            min="0"
+                            step="1"
+                            disabled={formData.is_admin}
+                          />
+                          <span className="text-sm text-gray-400">MB {formData.is_admin && "(Unlimited for admins)"}</span>
+                        </div>
+                      ) : (
+                        userItem.is_admin ? 'Unlimited' : 
+                        `${Math.round((userItem.storage_quota || 52428800) / 1048576)} MB`
                       )}
                     </td>
                     <td className="p-2">

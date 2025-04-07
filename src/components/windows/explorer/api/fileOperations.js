@@ -375,6 +375,47 @@ export const deleteItem = async (itemPath) => {
 };
 
 // Function to move a file or folder
+// Function to get storage usage statistics
+export const getStorageStats = async () => {
+  try {
+    // Get the authentication token
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+    
+    // Fetch storage stats from the server
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.STORAGE_STATS}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to load storage stats: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    return {
+      quota: data.quota,
+      used: data.used,
+      available: data.available,
+      unlimited: data.unlimited,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error fetching storage stats:', error);
+    return {
+      quota: 0,
+      used: 0,
+      available: 0,
+      unlimited: false,
+      error: error.message || 'Failed to load storage stats'
+    };
+  }
+};
+
 export const moveItem = async (sourcePath, destinationPath) => {
   try {
     // Get the authentication token

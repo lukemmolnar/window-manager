@@ -38,6 +38,8 @@ const API_CONFIG = {
     // Public file endpoints
     PUBLIC_FILES_LIST: '/public-files',
     PUBLIC_FILE_CONTENT: '/public-files/content',
+    // Storage endpoints
+    STORAGE_STATS: '/files/storage',
     // Party endpoints
     PARTIES: '/parties',
     PARTIES_CURRENT: '/parties/current',

@@ -13,7 +13,8 @@ import {
   createNewItem as apiCreateNewItem,
   renameItem as apiRenameItem,
   deleteItem as apiDeleteItem,
-  moveItem as apiMoveItem
+  moveItem as apiMoveItem,
+  getStorageStats as apiGetStorageStats
 } from '../api/fileOperations';
 import { 
   getParentDirectoryPath, 
@@ -278,6 +279,54 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     
     loadFilesAndRestoreSelection();
   }, [isAdmin, activeTab]);
+
+  // State for storage statistics
+  const [storageStats, setStorageStats] = useState({
+    quota: 0,
+    used: 0,
+    available: 0,
+    unlimited: false,
+    isLoading: false
+  });
+
+  // Fetch storage statistics
+  const fetchStorageStats = async () => {
+    if (!user?.has_file_access && !isAdmin) return;
+    
+    setStorageStats(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      const stats = await apiGetStorageStats();
+      if (stats.error) {
+        setErrorMessage(stats.error);
+        setStorageStats(prev => ({
+          ...prev,
+          isLoading: false
+        }));
+      } else {
+        setStorageStats({
+          quota: stats.quota,
+          used: stats.used,
+          available: stats.available,
+          unlimited: stats.unlimited,
+          isLoading: false
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching storage stats:', error);
+      setStorageStats(prev => ({
+        ...prev,
+        isLoading: false
+      }));
+    }
+  };
+
+  // Fetch storage stats on mount and after file operations
+  useEffect(() => {
+    if (user?.has_file_access || isAdmin) {
+      fetchStorageStats();
+    }
+  }, [user, isAdmin]);
 
   // Reset content states when switching tabs
   useEffect(() => {
@@ -996,6 +1045,8 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     isMoving,
     converter,
     isAdmin,
+    storageStats,
+    fetchStorageStats,
     handleFetchPublicDirectoryContents,
     handleFetchDirectoryContents,
     handleSaveFileContent,

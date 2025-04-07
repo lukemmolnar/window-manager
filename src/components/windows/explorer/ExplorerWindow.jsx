@@ -3,6 +3,7 @@ import useExplorerState from './state/useExplorerState';
 import FileTree from './components/FileTree';
 import FileContent from './components/FileContent';
 import CommandInput from './components/CommandInput';
+import StorageStats from './components/StorageStats';
 import { CreateFileDialog, RenameDialog, DeleteDialog } from './components/dialogs/FileDialogs';
 import '../ExplorerWindow.css';
 
@@ -89,6 +90,11 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         closeDeleteDialog={explorerState.closeDeleteDialog}
         handleDeleteItem={explorerState.handleDeleteItem}
       />
+      
+      {/* Storage statistics display */}
+      {(explorerState.isAdmin || (explorerState.storageStats && !explorerState.storageStats.isLoading)) && (
+        <StorageStats stats={explorerState.storageStats} />
+      )}
       
       {/* Command input */}
       <CommandInput
