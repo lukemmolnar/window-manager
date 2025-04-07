@@ -269,7 +269,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     // If the item is an object with a type of 'gif', render an image
     if (typeof item === 'object' && item.type === 'gif') {
       return (
-        <div key={i} className="mb-2 text-center">
+        <div key={i} className="mb-2">
           <img src={item.src} alt="Rolling dice" className="inline-block max-w-full h-32" />
         </div>
       );
