@@ -56,7 +56,10 @@ export class RollCommand extends Command {
     // Roll the dice
     const result = context.rollDice(diceType, numDice, modifier);
     
-    // Format the results
-    return context.formatRollResult(result);
+    // Format the results with a special marker to display the d20 GIF
+    return {
+      type: 'dice-roll',
+      content: context.formatRollResult(result)
+    };
   }
 }

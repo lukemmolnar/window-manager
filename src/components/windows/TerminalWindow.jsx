@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import d20Gif from '../../assets/GIF/d20.gif';
 import { WINDOW_TYPES } from '../../utils/windowTypes';
 import { useAuth } from '../../context/AuthContext';
 import { useAnnouncement } from '../../context/AnnouncementContext';
@@ -209,9 +210,26 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         return;
       }
       
-      // Add the response to history
+      // Handle response based on its type
       if (response) {
-        setHistory(prev => [...prev, response]);
+        if (typeof response === 'object' && response.type === 'dice-roll') {
+          // First add the GIF to history
+          setHistory(prev => [...prev, { type: 'gif', src: d20Gif }]);
+          
+          // After a delay, add the dice roll result
+          setTimeout(() => {
+            setHistory(prev => {
+              // Remove the GIF from history
+              const newHistory = [...prev];
+              newHistory.pop();
+              // Add the actual dice roll result
+              return [...newHistory, response.content];
+            });
+          }, 2000); // 2 second delay to show the GIF
+        } else {
+          // Handle regular text responses
+          setHistory(prev => [...prev, response]);
+        }
       }
     } catch (error) {
       console.error('Error executing command:', error);
@@ -247,9 +265,22 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       onClick={handleTerminalClick}
     >
 <div ref={terminalRef} className="p-2 flex-1 overflow-auto whitespace-pre-wrap">
-  {history.map((line, i) => (
-    <div key={i} className={`mb-2 ${line.startsWith('$ ') ? 'text-teal-400' : ''}`}>{line}</div>
-  ))}
+  {history.map((item, i) => {
+    // If the item is an object with a type of 'gif', render an image
+    if (typeof item === 'object' && item.type === 'gif') {
+      return (
+        <div key={i} className="mb-2 text-center">
+          <img src={item.src} alt="Rolling dice" className="inline-block max-w-full h-32" />
+        </div>
+      );
+    }
+    // Otherwise, render as before
+    return (
+      <div key={i} className={`mb-2 ${typeof item === 'string' && item.startsWith('$ ') ? 'text-teal-400' : ''}`}>
+        {item}
+      </div>
+    );
+  })}
 </div>
 
       <div className="p-2 flex items-center gap-2 border-t border-stone-700">
