@@ -11,7 +11,7 @@ export class RollCommand extends Command {
     this.aliases = ['r', 'd'];
     this.description = 'Roll dice (e.g., roll 2d6+3)';
     this.usage = 'roll <dice expression>';
-    this.category = 'Core';
+    this.category = 'VTT';
     this.args = [
       {
         name: 'expression',

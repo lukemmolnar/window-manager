@@ -8,7 +8,7 @@ import { registry } from './registry.js';
 import { HelpCommand } from './commands/core/HelpCommand.js';
 import { ClearCommand } from './commands/core/ClearCommand.js';
 import { VersionCommand } from './commands/core/VersionCommand.js';
-import { RollCommand } from './commands/core/RollCommand.js';
+import { RollCommand } from './commands/vtt/RollCommand.js';
 
 // Import window commands
 import { WindowCommand } from './commands/window/WindowCommand.js';
@@ -22,13 +22,13 @@ import { DebugCommand } from './commands/admin/DebugCommand.js';
 import { AnnouncementCommand } from './commands/admin/AnnouncementCommand.js';
 
 // Import party commands
-import { PartyCommand } from './commands/party/PartyCommand.js';
+import { PartyCommand } from './commands/vtt/PartyCommand.js';
 import { 
   CreatePartyCommand,
   JoinPartyCommand,
   LeavePartyCommand,
   PartiesCommand
-} from './commands/party/LegacyPartyCommands.js';
+} from './commands/vtt/LegacyPartyCommands.js';
 
 /**
  * Register all terminal commands with the registry

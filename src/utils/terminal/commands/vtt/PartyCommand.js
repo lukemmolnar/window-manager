@@ -12,7 +12,7 @@ export class PartyCommand extends Command {
     this.aliases = ['p'];
     this.description = 'Party system commands';
     this.usage = 'party [subcommand] [arguments]';
-    this.category = 'Party';
+    this.category = 'VTT';
     this.args = [
       {
         name: 'subcommand',
