@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useReducer } from 'react';
 import d20Gif from '../../assets/GIF/d20.gif';
 import { WINDOW_TYPES } from '../../utils/windowTypes';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +37,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   const terminalRef = useRef(null);
   // Ref to track if state has been loaded from IndexedDB
   const stateLoadedRef = useRef(false);
+  // Ref to store the dice roll animation timeout
+  const diceTimeoutRef = useRef(null);
 
   // Terminal state - use windowState if available
   const [history, setHistory] = useState(
@@ -109,6 +111,81 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       setActiveWindow(nodeId, WINDOW_TYPES.TERMINAL);
     }
   }, [isActive, nodeId, setActiveWindow]);
+  
+  // Cleanup dice animation timeout when component unmounts
+  useEffect(() => {
+    // Return cleanup function
+    return () => {
+      // Clear any pending dice roll timeouts when unmounting
+      if (diceTimeoutRef.current) {
+        clearTimeout(diceTimeoutRef.current);
+        diceTimeoutRef.current = null;
+      }
+    };
+  }, []);
+  
+  // Create a reducer for forced updates - useReducer guarantees a re-render
+  const [updateCounter, forceUpdate] = useReducer(state => state + 1, 0);
+  
+  // Force re-render to check dice GIFs that need to be replaced with results
+  // This ensures the transition happens even when the component was unmounted and remounted
+  useEffect(() => {
+    // This checks and processes all dice GIFs that have completed their display duration
+    const processDiceGifs = () => {
+      let needsUpdate = false;
+      
+      // Process the history array to find and update dice GIFs
+      const updatedHistory = history.map(item => {
+        // Only process dice-gif items that have completed their duration
+        if (typeof item === 'object' && 
+            item.type === 'dice-gif' && 
+            Date.now() - item.timestamp >= item.displayDuration) {
+          
+          needsUpdate = true;
+          // Return the result instead of the GIF
+          return item.result;
+        }
+        return item;
+      });
+      
+      // If we found and updated any completed dice GIFs, update the history
+      if (needsUpdate) {
+        setHistory(updatedHistory);
+      }
+      
+      // Check if there are still any active dice GIFs
+      return history.some(item => 
+        typeof item === 'object' && 
+        item.type === 'dice-gif' && 
+        Date.now() - item.timestamp < item.displayDuration
+      );
+    };
+    
+    // Initial check and processing
+    const hasActiveDiceGifs = processDiceGifs();
+    
+    // If we have active dice GIFs, set up an interval to keep checking
+    let intervalId;
+    if (hasActiveDiceGifs) {
+      intervalId = setInterval(() => {
+        const stillHasActiveDiceGifs = processDiceGifs();
+        
+        // Force a render update regardless of whether we processed any GIFs
+        forceUpdate();
+        
+        // If no more active dice GIFs, clear the interval
+        if (!stillHasActiveDiceGifs && intervalId) {
+          clearInterval(intervalId);
+        }
+      }, 200); // Check more frequently (200ms) for smoother transitions
+    }
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [history]);
 
   // Update window state when terminal state changes
   useEffect(() => {
@@ -213,19 +290,14 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       // Handle response based on its type
       if (response) {
         if (typeof response === 'object' && response.type === 'dice-roll') {
-          // First add the GIF to history
-          setHistory(prev => [...prev, { type: 'gif', src: d20Gif }]);
-          
-          // After a delay, add the dice roll result
-          setTimeout(() => {
-            setHistory(prev => {
-              // Remove the GIF from history
-              const newHistory = [...prev];
-              newHistory.pop();
-              // Add the actual dice roll result
-              return [...newHistory, response.content];
-            });
-          }, 2000); // 2 second delay to show the GIF
+          // Add the GIF to history with timestamp and result data
+          setHistory(prev => [...prev, { 
+            type: 'dice-gif', 
+            src: d20Gif,
+            timestamp: Date.now(), // Add current timestamp
+            displayDuration: 2000, // Display for 2 seconds
+            result: response.content // Store the result with the GIF
+          }]);
         } else {
           // Handle regular text responses
           setHistory(prev => [...prev, response]);
@@ -266,8 +338,29 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     >
 <div ref={terminalRef} className="p-2 flex-1 overflow-auto whitespace-pre-wrap">
   {history.map((item, i) => {
-    // If the item is an object with a type of 'gif', render an image
-    if (typeof item === 'object' && item.type === 'gif') {
+    // If the item is an object with a type of 'dice-gif', handle it specially
+    if (typeof item === 'object' && item.type === 'dice-gif') {
+      // Check if enough time has passed since creation (2 seconds)
+      const timeElapsed = Date.now() - item.timestamp;
+      
+      if (timeElapsed < item.displayDuration) {
+        // If not enough time has passed, show the GIF
+        return (
+          <div key={i} className="mb-2">
+            <img src={item.src} alt="Rolling dice" className="inline-block max-w-full h-32" />
+          </div>
+        );
+      } else {
+        // If enough time has passed, show the result instead
+        return (
+          <div key={i} className="mb-2">
+            {item.result}
+          </div>
+        );
+      }
+    }
+    // Keep backward compatibility with any 'gif' type items
+    else if (typeof item === 'object' && item.type === 'gif') {
       return (
         <div key={i} className="mb-2">
           <img src={item.src} alt="Rolling dice" className="inline-block max-w-full h-32" />
