@@ -57,10 +57,10 @@ export function registerCommands() {
     new PartyCommand(),
     
     // Legacy party commands
-    new CreatePartyCommand(),
-    new JoinPartyCommand(),
-    new LeavePartyCommand(),
-    new PartiesCommand(),
+    // new CreatePartyCommand(),
+    // new JoinPartyCommand(),
+    // new LeavePartyCommand(),
+    // new PartiesCommand(),
     
     // Additional commands will be added here as they are implemented
   ];
