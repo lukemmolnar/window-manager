@@ -16,6 +16,7 @@ const FileTree = ({
   isTreeLoading,
   errorMessage,
   isAdmin,
+  user,
   toggleFolder,
   handleFileSelect,
   openRenameDialog,
@@ -81,8 +82,8 @@ const FileTree = ({
                 <span className="text-sm">{item.name}</span>
               </div>
               
-              {/* Admin-only buttons */}
-              {isAdmin && (
+              {/* File operation buttons */}
+            {(isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
                 <div className="flex">
                   <button
                     onClick={(e) => {
@@ -130,8 +131,8 @@ const FileTree = ({
               <span className="text-sm">{item.name}</span>
             </div>
             
-            {/* Admin-only buttons */}
-            {isAdmin && (
+            {/* File operation buttons */}
+            {(isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
               <div className="flex">
                 <button
                   onClick={(e) => {
@@ -193,7 +194,7 @@ const FileTree = ({
               <span>Public</span>
             </button>
             
-            {isAdmin && (
+            {(isAdmin || (user && user.has_file_access)) && (
               <button
                 onClick={() => {
                   if (activeTab !== 'private') {
@@ -220,8 +221,8 @@ const FileTree = ({
           </div>
         </div>
         
-        {/* Admin-only file creation buttons */}
-        {isAdmin && (
+        {/* File creation buttons (admins for both tabs, users with file access only for private tab) */}
+        {(isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
           <div className="flex gap-2">
             <button
               onClick={() => openCreateDialog('file')}
@@ -273,7 +274,7 @@ const FileTree = ({
               <>
                 <div className="flex items-center py-1 px-1 text-teal-300">
                   <Lock size={16} className="mr-2" />
-                  <span className="text-sm font-bold">Private Files (Admin Only)</span>
+                  <span className="text-sm font-bold">Private Files</span>
                 </div>
                 {files.length > 0 ? (
                   renderFileTree(files)

@@ -344,8 +344,10 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
 
   // Auto-save functionality with debounce
   useEffect(() => {
-    // Only auto-save if in edit mode, user is admin, and we have a markdown file selected
-    if (editMode && isAdmin && selectedFile && selectedFile.name.endsWith('.md') && fileContent) {
+    // Auto-save if in edit mode, user has permission, and we have a markdown file selected
+    // Allow for admins and users with file_access (for private files)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (editMode && hasEditPermission && selectedFile && selectedFile.name.endsWith('.md') && fileContent) {
       // Clear any existing timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
@@ -569,8 +571,10 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Open the rename dialog
   const openRenameDialog = (item) => {
-    if (!isAdmin) {
-      setErrorMessage('Admin access required to rename files.');
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission) {
+      setErrorMessage('Admin access required to rename files or file access permission for private files.');
       return;
     }
     
@@ -631,8 +635,10 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Open the delete dialog
   const openDeleteDialog = (item) => {
-    if (!isAdmin) {
-      setErrorMessage('Admin access required to delete files.');
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission) {
+      setErrorMessage('Admin access required to delete files or file access permission for private files.');
       return;
     }
     
@@ -690,7 +696,9 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Handle drag start event
   const handleDragStart = (e, item) => {
-    if (!isAdmin) return;
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission) return;
     
     setDraggedItem(item);
     e.dataTransfer.setData('text/plain', item.path);
@@ -709,7 +717,9 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Handle drag over event
   const handleDragOver = (e, folder) => {
-    if (!isAdmin || !draggedItem) return;
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission || !draggedItem) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -726,7 +736,9 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Handle drag over for the file tree container (to allow dropping to root)
   const handleContainerDragOver = (e) => {
-    if (!isAdmin || !draggedItem) return;
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission || !draggedItem) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -743,7 +755,9 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Handle drag leave event
   const handleDragLeave = (e) => {
-    if (!isAdmin) return;
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -755,7 +769,9 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Handle drag leave for the container
   const handleContainerDragLeave = (e) => {
-    if (!isAdmin) return;
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -764,7 +780,9 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Handle drop event
   const handleDrop = async (e, targetFolder) => {
-    if (!isAdmin || !draggedItem || !targetFolder) return;
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission || !draggedItem || !targetFolder) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -824,7 +842,9 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Handle drop event for the container (moving to root)
   const handleContainerDrop = async (e) => {
-    if (!isAdmin || !draggedItem || !dropTarget) return;
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission || !draggedItem || !dropTarget) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -947,8 +967,10 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   
   // Toggle edit mode
   const toggleEditMode = () => {
-    if (!isAdmin) {
-      setErrorMessage('Admin access required to edit files.');
+    // Allow admins or users with file_access (for private files only)
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    if (!hasEditPermission) {
+      setErrorMessage('Admin access required to edit files or file access permission for private files.');
       return;
     }
     
@@ -974,14 +996,18 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     // Commands:
     // - refresh: refresh file list
     // - preview: toggle markdown preview
-    // - edit: toggle edit mode (admin only)
+    // - edit: toggle edit mode (users with permission)
     // - save: manually save the current file
-    // - new-file: create a new file (admin only)
-    // - new-folder: create a new folder (admin only)
-    // - rename: rename selected file or folder (admin only)
-    // - delete: delete selected file or folder (admin only)
+    // - new-file: create a new file (users with permission)
+    // - new-folder: create a new folder (users with permission)
+    // - rename: rename selected file or folder (users with permission)
+    // - delete: delete selected file or folder (users with permission)
     // - public: switch to public files tab
-    // - private: switch to private files tab (admin only)
+    // - private: switch to private files tab (users with permission)
+    
+    // Check permission for file operations
+    const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
+    const canAccessPrivate = isAdmin || user?.has_file_access;
     
     if (cmd === 'refresh') {
       if (activeTab === 'public') {
@@ -998,17 +1024,17 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
       toggleEditMode();
     } else if (cmd === 'save' && editMode && selectedFile?.name.endsWith('.md')) {
       handleSaveFileContent();
-    } else if (cmd === 'new-file' && isAdmin) {
+    } else if (cmd === 'new-file' && hasEditPermission) {
       openCreateDialog('file');
-    } else if (cmd === 'new-folder' && isAdmin) {
+    } else if (cmd === 'new-folder' && hasEditPermission) {
       openCreateDialog('directory');
-    } else if (cmd === 'rename' && selectedFile && isAdmin) {
+    } else if (cmd === 'rename' && selectedFile && hasEditPermission) {
       openRenameDialog(selectedFile);
-    } else if (cmd === 'delete' && selectedFile && isAdmin) {
+    } else if (cmd === 'delete' && selectedFile && hasEditPermission) {
       openDeleteDialog(selectedFile);
     } else if (cmd === 'public') {
       setActiveTab('public');
-    } else if (cmd === 'private' && isAdmin) {
+    } else if (cmd === 'private' && canAccessPrivate) {
       setActiveTab('private');
     } else {
       setErrorMessage(`Unknown command: ${cmd}`);

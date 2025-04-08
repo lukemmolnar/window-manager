@@ -12,6 +12,8 @@ const FileContent = ({
   saveStatus,
   converter,
   isAdmin,
+  user,
+  activeTab,
   setFileContent,
   toggleEditMode,
   handleMarkdownChange,
@@ -146,8 +148,8 @@ const FileContent = ({
               {saveStatus === 'error' && <span className="text-red-400 text-xs ml-2">Error!</span>}
             </div>
             
-            {/* Only show edit/preview toggle for markdown files and admin users */}
-            {selectedFile.name.endsWith('.md') && isAdmin && (
+            {/* Show edit/preview toggle for markdown files to admins or users with file access (for private files) */}
+            {selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
               <div className="flex gap-2">
                 {editMode && (
                   <button 
@@ -182,7 +184,7 @@ const FileContent = ({
             <div className="flex-1 flex items-center justify-center">
               <span className="text-teal-300">Loading content...</span>
             </div>
-          ) : editMode && selectedFile.name.endsWith('.md') && isAdmin ? (
+          ) : editMode && selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
             // Editor mode - only for markdown files and admin users
             <div className="flex-1 flex flex-col">
               {/* Markdown toolbar */}
@@ -285,6 +287,7 @@ const FileContent = ({
             <p>Select a file to view</p>
             <p className="text-xs mt-2">All file types are supported for viewing</p>
             {isAdmin && <p className="text-xs mt-1">Admin users can edit markdown (.md) files</p>}
+            {!isAdmin && user && user.has_file_access && <p className="text-xs mt-1">Users with file access can edit markdown (.md) files in the Private section</p>}
           </div>
         </div>
       )}

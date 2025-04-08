@@ -1,5 +1,6 @@
 import React from 'react';
 import useExplorerState from './state/useExplorerState';
+import { useAuth } from '../../../context/AuthContext';
 import FileTree from './components/FileTree';
 import FileContent from './components/FileContent';
 import CommandInput from './components/CommandInput';
@@ -8,6 +9,8 @@ import { CreateFileDialog, RenameDialog, DeleteDialog } from './components/dialo
 import '../ExplorerWindow.css';
 
 const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
+  // Get auth context to check user permissions
+  const { user } = useAuth();
   // Use the custom hook to manage state and operations
   const explorerState = useExplorerState(nodeId, windowState, updateWindowState);
   
@@ -25,6 +28,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           isTreeLoading={explorerState.isTreeLoading}
           errorMessage={explorerState.errorMessage}
           isAdmin={explorerState.isAdmin}
+          user={user}
           toggleFolder={explorerState.toggleFolder}
           handleFileSelect={explorerState.handleFileSelect}
           openRenameDialog={explorerState.openRenameDialog}
@@ -52,6 +56,8 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           saveStatus={explorerState.saveStatus}
           converter={explorerState.converter}
           isAdmin={explorerState.isAdmin}
+          user={user}
+          activeTab={explorerState.activeTab}
           setFileContent={explorerState.setFileContent}
           toggleEditMode={explorerState.toggleEditMode}
           handleMarkdownChange={explorerState.handleMarkdownChange}
