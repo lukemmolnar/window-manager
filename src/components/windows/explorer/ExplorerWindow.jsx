@@ -42,6 +42,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           handleContainerDragLeave={explorerState.handleContainerDragLeave}
           handleContainerDrop={explorerState.handleContainerDrop}
           dropTarget={explorerState.dropTarget}
+          storageStats={explorerState.storageStats}
         />
         
         
@@ -96,11 +97,6 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
         closeDeleteDialog={explorerState.closeDeleteDialog}
         handleDeleteItem={explorerState.handleDeleteItem}
       />
-      
-      {/* Storage statistics display */}
-      {(explorerState.isAdmin || (explorerState.storageStats && !explorerState.storageStats.isLoading)) && (
-        <StorageStats stats={explorerState.storageStats} />
-      )}
       
       {/* Command input */}
       <CommandInput

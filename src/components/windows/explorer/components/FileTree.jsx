@@ -5,6 +5,7 @@ import {
   FolderPlus, Plus
 } from 'lucide-react';
 import { getFileIconName } from '../utils/fileUtils';
+import StorageStats from './StorageStats';
 
 const FileTree = ({ 
   files, 
@@ -29,7 +30,8 @@ const FileTree = ({
   handleContainerDragOver,
   handleContainerDragLeave,
   handleContainerDrop,
-  dropTarget
+  dropTarget,
+  storageStats
 }) => {
   
   // Get file icon based on file extension
@@ -290,6 +292,11 @@ const FileTree = ({
       <div className="p-2 border-t border-stone-700 text-xs">
         {selectedFile ? selectedFile.path : currentPath}
       </div>
+      
+      {/* Storage statistics display */}
+      {(isAdmin || (user && user.has_file_access)) && (
+        <StorageStats stats={storageStats} />
+      )}
     </div>
   );
 };
