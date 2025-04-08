@@ -206,18 +206,18 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
         // Load public files for all users
         await handleFetchPublicDirectoryContents('/', true);
         
-        // Load private files for admin users (if applicable)
-        if (isAdmin) {
-          try {
-            await handleFetchDirectoryContents('/', true);
-          } catch (error) {
-            console.error('Failed to load private files:', error);
-            setFiles([]);
-            if (activeTab === 'private') {
-              setErrorMessage('Failed to load private files. Please ensure your admin directory exists.');
-            }
+      // Load private files for admin users or users with file access (if applicable)
+      if (isAdmin || user?.has_file_access) {
+        try {
+          await handleFetchDirectoryContents('/', true);
+        } catch (error) {
+          console.error('Failed to load private files:', error);
+          setFiles([]);
+          if (activeTab === 'private') {
+            setErrorMessage('Failed to load private files. Please ensure your directory exists.');
           }
         }
+      }
         
         // Mark files as loaded
         fileLoadedRef.current = true;
