@@ -72,7 +72,7 @@ const FileTree = ({
                 isExpanded ? 'text-teal-300' : 'text-teal-400'
               } ${dropTarget && dropTarget.path === item.path ? 'bg-teal-900 border border-teal-500' : ''}`}
               onClick={() => toggleFolder(item.path, item)}
-              draggable={isAdmin}
+              draggable={isAdmin || (user?.has_file_access && activeTab === 'private')}
               onDragStart={(e) => handleDragStart(e, item)}
               onDragOver={(e) => handleDragOver(e, item)}
               onDragLeave={(e) => handleDragLeave(e)}
@@ -125,7 +125,7 @@ const FileTree = ({
             key={item.path} 
             className={`flex items-center justify-between py-1 px-1 ml-4 rounded cursor-pointer hover:bg-stone-700 group ${isSelected ? 'bg-stone-700 text-teal-300' : 'text-teal-50'}`}
             onClick={() => handleFileSelect(item)}
-            draggable={isAdmin}
+            draggable={isAdmin || (user?.has_file_access && activeTab === 'private')}
             onDragStart={(e) => handleDragStart(e, item)}
           >
             <div className="flex items-center">
