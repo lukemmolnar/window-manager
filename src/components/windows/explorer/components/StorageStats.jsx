@@ -1,6 +1,6 @@
 import React from 'react';
 
-const StorageStats = ({ stats }) => {
+const StorageStats = ({ stats, isAdmin }) => {
   // If stats aren't available yet or the user doesn't have file access, don't show anything
   if (!stats || stats.isLoading) {
     return null;
@@ -25,7 +25,7 @@ const StorageStats = ({ stats }) => {
   
   return (
     <div className="px-2 py-1 bg-stone-800 text-xs border-t border-stone-700">
-      <div className="flex justify-between items-center mb-1">
+      <div className="flex justify-between items-center ${isAdmin ? 'mb-0' : 'mb-1'}">
         <span className="text-gray-400">Storage:</span>
         <span className="text-teal-400">
           {stats.unlimited 
