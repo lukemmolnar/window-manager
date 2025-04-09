@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { FileText, Edit, Eye, Bold, Italic, Code as CodeIcon, Link, Heading, List, ListOrdered, CheckSquare } from 'lucide-react';
+import { FileText, Edit, Eye, Bold, Italic, Code as CodeIcon, Link, Heading, List, ListOrdered, CheckSquare, Download } from 'lucide-react';
 import { handleEditorKeyDown, convertMarkdownToHtml } from '../utils/markdownUtils';
 
 const FileContent = ({
@@ -17,7 +17,8 @@ const FileContent = ({
   setFileContent,
   toggleEditMode,
   handleMarkdownChange,
-  handleSaveFileContent
+  handleSaveFileContent,
+  handleExportFile
 }) => {
   // Debug logging
   console.log('[DEBUG] FileContent rendered with props:', {
@@ -148,28 +149,40 @@ const FileContent = ({
               {saveStatus === 'error' && <span className="text-red-400 text-xs ml-2">Error!</span>}
             </div>
             
-            {/* Show edit/preview toggle for markdown files to admins or users with file access (for private files) */}
-            {selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
-              <div className="flex gap-2">
-                {editMode && (
+            <div className="flex gap-2">
+              {/* Export button - available for all file types */}
+              <button 
+                onClick={handleExportFile}
+                className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs flex items-center gap-1"
+                title="Export file"
+              >
+                <Download size={14} />
+                Export
+              </button>
+              
+              {/* Show edit/preview toggle for markdown files to admins or users with file access (for private files) */}
+              {selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
+                <>
+                  {editMode && (
+                    <button 
+                      onClick={handleSaveFileContent}
+                      className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
+                      title="Save file"
+                    >
+                      Save
+                    </button>
+                  )}
                   <button 
-                    onClick={handleSaveFileContent}
-                    className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
-                    title="Save file"
+                    onClick={toggleEditMode}
+                    className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${editMode ? 'bg-teal-700 text-teal-100' : 'bg-stone-800 hover:bg-stone-700'}`}
+                    title={editMode ? "Switch to preview mode" : "Switch to edit mode"}
                   >
-                    Save
+                    {editMode ? <Eye size={14} /> : <Edit size={14} />}
+                    {editMode ? 'Preview' : 'Edit'}
                   </button>
-                )}
-                <button 
-                  onClick={toggleEditMode}
-                  className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${editMode ? 'bg-teal-700 text-teal-100' : 'bg-stone-800 hover:bg-stone-700'}`}
-                  title={editMode ? "Switch to preview mode" : "Switch to edit mode"}
-                >
-                  {editMode ? <Eye size={14} /> : <Edit size={14} />}
-                  {editMode ? 'Preview' : 'Edit'}
-                </button>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
           
           {/* Error message */}

@@ -1041,6 +1041,38 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     }
   };
 
+  // Handle file export/download
+  const handleExportFile = () => {
+    if (!selectedFile || !fileContent) {
+      setErrorMessage('No file selected or file has no content');
+      return;
+    }
+    
+    try {
+      // Create a blob with the file content
+      const blob = new Blob([fileContent], { type: 'text/plain' });
+      
+      // Create a temporary URL for the blob
+      const url = URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element to trigger the download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = selectedFile.name;
+      
+      // Append the anchor to the document, click it, and remove it
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Clean up by revoking the object URL
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting file:', error);
+      setErrorMessage(`Failed to export file: ${error.message}`);
+    }
+  };
+  
   return {
     files,
     publicFiles,
@@ -1076,6 +1108,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     handleFetchPublicDirectoryContents,
     handleFetchDirectoryContents,
     handleSaveFileContent,
+    handleExportFile,
     toggleFolder,
     createNewItem,
     openCreateDialog,

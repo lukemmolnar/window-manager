@@ -63,6 +63,7 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           toggleEditMode={explorerState.toggleEditMode}
           handleMarkdownChange={explorerState.handleMarkdownChange}
           handleSaveFileContent={explorerState.handleSaveFileContent}
+          handleExportFile={explorerState.handleExportFile}
         />
       </div>
       
