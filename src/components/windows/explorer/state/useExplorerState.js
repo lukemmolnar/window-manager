@@ -1041,35 +1041,112 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     }
   };
 
-  // Handle file export/download
-  const handleExportFile = () => {
-    if (!selectedFile || !fileContent) {
-      setErrorMessage('No file selected or file has no content');
+  // Handle file or folder export/download
+  const handleExportFile = async () => {
+    if (!selectedFile) {
+      setErrorMessage('No file or folder selected');
       return;
     }
     
     try {
-      // Create a blob with the file content
-      const blob = new Blob([fileContent], { type: 'text/plain' });
-      
-      // Create a temporary URL for the blob
-      const url = URL.createObjectURL(blob);
-      
-      // Create a temporary anchor element to trigger the download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = selectedFile.name;
-      
-      // Append the anchor to the document, click it, and remove it
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      // Clean up by revoking the object URL
-      URL.revokeObjectURL(url);
+      // If it's a directory, create a zip file
+      if (selectedFile.type === 'directory') {
+        // Import JSZip dynamically 
+        const JSZip = (await import('jszip')).default;
+        const zip = new JSZip();
+        
+        setErrorMessage('Creating zip file...');
+        
+        // Function to recursively gather files from a folder
+        const addFolderToZip = async (folderPath, zipFolder) => {
+          // Determine which API to use based on whether the folder is public or private
+          const fetchApi = selectedFile.isPublic ? fetchPublicDirectoryContents : fetchDirectoryContents;
+          
+          // Fetch directory contents
+          const result = await fetchApi(folderPath, false);
+          
+          if (result.error) {
+            throw new Error(`Failed to access folder: ${result.error}`);
+          }
+          
+          // Process each item in the folder
+          for (const item of result.files) {
+            if (item.type === 'directory') {
+              // Create a subfolder in the zip and process recursively
+              const newFolder = zipFolder.folder(item.name);
+              await addFolderToZip(item.path, newFolder);
+            } else {
+              // Fetch file content
+              const contentApi = selectedFile.isPublic ? fetchPublicFileContent : fetchFileContent;
+              const contentResult = await contentApi(item.path);
+              
+              if (contentResult.error) {
+                console.error(`Error loading file content for ${item.path}: ${contentResult.error}`);
+                continue;
+              }
+              
+              // Add file to zip
+              zipFolder.file(item.name, contentResult.content);
+            }
+          }
+        };
+        
+        // Start the recursive process from the selected folder
+        await addFolderToZip(selectedFile.path, zip);
+        
+        // Generate the zip file
+        const content = await zip.generateAsync({type: 'blob'});
+        
+        // Create a filename for the zip file (folder name + .zip)
+        const zipFileName = `${selectedFile.name}.zip`;
+        
+        // Create a temporary URL for the blob
+        const url = URL.createObjectURL(content);
+        
+        // Create a temporary anchor element to trigger the download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = zipFileName;
+        
+        // Append the anchor to the document, click it, and remove it
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up by revoking the object URL
+        URL.revokeObjectURL(url);
+        
+        // Clear the export message
+        setErrorMessage('');
+      } else {
+        // For single file export, keep existing behavior
+        if (!fileContent) {
+          setErrorMessage('File has no content');
+          return;
+        }
+        
+        // Create a blob with the file content
+        const blob = new Blob([fileContent], { type: 'text/plain' });
+        
+        // Create a temporary URL for the blob
+        const url = URL.createObjectURL(blob);
+        
+        // Create a temporary anchor element to trigger the download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = selectedFile.name;
+        
+        // Append the anchor to the document, click it, and remove it
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up by revoking the object URL
+        URL.revokeObjectURL(url);
+      }
     } catch (error) {
-      console.error('Error exporting file:', error);
-      setErrorMessage(`Failed to export file: ${error.message}`);
+      console.error('Error exporting:', error);
+      setErrorMessage(`Failed to export: ${error.message}`);
     }
   };
   
