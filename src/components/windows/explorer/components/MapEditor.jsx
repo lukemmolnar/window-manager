@@ -24,10 +24,14 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [currentTool, setCurrentTool] = useState('select');
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState(null);
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
   const [showAsciiModal, setShowAsciiModal] = useState(false);
   const [asciiContent, setAsciiContent] = useState('');
   const [asciiImportText, setAsciiImportText] = useState('');
   const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
+  
+  // Reference for auto-save functionality
+  const autoSaveTimeoutRef = useRef(null);
 
   // Load map data when fileContent changes
   useEffect(() => {
@@ -51,6 +55,32 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     }
   }, [fileContent]);
 
+  // Auto-save when map data changes
+  useEffect(() => {
+    // If the map is dirty (has unsaved changes), auto-save after a delay
+    if (isDirty && mapData) {
+      // Clear any existing timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // Set save status to 'saving'
+      setSaveStatus('saving');
+      
+      // Set a new timeout for auto-save
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        handleSaveMap();
+      }, 1000); // 1 second debounce
+    }
+    
+    // Cleanup function to clear the timeout when component unmounts
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [isDirty, mapData]);
+
   // Handler for saving the map
   const handleSaveMap = () => {
     if (!mapData) return;
@@ -59,13 +89,19 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       // Serialize the map data to JSON string
       const mapContent = serializeMap(mapData);
       
+      // Set status to saving
+      setSaveStatus('saving');
+      
       // Call the parent onSave function
       onSave(mapContent);
       
+      // Update state
       setIsDirty(false);
+      setSaveStatus('saved');
     } catch (err) {
       console.error('Error saving map:', err);
       setError('Failed to save map file.');
+      setSaveStatus('error');
     }
   };
 
@@ -318,6 +354,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
         }}
         onExportAscii={handleExportAscii}
         onImportAscii={handleImportAscii}
+        saveStatus={saveStatus}
       />
       
       {/* Error message */}

@@ -16,7 +16,8 @@ const MapToolbar = ({
   onRedo, 
   onClear, 
   onExportAscii, 
-  onImportAscii 
+  onImportAscii,
+  saveStatus = 'saved' // default to 'saved'
 }) => {
   const tools = [
     { id: 'select', icon: <MousePointer size={18} />, name: 'Select' },
@@ -29,7 +30,7 @@ const MapToolbar = ({
   return (
     <div className="flex justify-between items-center p-2 bg-stone-800 border-b border-stone-700">
       {/* File operations */}
-      <div className="flex space-x-1">
+      <div className="flex space-x-1 items-center">
         <button 
           onClick={onSave}
           className="p-2 hover:bg-stone-700 rounded text-teal-400"
@@ -37,6 +38,19 @@ const MapToolbar = ({
         >
           <Save size={18} />
         </button>
+        
+        {/* Save status indicator */}
+        <span className="text-xs ml-1 italic">
+          {saveStatus === 'saving' && (
+            <span className="text-amber-400">Saving...</span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className="text-green-400">Saved</span>
+          )}
+          {saveStatus === 'error' && (
+            <span className="text-red-400">Save failed</span>
+          )}
+        </span>
         <button 
           className="p-2 hover:bg-stone-700 rounded text-teal-400"
           title="Undo"
