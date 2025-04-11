@@ -12,6 +12,7 @@ import {
 import MapToolbar from '../../mapeditor/MapToolbar';
 import MapCanvas from '../../mapeditor/MapCanvas';
 import LayerPanel from '../../mapeditor/LayerPanel';
+import MapPropertiesPanel from '../../mapeditor/MapPropertiesPanel';
 
 /**
  * Map Editor component for use within the FileContent area
@@ -29,6 +30,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [asciiContent, setAsciiContent] = useState('');
   const [asciiImportText, setAsciiImportText] = useState('');
   const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
+  const [showPropertiesPanel, setShowPropertiesPanel] = useState(false);
   
   // Reference for auto-save functionality
   const autoSaveTimeoutRef = useRef(null);
@@ -338,6 +340,29 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     }
   };
 
+  // Handler for showing/hiding properties panel
+  const handleTogglePropertiesPanel = () => {
+    setShowPropertiesPanel(!showPropertiesPanel);
+  };
+
+  // Handler for applying map property changes
+  const handleApplyProperties = (properties) => {
+    if (!mapData) return;
+
+    const newMapData = { 
+      ...mapData,
+      name: properties.name,
+      width: properties.width,
+      height: properties.height,
+      gridSize: properties.gridSize
+    };
+
+    // Update map data
+    setMapData(newMapData);
+    setIsDirty(true);
+    setShowPropertiesPanel(false);
+  };
+
   // If map data isn't loaded yet, show a loading state
   if (!mapData) {
     return (
@@ -362,6 +387,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
         }}
         onExportAscii={handleExportAscii}
         onImportAscii={handleImportAscii}
+        onShowProperties={handleTogglePropertiesPanel}
         saveStatus={saveStatus}
       />
       
@@ -395,6 +421,17 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           onRenameLayer={handleRenameLayer}
         />
       </div>
+      
+      {/* Properties Panel */}
+      {showPropertiesPanel && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <MapPropertiesPanel 
+            mapData={mapData} 
+            onApply={handleApplyProperties} 
+            onCancel={() => setShowPropertiesPanel(false)} 
+          />
+        </div>
+      )}
       
       {/* ASCII Modal */}
       {showAsciiModal && (

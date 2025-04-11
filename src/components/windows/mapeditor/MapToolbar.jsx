@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   Save, Undo, Redo, Trash2, Copy, Square, Circle, 
   Grid, ZoomIn, ZoomOut, Download, Upload, Plus, Minus,
-  Layers, MousePointer, Hammer, Wand2, FileText
+  Layers, MousePointer, Hammer, Wand2, FileText, Settings
 } from 'lucide-react';
 
 /**
@@ -17,6 +17,7 @@ const MapToolbar = ({
   onClear, 
   onExportAscii, 
   onImportAscii,
+  onShowProperties,
   saveStatus = 'saved' // default to 'saved'
 }) => {
   const tools = [
@@ -136,6 +137,13 @@ const MapToolbar = ({
           title="Manage layers"
         >
           <Layers size={18} />
+        </button>
+        <button 
+          className="p-2 hover:bg-stone-700 rounded text-teal-400"
+          title="Map Properties"
+          onClick={onShowProperties}
+        >
+          <Settings size={18} />
         </button>
       </div>
     </div>

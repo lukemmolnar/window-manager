@@ -67,20 +67,36 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
     // Convert to grid coordinates
     const gridCoords = screenToGridCoordinates(mouseX, mouseY, gridSize, viewportOffset);
     
+    // Validate coordinates are within map boundaries
+    if (gridCoords.x < 0 || gridCoords.x >= mapData.width || 
+        gridCoords.y < 0 || gridCoords.y >= mapData.height) {
+      // Coordinates outside map boundary - do nothing
+      console.log(`Cell at (${gridCoords.x}, ${gridCoords.y}) is outside map boundaries (${mapData.width}x${mapData.height})`);
+      return;
+    }
+    
     // Call onEdit with the grid coordinates and current tool
     onEdit(gridCoords.x, gridCoords.y, currentTool);
   };
 
   // Update hover cell when mouse moves
   const updateHoverCell = (e) => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !mapData) return;
     
     const rect = canvasRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     
     const gridCoords = screenToGridCoordinates(mouseX, mouseY, gridSize, viewportOffset);
-    setHoverCell(gridCoords);
+    
+    // Only set hover cell if it's within map boundaries
+    if (gridCoords.x >= 0 && gridCoords.x < mapData.width && 
+        gridCoords.y >= 0 && gridCoords.y < mapData.height) {
+      setHoverCell(gridCoords);
+    } else {
+      // Clear hover cell when outside map boundaries
+      setHoverCell(null);
+    }
   };
 
   // Set up the canvas and draw the grid and map
@@ -118,6 +134,33 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
         }
       }
     }
+    
+    // Draw a clear boundary around the map area
+    const mapWidthPx = mapData.width * gridSize;
+    const mapHeightPx = mapData.height * gridSize;
+    const mapStartX = offsetX;
+    const mapStartY = offsetY;
+    
+    // Draw boundary with more visible color
+    ctx.strokeStyle = '#f97316'; // Orange-500
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mapStartX, mapStartY, mapWidthPx, mapHeightPx);
+    
+    // Add small corner markers for extra visibility
+    const cornerSize = 8;
+    ctx.fillStyle = '#f97316'; // Orange-500
+    
+    // Top-left corner
+    ctx.fillRect(mapStartX - 1, mapStartY - 1, cornerSize, cornerSize);
+    
+    // Top-right corner
+    ctx.fillRect(mapStartX + mapWidthPx - cornerSize + 1, mapStartY - 1, cornerSize, cornerSize);
+    
+    // Bottom-left corner
+    ctx.fillRect(mapStartX - 1, mapStartY + mapHeightPx - cornerSize + 1, cornerSize, cornerSize);
+    
+    // Bottom-right corner
+    ctx.fillRect(mapStartX + mapWidthPx - cornerSize + 1, mapStartY + mapHeightPx - cornerSize + 1, cornerSize, cornerSize);
     
     // Draw map data (cells from each layer)
     if (mapData && mapData.layers && mapData.layers.length > 0) {
