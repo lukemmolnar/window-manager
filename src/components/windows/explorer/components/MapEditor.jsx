@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Map, Save } from 'lucide-react';
-import { createEmptyMap, serializeMap, parseMapFile } from '../../mapeditor/utils/mapUtils';
+import { Map, Save, FileDown } from 'lucide-react';
+import { 
+  createEmptyMap, 
+  serializeMap, 
+  parseMapFile, 
+  convertMapToAscii, 
+  convertAsciiToMap 
+} from '../../mapeditor/utils/mapUtils';
 
 // Import sub-components
 import MapToolbar from '../../mapeditor/MapToolbar';
@@ -18,6 +24,10 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [currentTool, setCurrentTool] = useState('select');
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState(null);
+  const [showAsciiModal, setShowAsciiModal] = useState(false);
+  const [asciiContent, setAsciiContent] = useState('');
+  const [asciiImportText, setAsciiImportText] = useState('');
+  const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
 
   // Load map data when fileContent changes
   useEffect(() => {
@@ -204,6 +214,86 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     setIsDirty(true);
   };
 
+  // Handler for exporting to ASCII
+  const handleExportAscii = () => {
+    if (!mapData) return;
+    
+    try {
+      // Convert the map data to ASCII
+      const ascii = convertMapToAscii(mapData);
+      setAsciiContent(ascii);
+      setAsciiModalMode('export');
+      setShowAsciiModal(true);
+    } catch (err) {
+      console.error('Error exporting to ASCII:', err);
+      setError('Failed to export map to ASCII format.');
+    }
+  };
+
+  // Handler for importing from ASCII
+  const handleImportAscii = () => {
+    setAsciiImportText('');
+    setAsciiModalMode('import');
+    setShowAsciiModal(true);
+  };
+
+  // Handler for confirming ASCII import
+  const handleConfirmAsciiImport = () => {
+    if (!asciiImportText.trim()) {
+      setError('No ASCII content to import.');
+      return;
+    }
+    
+    try {
+      // Convert ASCII to map data
+      const newMapData = convertAsciiToMap(asciiImportText, mapData.name);
+      
+      // Preserve metadata from existing map if possible
+      if (mapData.metadata) {
+        newMapData.metadata = {
+          ...newMapData.metadata,
+          author: mapData.metadata.author || 'user',
+          modified: new Date().toISOString()
+        };
+      }
+      
+      // Update the map data
+      setMapData(newMapData);
+      setIsDirty(true);
+      setShowAsciiModal(false);
+    } catch (err) {
+      console.error('Error importing from ASCII:', err);
+      setError('Failed to import ASCII map. The format may be invalid.');
+    }
+  };
+
+  // Handler for downloading the ASCII map
+  const handleDownloadAscii = () => {
+    if (!asciiContent) return;
+    
+    try {
+      // Create a blob with the ASCII content
+      const blob = new Blob([asciiContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element to trigger the download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${mapData.name || 'map'}.txt`;
+      
+      // Append the anchor to the document, click it, and remove it
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Clean up by revoking the object URL
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading ASCII map:', err);
+      setError('Failed to download ASCII map.');
+    }
+  };
+
   // If map data isn't loaded yet, show a loading state
   if (!mapData) {
     return (
@@ -226,6 +316,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           setMapData(createEmptyMap(mapData.name));
           setIsDirty(true);
         }}
+        onExportAscii={handleExportAscii}
+        onImportAscii={handleImportAscii}
       />
       
       {/* Error message */}
@@ -258,6 +350,84 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           onRenameLayer={handleRenameLayer}
         />
       </div>
+      
+      {/* ASCII Modal */}
+      {showAsciiModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <div className="bg-stone-800 border border-stone-700 rounded-lg shadow-lg w-full max-w-3xl max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-stone-700">
+              <h2 className="text-lg font-semibold text-teal-300">
+                {asciiModalMode === 'export' ? 'ASCII Map Export' : 'Import ASCII Map'}
+              </h2>
+              <button 
+                onClick={() => setShowAsciiModal(false)}
+                className="p-1 hover:bg-stone-700 rounded text-teal-400"
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div className="p-4 flex-1 overflow-auto">
+              {asciiModalMode === 'export' ? (
+                <div className="flex flex-col h-full">
+                  <p className="mb-4 text-sm text-stone-300">
+                    This is the ASCII representation of your map. Each character represents a cell type:
+                    <br />
+                    <code className="bg-stone-900 px-1 rounded">
+                      # = Wall, . = Floor, + = Door, " = Grass, ' = Ashes, &gt; = Stairs, @ = Spawn
+                    </code>
+                  </p>
+                  <pre className="bg-stone-900 p-4 rounded font-mono text-teal-100 text-sm overflow-auto flex-1 whitespace-pre">
+                    {asciiContent}
+                  </pre>
+                </div>
+              ) : (
+                <div className="flex flex-col h-full">
+                  <p className="mb-4 text-sm text-stone-300">
+                    Paste ASCII map content below. Each character represents a cell type:
+                    <br />
+                    <code className="bg-stone-900 px-1 rounded">
+                      # = Wall, . = Floor, + = Door, " = Grass, ' = Ashes, &gt; = Stairs, @ = Spawn
+                    </code>
+                  </p>
+                  <textarea 
+                    className="bg-stone-900 p-4 rounded font-mono text-teal-100 text-sm overflow-auto flex-1 resize-none focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    value={asciiImportText}
+                    onChange={e => setAsciiImportText(e.target.value)}
+                    placeholder="Paste ASCII map here..."
+                  />
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-stone-700 flex justify-end space-x-2">
+              <button 
+                onClick={() => setShowAsciiModal(false)}
+                className="px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded text-teal-100"
+              >
+                Cancel
+              </button>
+              
+              {asciiModalMode === 'export' ? (
+                <button 
+                  onClick={handleDownloadAscii}
+                  className="px-4 py-2 bg-teal-700 hover:bg-teal-600 rounded text-teal-100 flex items-center"
+                >
+                  <FileDown size={16} className="mr-2" />
+                  Download ASCII
+                </button>
+              ) : (
+                <button 
+                  onClick={handleConfirmAsciiImport}
+                  className="px-4 py-2 bg-teal-700 hover:bg-teal-600 rounded text-teal-100"
+                >
+                  Import
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

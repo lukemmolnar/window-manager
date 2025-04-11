@@ -205,3 +205,128 @@ export const gridToScreenCoordinates = (gridX, gridY, gridSize, viewportOffset) 
   const screenY = gridY * gridSize + viewportOffset.y;
   return { x: screenX, y: screenY };
 };
+
+/**
+ * Converts JSON map data to ASCII format for the roguelike game engine
+ * @param {Object} mapData - The map data in JSON format
+ * @returns {string} The map data in ASCII format
+ */
+export const convertMapToAscii = (mapData) => {
+  // Create a 2D array filled with void spaces
+  const width = mapData.width;
+  const height = mapData.height;
+  const asciiMap = Array(height).fill().map(() => Array(width).fill(' ')); // ' ' for void
+  
+  // Process each layer from bottom to top
+  mapData.layers.forEach(layer => {
+    if (!layer.visible) return;
+    
+    // Process each cell in the layer
+    layer.cells.forEach(cell => {
+      // Skip cells outside the map bounds
+      if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) return;
+      
+      // Map cell types to ASCII characters
+      let asciiChar;
+      switch(cell.type) {
+        case 'wall':
+          asciiChar = '#';
+          break;
+        case 'floor':
+          asciiChar = '.';
+          break;
+        case 'door':
+          asciiChar = '+';
+          break;
+        case 'grass':
+          asciiChar = '"';
+          break;
+        case 'ashes':
+          asciiChar = "'";
+          break;
+        case 'stairs':
+          asciiChar = '>';
+          break;
+        case 'spawn':
+          asciiChar = '@';
+          break;
+        default:
+          // For unknown types, use a default character
+          asciiChar = '?';
+      }
+      
+      // Place the character in the grid
+      asciiMap[cell.y][cell.x] = asciiChar;
+    });
+  });
+  
+  // Convert 2D array to string with newlines
+  return asciiMap.map(row => row.join('')).join('\n');
+};
+
+/**
+ * Converts ASCII map to JSON format
+ * @param {string} asciiMap - The map data in ASCII format
+ * @param {string} name - Optional name for the map
+ * @returns {Object} The map data in JSON format
+ */
+export const convertAsciiToMap = (asciiMap, name = 'Imported Map') => {
+  const lines = asciiMap.trim().split('\n');
+  const height = lines.length;
+  const width = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  
+  // Create a basic map structure
+  const mapData = createEmptyMap(name, width, height);
+  
+  // Create a terrain layer
+  const terrainCells = [];
+  
+  // Process each character in the ASCII map
+  for (let y = 0; y < lines.length; y++) {
+    const line = lines[y];
+    for (let x = 0; x < line.length; x++) {
+      const char = line[x];
+      let cellType;
+      
+      // Map ASCII characters to cell types
+      switch(char) {
+        case '#':
+          cellType = 'wall';
+          break;
+        case '.':
+          cellType = 'floor';
+          break;
+        case '+':
+          cellType = 'door';
+          break;
+        case '"':
+          cellType = 'grass';
+          break;
+        case "'":
+          cellType = 'ashes';
+          break;
+        case '>':
+          cellType = 'stairs';
+          break;
+        case '@':
+          cellType = 'spawn';
+          // Could also mark this as a player spawn point
+          break;
+        case ' ':
+          // Void/empty space, skip
+          continue;
+        default:
+          // Unknown character, interpret as custom type
+          cellType = `custom-${char}`;
+      }
+      
+      // Add the cell to the terrain layer
+      terrainCells.push({ x, y, type: cellType });
+    }
+  }
+  
+  // Update the terrain layer with the cells
+  mapData.layers[0].cells = terrainCells;
+  
+  return mapData;
+};

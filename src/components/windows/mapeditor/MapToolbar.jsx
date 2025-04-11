@@ -2,13 +2,22 @@ import React from 'react';
 import { 
   Save, Undo, Redo, Trash2, Copy, Square, Circle, 
   Grid, ZoomIn, ZoomOut, Download, Upload, Plus, Minus,
-  Layers, MousePointer, Hammer, Wand2
+  Layers, MousePointer, Hammer, Wand2, FileText
 } from 'lucide-react';
 
 /**
  * Toolbar component for the Map Editor
  */
-const MapToolbar = ({ currentTool, setCurrentTool, onSave, onUndo, onRedo, onClear }) => {
+const MapToolbar = ({ 
+  currentTool, 
+  setCurrentTool, 
+  onSave, 
+  onUndo, 
+  onRedo, 
+  onClear, 
+  onExportAscii, 
+  onImportAscii 
+}) => {
   const tools = [
     { id: 'select', icon: <MousePointer size={18} />, name: 'Select' },
     { id: 'wall', icon: <Square size={18} />, name: 'Wall' },
@@ -58,6 +67,21 @@ const MapToolbar = ({ currentTool, setCurrentTool, onSave, onUndo, onRedo, onCle
         <button 
           className="p-2 hover:bg-stone-700 rounded text-teal-400"
           title="Import tileset"
+        >
+          <Upload size={18} />
+        </button>
+        <div className="h-6 border-r border-stone-700 mx-1"></div>
+        <button 
+          className="p-2 hover:bg-stone-700 rounded text-teal-400"
+          title="Export as ASCII"
+          onClick={onExportAscii}
+        >
+          <FileText size={18} />
+        </button>
+        <button 
+          className="p-2 hover:bg-stone-700 rounded text-teal-400"
+          title="Import from ASCII"
+          onClick={onImportAscii}
         >
           <Upload size={18} />
         </button>
