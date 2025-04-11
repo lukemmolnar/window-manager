@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   FolderOpen, ChevronRight, ChevronDown, File, Coffee, Code, 
   BookOpen, FileText, Globe, Lock, FileEdit, Trash2, Music, Image, Figma,
-  FolderPlus, Plus
+  FolderPlus, Plus, Map
 } from 'lucide-react';
 import { getFileIconName } from '../utils/fileUtils';
 import StorageStats from './StorageStats';
@@ -48,6 +48,7 @@ const FileTree = ({
       case 'Music': return <Music {...iconProps} />;
       case 'Image': return <Image {...iconProps} />;
       case 'Figma': return <Figma {...iconProps} />;
+      case 'Map': return <Map {...iconProps} />;
       default: return <File {...iconProps} />;
     }
   };

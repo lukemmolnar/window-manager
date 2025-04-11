@@ -41,6 +41,7 @@ export const getFileIconName = (fileName) => {
   if (fileName.endsWith('.svg') || fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.gif')) return 'Image';
   if (fileName.endsWith('.mp3') || fileName.endsWith('.wav') || fileName.endsWith('.ogg')) return 'Music';
   if (fileName.endsWith('.canvas')) return 'Figma';
+  if (fileName.endsWith('.map')) return 'Map';
   return 'File';
 };
 

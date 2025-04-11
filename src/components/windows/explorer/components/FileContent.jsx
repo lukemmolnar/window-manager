@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { FileText, Edit, Eye, Bold, Italic, Code as CodeIcon, Link, Heading, List, ListOrdered, CheckSquare, Download } from 'lucide-react';
+import { FileText, Edit, Eye, Bold, Italic, Code as CodeIcon, Link, Heading, List, ListOrdered, CheckSquare, Download, Map } from 'lucide-react';
 import { handleEditorKeyDown, convertMarkdownToHtml } from '../utils/markdownUtils';
+import MapEditor from './MapEditor';
 
 const FileContent = ({
   selectedFile,
@@ -192,13 +193,20 @@ const FileContent = ({
             </div>
           )}
           
-          {/* Content area - either editor or preview */}
+          {/* Content area - editor or preview based on file type */}
           {isContentLoading ? (
             <div className="flex-1 flex items-center justify-center">
               <span className="text-teal-300">Loading content...</span>
             </div>
+          ) : selectedFile.name.endsWith('.map') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
+            // Map Editor for .map files - only for admin users and users with file access
+            <MapEditor 
+              fileContent={fileContent}
+              selectedFile={selectedFile}
+              onSave={handleSaveFileContent}
+            />
           ) : editMode && selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
-            // Editor mode - only for markdown files and admin users
+            // Markdown Editor mode - only for markdown files and admin users
             <div className="flex-1 flex flex-col">
               {/* Markdown toolbar */}
               <div className="p-2 border-b border-stone-700 bg-stone-800 flex flex-wrap gap-2">
@@ -299,8 +307,16 @@ const FileContent = ({
             <FileText size={48} className="mx-auto mb-4" />
             <p>Select a file to view</p>
             <p className="text-xs mt-2">All file types are supported for viewing</p>
-            {isAdmin && <p className="text-xs mt-1">Admin users can edit markdown (.md) files</p>}
-            {!isAdmin && user && user.has_file_access && <p className="text-xs mt-1">Users with file access can edit markdown (.md) files in the Private section</p>}
+            {isAdmin && (
+              <p className="text-xs mt-1">
+                Admin users can edit markdown (.md) and map (.map) files
+              </p>
+            )}
+            {!isAdmin && user && user.has_file_access && (
+              <p className="text-xs mt-1">
+                Users with file access can edit markdown (.md) and map (.map) files in the Private section
+              </p>
+            )}
           </div>
         </div>
       )}

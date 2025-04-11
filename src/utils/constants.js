@@ -7,5 +7,6 @@ export const WINDOW_TYPES = {
     CHAT: 'chat',  // Add chat window type
     ADMIN: 'admin', // Add admin window type
     CANVAS: 'canvas', // Add canvas window type
-    DICE: 'dice' // Add dice window type
+    DICE: 'dice', // Add dice window type
+    MAP_EDITOR: 'map_editor' // Add map editor window type
   };
