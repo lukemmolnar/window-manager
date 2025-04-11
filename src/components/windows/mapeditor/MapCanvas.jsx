@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
 import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
 
@@ -7,6 +7,7 @@ import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUti
  * Handles rendering and interaction with the grid map
  */
 const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [gridSize, setGridSize] = useState(32);
   const [viewportOffset, setViewportOffset] = useState({ x: 0, y: 0 });
@@ -14,6 +15,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [activeMouseButton, setActiveMouseButton] = useState(null);
   const [hoverCell, setHoverCell] = useState(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
 
   /**
    * Draw a tile on the canvas based on its type
@@ -79,6 +81,35 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
     onEdit(gridCoords.x, gridCoords.y, currentTool);
   };
 
+  // Set up ResizeObserver to update canvas dimensions
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setCanvasSize({ width, height });
+      }
+    };
+    
+    // Initial size update
+    updateCanvasSize();
+    
+    // Set up ResizeObserver
+    const resizeObserver = new ResizeObserver(entries => {
+      if (entries.length > 0) {
+        updateCanvasSize();
+      }
+    });
+    
+    resizeObserver.observe(containerRef.current);
+    
+    // Clean up
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+  
   // Update hover cell when mouse moves
   const updateHoverCell = (e) => {
     if (!canvasRef.current || !mapData) return;
@@ -298,17 +329,20 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
   };
 
   return (
-    <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-stone-900">
-      <div className="absolute top-2 left-2 bg-stone-800 p-2 rounded text-xs text-teal-400 flex items-center">
+    <div 
+      ref={containerRef}
+      className="flex-1 relative flex overflow-hidden bg-stone-900"
+    >
+      <div className="absolute top-2 left-2 bg-stone-800 p-2 rounded text-xs text-teal-400 flex items-center z-10">
         <Grid size={14} className="mr-1" />
         <span>Grid Size: {gridSize}px</span>
       </div>
       
       <canvas 
         ref={canvasRef}
-        width={800}
-        height={600}
-        className="border border-stone-700"
+        width={canvasSize.width}
+        height={canvasSize.height}
+        className="w-full h-full border border-stone-700"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -316,7 +350,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
         onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()} // Prevent context menu on right click
       />
-      <div className="absolute bottom-2 right-2 bg-stone-800 p-2 rounded text-xs text-teal-400">
+      <div className="absolute bottom-2 right-2 bg-stone-800 p-2 rounded text-xs text-teal-400 z-10">
         {currentTool && <span>Tool: {currentTool}</span>}
         {hoverCell && <span className="ml-2">Position: ({hoverCell.x}, {hoverCell.y})</span>}
       </div>
