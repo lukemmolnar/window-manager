@@ -57,10 +57,10 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
   };
 
   /**
-   * Handle canvas click to edit map cells
+   * Handle cell editing with a specific tool or the current selected tool
    */
-  const handleCanvasClick = (e) => {
-    if (!canvasRef.current || !mapData || currentTool === 'select' || !onEdit) return;
+  const handleCellEdit = (e, overrideTool) => {
+    if (!canvasRef.current || !mapData || !onEdit) return;
     
     // Get mouse position relative to canvas
     const rect = canvasRef.current.getBoundingClientRect();
@@ -78,8 +78,14 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
       return;
     }
     
-    // Call onEdit with the grid coordinates and current tool
-    onEdit(gridCoords.x, gridCoords.y, currentTool);
+    // Use the override tool if provided, otherwise use the current tool
+    const toolToUse = overrideTool || currentTool;
+    
+    // Only edit if using a tool other than select
+    if (toolToUse === 'select') return;
+    
+    // Call onEdit with the grid coordinates and the tool to use
+    onEdit(gridCoords.x, gridCoords.y, toolToUse);
   };
 
   // Set up ResizeObserver to update canvas dimensions
@@ -292,10 +298,13 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
       // Show tool indicator
       ctx.fillStyle = '#14b8a6';
       ctx.font = '12px monospace';
-      ctx.fillText(currentTool, screenX + 5, screenY + 15);
+      
+      // If right mouse button is pressed, show "erase" as the tool
+      const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
+      ctx.fillText(displayTool, screenX + 5, screenY + 15);
     }
     
-  }, [gridSize, viewportOffset, mapData, currentLayer, hoverCell, currentTool]);
+  }, [gridSize, viewportOffset, mapData, currentLayer, hoverCell, currentTool, activeMouseButton]);
 
   // Handle canvas mouse events
   const handleMouseDown = (e) => {
@@ -306,18 +315,22 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
     
     setActiveMouseButton(e.button);
     
-    // Right mouse button (2) or middle mouse button (1) for panning
-    if (e.button === 2 || e.button === 1) {
+    // Middle mouse button (1) for panning
+    if (e.button === 1) {
       setIsDragging(true);
       setDragStart({ x: e.clientX, y: e.clientY });
       e.preventDefault(); // Prevent default scrolling behavior for middle mouse button
     } 
-    // Left mouse button (0) for drawing
-    else if (e.button === 0 && !isSpacePressed && currentTool !== 'select') {
-      handleCanvasClick(e);
+    // Right mouse button (2) for erasing
+    else if (e.button === 2 && !isSpacePressed) {
+      handleCellEdit(e, 'erase');
     }
-    // If space is pressed and left mouse button is clicked (0), also start dragging
-    else if (e.button === 0 && isSpacePressed) {
+    // Left mouse button (0) for drawing with current tool
+    else if (e.button === 0 && !isSpacePressed) {
+      handleCellEdit(e);
+    }
+    // If space is pressed, start dragging regardless of which mouse button
+    else if (isSpacePressed) {
       setIsDragging(true);
       setDragStart({ x: e.clientX, y: e.clientY });
     }
@@ -327,10 +340,9 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
     // Always update hover cell
     updateHoverCell(e);
     
-    // Handle dragging for pan with right mouse button (2), middle mouse button (1),
+    // Handle dragging for pan with middle mouse button (1),
     // or spacebar + any mouse button
-    if (isDragging && (activeMouseButton === 2 || activeMouseButton === 1 || 
-        (isSpacePressed && activeMouseButton === 0))) {
+    if (isDragging && (activeMouseButton === 1 || isSpacePressed)) {
       const dx = e.clientX - dragStart.x;
       const dy = e.clientY - dragStart.y;
       
@@ -347,9 +359,13 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
       setIsDragging(true);
       setDragStart({ x: e.clientX, y: e.clientY });
     }
-    // Handle continuous drawing while mouse is down
-    else if (activeMouseButton === 0 && !isSpacePressed && currentTool !== 'select') {
-      handleCanvasClick(e);
+    // Handle continuous drawing while left mouse button is down
+    else if (activeMouseButton === 0 && !isSpacePressed) {
+      handleCellEdit(e);
+    }
+    // Handle continuous erasing while right mouse button is down
+    else if (activeMouseButton === 2 && !isSpacePressed) {
+      handleCellEdit(e, 'erase');
     }
   };
 
@@ -395,7 +411,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
         onContextMenu={(e) => e.preventDefault()} // Prevent context menu on right click
       />
       <div className="absolute bottom-2 right-2 bg-stone-800 p-2 rounded text-xs text-teal-400 z-10">
-        {currentTool && <span>Tool: {currentTool}</span>}
+        {currentTool && <span>Tool: {activeMouseButton === 2 ? 'erase' : currentTool}</span>}
         {hoverCell && <span className="ml-2">Position: ({hoverCell.x}, {hoverCell.y})</span>}
       </div>
     </div>
