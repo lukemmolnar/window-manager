@@ -40,18 +40,6 @@ const MapToolbar = ({
           <Save size={18} />
         </button>
         
-        {/* Save status indicator */}
-        <span className="text-xs ml-1 italic">
-          {saveStatus === 'saving' && (
-            <span className="text-amber-400">Saving...</span>
-          )}
-          {saveStatus === 'saved' && (
-            <span className="text-green-400">Saved</span>
-          )}
-          {saveStatus === 'error' && (
-            <span className="text-red-400">Save failed</span>
-          )}
-        </span>
         <button 
           className="p-2 hover:bg-stone-700 rounded text-teal-400"
           title="Undo"
