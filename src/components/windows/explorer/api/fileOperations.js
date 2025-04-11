@@ -208,31 +208,57 @@ export const fetchFileContent = async (filePath) => {
 
 // Function to save file content
 export const saveFileContent = async (filePath, content) => {
+  console.log(`[DEBUG] saveFileContent called:`, {
+    filePath,
+    contentType: typeof content,
+    contentLength: content?.length || 0,
+    isMapFile: filePath?.endsWith('.map'),
+    contentPreview: typeof content === 'string' ? content.substring(0, 100) + '...' : 'not a string'
+  });
+  
   try {
     // Check if filePath is valid
     if (!filePath || filePath.trim() === '') {
+      console.error('[DEBUG] saveFileContent - Invalid file path');
       throw new Error('No file selected. Please select a file first.');
     }
     
+    // Create request body
+    const requestBody = JSON.stringify({
+      path: filePath,
+      content: content
+    });
+    
+    console.log(`[DEBUG] saveFileContent - Request body size: ${requestBody.length} bytes`);
+    
+    // Make the API request
+    console.log(`[DEBUG] saveFileContent - Sending request to: ${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_SAVE}`);
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_SAVE}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       },
-      body: JSON.stringify({
-        path: filePath,
-        content: content
-      })
+      body: requestBody
     });
     
+    console.log(`[DEBUG] saveFileContent - Response status: ${response.status}`);
+    
+    const responseData = await response.json();
+    console.log(`[DEBUG] saveFileContent - Response data:`, responseData);
+    
     if (!response.ok) {
-      throw new Error(`Failed to save file: ${response.statusText}`);
+      throw new Error(responseData.message || `Failed to save file: ${response.statusText}`);
     }
     
-    return { error: null };
+    console.log(`[DEBUG] saveFileContent - Success!`);
+    return { 
+      error: null,
+      size: responseData.size,
+      modified: responseData.modified
+    };
   } catch (error) {
-    console.error('Error saving file:', error);
+    console.error('[DEBUG] Error saving file:', error);
     return { error: error.message || 'Error saving file' };
   }
 };

@@ -45,6 +45,20 @@ const FileContent = ({
   useEffect(() => {
     console.log('[DEBUG] FileContent - selectedFile changed:', selectedFile);
   }, [selectedFile]);
+  
+  // Add debugging for save file content function
+  const wrappedHandleSaveFileContent = (content) => {
+    console.log('[DEBUG] FileContent - handleSaveFileContent called with:', {
+      contentType: typeof content,
+      contentLength: content?.length || 0,
+      contentPreview: typeof content === 'string' ? content.substring(0, 100) + '...' : 'not a string',
+      selectedFilePath: selectedFile?.path,
+      selectedFileName: selectedFile?.name
+    });
+    
+    // Call the original function
+    handleSaveFileContent(content);
+  };
 
   const textareaRef = useRef(null);
 
@@ -203,7 +217,7 @@ const FileContent = ({
             <MapEditor 
               fileContent={fileContent}
               selectedFile={selectedFile}
-              onSave={handleSaveFileContent}
+              onSave={wrappedHandleSaveFileContent}
             />
           ) : editMode && selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
             // Markdown Editor mode - only for markdown files and admin users

@@ -89,6 +89,14 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       // Serialize the map data to JSON string
       const mapContent = serializeMap(mapData);
       
+      // Debug logs to track the data flow
+      console.log('[DEBUG] Map Editor - Saving map data:', {
+        mapDataExists: !!mapData,
+        serializedLength: mapContent?.length,
+        serializedPreview: mapContent?.substring(0, 100) + '...',
+        selectedFile: selectedFile?.path
+      });
+      
       // Set status to saving
       setSaveStatus('saving');
       

@@ -476,9 +476,22 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   };
   
   // Save file content
-  const handleSaveFileContent = async () => {
+  const handleSaveFileContent = async (content) => {
+    console.log('[DEBUG] useExplorerState - handleSaveFileContent called:', {
+      selectedFilePath: selectedFile?.path,
+      selectedFileName: selectedFile?.name,
+      contentProvided: content !== undefined,
+      // If content is provided, use it, otherwise use the state's fileContent
+      contentToSaveType: typeof (content !== undefined ? content : fileContent),
+      contentToSaveLength: (content !== undefined ? content : fileContent)?.length || 0,
+      contentToSavePreview: typeof (content !== undefined ? content : fileContent) === 'string' 
+        ? (content !== undefined ? content : fileContent).substring(0, 100) + '...' 
+        : 'not a string'
+    });
+    
     // Check if filePath is valid
     if (!selectedFile || !selectedFile.path || selectedFile.path.trim() === '') {
+      console.error('[DEBUG] handleSaveFileContent - No file selected');
       setErrorMessage('No file selected. Please select a file first.');
       setSaveStatus('error');
       return;
@@ -486,14 +499,30 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     
     setSaveStatus('saving');
     
-    const result = await apiSaveFileContent(selectedFile.path, fileContent);
+    // Use content parameter if provided, otherwise use state's fileContent
+    const contentToSave = content !== undefined ? content : fileContent;
+    
+    console.log('[DEBUG] Sending to API:', {
+      path: selectedFile.path,
+      contentType: typeof contentToSave,
+      contentLength: contentToSave?.length || 0
+    });
+    
+    const result = await apiSaveFileContent(selectedFile.path, contentToSave);
     
     if (result.error) {
+      console.error('[DEBUG] API Save Error:', result.error);
       setErrorMessage(result.error);
       setSaveStatus('error');
     } else {
+      console.log('[DEBUG] API Save Success:', result);
       setErrorMessage('');
       setSaveStatus('saved');
+      
+      // If content parameter was provided, update the state's fileContent
+      if (content !== undefined) {
+        setFileContent(content);
+      }
     }
   };
   
