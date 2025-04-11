@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
 
@@ -16,6 +16,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
   const [activeMouseButton, setActiveMouseButton] = useState(null);
   const [hoverCell, setHoverCell] = useState(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   /**
    * Draw a tile on the canvas based on its type
@@ -129,6 +130,32 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
       setHoverCell(null);
     }
   };
+
+  // Handle keyboard events for spacebar
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Space key
+      if (e.key === ' ' || e.keyCode === 32) {
+        setIsSpacePressed(true);
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      // Space key
+      if (e.key === ' ' || e.keyCode === 32) {
+        setIsSpacePressed(false);
+        setIsDragging(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
   // Set up the canvas and draw the grid and map
   useEffect(() => {
@@ -279,14 +306,20 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
     
     setActiveMouseButton(e.button);
     
-    // Right mouse button (2) for panning
-    if (e.button === 2) {
+    // Right mouse button (2) or middle mouse button (1) for panning
+    if (e.button === 2 || e.button === 1) {
       setIsDragging(true);
       setDragStart({ x: e.clientX, y: e.clientY });
+      e.preventDefault(); // Prevent default scrolling behavior for middle mouse button
     } 
     // Left mouse button (0) for drawing
-    else if (e.button === 0 && currentTool !== 'select') {
+    else if (e.button === 0 && !isSpacePressed && currentTool !== 'select') {
       handleCanvasClick(e);
+    }
+    // If space is pressed and left mouse button is clicked (0), also start dragging
+    else if (e.button === 0 && isSpacePressed) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
     }
   };
 
@@ -294,8 +327,10 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
     // Always update hover cell
     updateHoverCell(e);
     
-    // Handle dragging for pan
-    if (isDragging && activeMouseButton === 2) {
+    // Handle dragging for pan with right mouse button (2), middle mouse button (1),
+    // or spacebar + any mouse button
+    if (isDragging && (activeMouseButton === 2 || activeMouseButton === 1 || 
+        (isSpacePressed && activeMouseButton === 0))) {
       const dx = e.clientX - dragStart.x;
       const dy = e.clientY - dragStart.y;
       
@@ -305,15 +340,24 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
       });
       
       setDragStart({ x: e.clientX, y: e.clientY });
-    } 
+    }
+    // Handle spacebar + mouse move (even without button press)
+    else if (isSpacePressed && !isDragging) {
+      // Start dragging when space is pressed and mouse moves
+      setIsDragging(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
+    }
     // Handle continuous drawing while mouse is down
-    else if (activeMouseButton === 0 && currentTool !== 'select') {
+    else if (activeMouseButton === 0 && !isSpacePressed && currentTool !== 'select') {
       handleCanvasClick(e);
     }
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    // Only stop dragging if we're not using spacebar navigation
+    if (!isSpacePressed) {
+      setIsDragging(false);
+    }
     setActiveMouseButton(null);
   };
 
