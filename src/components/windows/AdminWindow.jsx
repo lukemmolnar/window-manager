@@ -540,13 +540,9 @@ const AdminWindow = ({ isActive }) => {
                   <tr key={userItem.id} className="border-b border-stone-800 hover:bg-stone-800">
                     <td className="p-2">
                       {editingUser === userItem.id ? (
-                        <input
-                          type="text"
-                          name="username"
-                          value={formData.username}
-                          onChange={handleChange}
-                          className="bg-stone-700 text-white px-2 py-1 rounded w-full"
-                        />
+                        <span className="text-white px-2 py-1 rounded w-full">
+                          {userItem.id}
+                        </span>
                       ) : (
                         userItem.id
                       )}
