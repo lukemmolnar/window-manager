@@ -7,7 +7,7 @@ export const TILE_SIZE = 48; // Size of each tile in pixels
 export const TILESET_COLS = 16; // Number of columns in the sprite sheet (adjust based on actual width)
 
 // Path to the floor tileset
-export const FLOOR_TILESET_PATH = '/assets/sheets/floors/uf_terrain_sheet.png';
+export const FLOOR_TILESET_PATH = '/sheets/floors/uf_terrain_sheet.png';
 
 // Named sections for better organization
 export const TILE_SECTIONS = {
