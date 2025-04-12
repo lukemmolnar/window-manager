@@ -1,12 +1,13 @@
 import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
+import { getTileCoordinates, FLOOR_TILESET_PATH, TILE_SIZE } from './utils/tileRegistry';
 
 /**
  * The main canvas component for the Grid Map Editor
  * Handles rendering and interaction with the grid map
  */
-const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
+const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onEdit }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [gridSize, setGridSize] = useState(32);
@@ -17,22 +18,51 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
   const [hoverCell, setHoverCell] = useState(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [floorTilesetImage, setFloorTilesetImage] = useState(null);
+  
+  // Load the tileset image on component mount
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setFloorTilesetImage(img);
+    img.onerror = () => console.error('Failed to load floor tileset');
+    img.src = FLOOR_TILESET_PATH;
+  }, []);
 
   /**
-   * Draw a tile on the canvas based on its type
+   * Draw a tile on the canvas based on its type and tile ID
    * @param {CanvasRenderingContext2D} ctx - Canvas context
    * @param {number} x - X position on canvas
    * @param {number} y - Y position on canvas
    * @param {number} size - Size of the tile
-   * @param {string} type - Type of the tile (wall, floor, door, etc.)
+   * @param {Object} cell - The cell data including type and tileId
    */
-  const drawTile = (ctx, x, y, size, type) => {
+  const drawTile = (ctx, x, y, size, cell) => {
+    const { type, tileId } = cell;
+    
+    if (type === 'floor' && tileId !== undefined && floorTilesetImage) {
+      // Draw from sprite sheet
+      const { sourceX, sourceY } = getTileCoordinates(tileId);
+      
+      ctx.drawImage(
+        floorTilesetImage,
+        sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+        x, y, size, size
+      );
+      
+      // Draw grid lines on top
+      ctx.strokeStyle = '#44403c'; // Stone-700
+      ctx.strokeRect(x, y, size, size);
+      return;
+    }
+    
+    // Fall back to original color-based rendering for other types
     switch(type) {
       case 'wall':
         ctx.fillStyle = '#6b7280'; // Gray
         ctx.fillRect(x, y, size, size);
         break;
       case 'floor':
+        // Default floor if no tileId or image failed to load
         ctx.fillStyle = '#1e293b'; // Slate-800
         ctx.fillRect(x, y, size, size);
         break;
@@ -241,7 +271,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, onEdit }) => {
           // Draw the tile if it's visible on screen
           if (screenX > -gridSize && screenX < width && 
               screenY > -gridSize && screenY < height) {
-            drawTile(ctx, screenX, screenY, gridSize, cell.type);
+            drawTile(ctx, screenX, screenY, gridSize, cell);
           }
         });
         

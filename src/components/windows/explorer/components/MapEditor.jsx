@@ -13,6 +13,7 @@ import MapToolbar from '../../mapeditor/MapToolbar';
 import MapCanvas from '../../mapeditor/MapCanvas';
 import LayerPanel from '../../mapeditor/LayerPanel';
 import MapPropertiesPanel from '../../mapeditor/MapPropertiesPanel';
+import TilePalette from '../../mapeditor/TilePalette';
 
 /**
  * Map Editor component for use within the FileContent area
@@ -31,6 +32,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [asciiImportText, setAsciiImportText] = useState('');
   const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
   const [showPropertiesPanel, setShowPropertiesPanel] = useState(false);
+  const [showTilePalette, setShowTilePalette] = useState(false);
+  const [selectedTileId, setSelectedTileId] = useState(0);
   
   // Reference for auto-save functionality
   const autoSaveTimeoutRef = useRef(null);
@@ -56,6 +59,11 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       setIsDirty(true);
     }
   }, [fileContent]);
+  
+  // Show/hide tile palette based on current tool
+  useEffect(() => {
+    setShowTilePalette(currentTool === 'floor');
+  }, [currentTool]);
 
   // Auto-save when map data changes
   useEffect(() => {
@@ -132,12 +140,20 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
         layerData.cells = layerData.cells.filter((_, index) => index !== existingCellIndex);
       }
     } else {
+      // Create the cell data based on the tool type
+      let cellData = { x, y, type: tool };
+      
+      // For floor tiles, include the selected tile ID
+      if (tool === 'floor') {
+        cellData.tileId = selectedTileId;
+      }
+      
       // If a cell already exists at this position, update it
       if (existingCellIndex !== -1) {
-        layerData.cells[existingCellIndex] = { x, y, type: tool };
+        layerData.cells[existingCellIndex] = cellData;
       } else {
         // Otherwise, add a new cell
-        layerData.cells.push({ x, y, type: tool });
+        layerData.cells.push(cellData);
       }
     }
     
@@ -399,27 +415,38 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       )}
       
       {/* Main content area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Canvas for map editing */}
-        <MapCanvas 
-          mapData={mapData}
-          currentLayer={currentLayer}
-          currentTool={currentTool}
-          onEdit={handleEdit}
-        />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex overflow-hidden">
+          {/* Canvas for map editing */}
+          <MapCanvas 
+            mapData={mapData}
+            currentLayer={currentLayer}
+            currentTool={currentTool}
+            selectedTileId={selectedTileId}
+            onEdit={handleEdit}
+          />
+          
+          {/* Layer panel */}
+          <LayerPanel 
+            layers={mapData.layers}
+            currentLayer={currentLayer}
+            setCurrentLayer={setCurrentLayer}
+            onToggleLayerVisibility={handleToggleLayerVisibility}
+            onAddLayer={handleAddLayer}
+            onRemoveLayer={handleRemoveLayer}
+            onMoveLayerUp={handleMoveLayerUp}
+            onMoveLayerDown={handleMoveLayerDown}
+            onRenameLayer={handleRenameLayer}
+          />
+        </div>
         
-        {/* Layer panel */}
-        <LayerPanel 
-          layers={mapData.layers}
-          currentLayer={currentLayer}
-          setCurrentLayer={setCurrentLayer}
-          onToggleLayerVisibility={handleToggleLayerVisibility}
-          onAddLayer={handleAddLayer}
-          onRemoveLayer={handleRemoveLayer}
-          onMoveLayerUp={handleMoveLayerUp}
-          onMoveLayerDown={handleMoveLayerDown}
-          onRenameLayer={handleRenameLayer}
-        />
+        {/* Tile palette - shown when floor tool is selected */}
+        {showTilePalette && (
+          <TilePalette 
+            selectedTileId={selectedTileId}
+            onSelectTile={setSelectedTileId}
+          />
+        )}
       </div>
       
       {/* Properties Panel */}
