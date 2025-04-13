@@ -73,17 +73,17 @@ const TilePalette = ({ onSelectTile, selectedTileId = 0 }) => {
       ) : !tilesetImage ? (
         <div className="text-center p-4 text-red-400">Failed to load tile set</div>
       ) : (
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-5 gap-1 justify-items-center">
           {displayTiles.map(tileIndex => (
             <div
               key={tileIndex}
-              className={`p-1 rounded cursor-pointer ${
+              className={`rounded cursor-pointer ${
                 selectedTileId === tileIndex ? 'bg-teal-900 border border-teal-500' : 'hover:bg-stone-700'
               }`}
               onClick={() => onSelectTile(tileIndex)}
               title={getTileName(tileIndex)}
             >
-              <div className="w-10 h-10 bg-stone-900 relative flex items-center justify-center overflow-hidden">
+              <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
                 <canvas
                   ref={canvas => {
                     if (canvas && tilesetImage) {
@@ -92,6 +92,7 @@ const TilePalette = ({ onSelectTile, selectedTileId = 0 }) => {
                       
                       const { sourceX, sourceY } = getTileCoordinates(tileIndex);
                       
+                      // Center the tile in the canvas
                       ctx.drawImage(
                         tilesetImage,
                         sourceX, // sourceX
@@ -107,6 +108,8 @@ const TilePalette = ({ onSelectTile, selectedTileId = 0 }) => {
                   }}
                   width={40}
                   height={40}
+                  className="mx-auto" // Add margin auto to center the canvas horizontally
+                  style={{ display: 'block' }} // Make canvas a block element
                 />
               </div>
             </div>
