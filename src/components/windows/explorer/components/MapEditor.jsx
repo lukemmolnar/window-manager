@@ -415,38 +415,31 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       )}
       
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 flex overflow-hidden">
-          {/* Canvas for map editing */}
-          <MapCanvas 
-            mapData={mapData}
-            currentLayer={currentLayer}
-            currentTool={currentTool}
-            selectedTileId={selectedTileId}
-            onEdit={handleEdit}
-          />
-          
-          {/* Layer panel */}
-          <LayerPanel 
-            layers={mapData.layers}
-            currentLayer={currentLayer}
-            setCurrentLayer={setCurrentLayer}
-            onToggleLayerVisibility={handleToggleLayerVisibility}
-            onAddLayer={handleAddLayer}
-            onRemoveLayer={handleRemoveLayer}
-            onMoveLayerUp={handleMoveLayerUp}
-            onMoveLayerDown={handleMoveLayerDown}
-            onRenameLayer={handleRenameLayer}
-          />
-        </div>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Canvas for map editing */}
+        <MapCanvas 
+          mapData={mapData}
+          currentLayer={currentLayer}
+          currentTool={currentTool}
+          selectedTileId={selectedTileId}
+          onEdit={handleEdit}
+        />
         
-        {/* Tile palette - shown when floor tool is selected */}
-        {showTilePalette && (
-          <TilePalette 
-            selectedTileId={selectedTileId}
-            onSelectTile={setSelectedTileId}
-          />
-        )}
+        {/* Layer panel with integrated tile palette */}
+        <LayerPanel 
+          layers={mapData.layers}
+          currentLayer={currentLayer}
+          setCurrentLayer={setCurrentLayer}
+          onToggleLayerVisibility={handleToggleLayerVisibility}
+          onAddLayer={handleAddLayer}
+          onRemoveLayer={handleRemoveLayer}
+          onMoveLayerUp={handleMoveLayerUp}
+          onMoveLayerDown={handleMoveLayerDown}
+          onRenameLayer={handleRenameLayer}
+          showTilePalette={showTilePalette}
+          selectedTileId={selectedTileId}
+          onSelectTile={setSelectedTileId}
+        />
       </div>
       
       {/* Properties Panel */}

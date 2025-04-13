@@ -73,7 +73,7 @@ const TilePalette = ({ onSelectTile, selectedTileId = 0 }) => {
       ) : !tilesetImage ? (
         <div className="text-center p-4 text-red-400">Failed to load tile set</div>
       ) : (
-        <div className="grid grid-cols-6 gap-1">
+        <div className="grid grid-cols-5 gap-1">
           {displayTiles.map(tileIndex => (
             <div
               key={tileIndex}

@@ -1,11 +1,25 @@
 import React from 'react';
 import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
+import TilePalette from './TilePalette';
 
 /**
  * Layer panel component for the Map Editor
- * Allows for managing layers (visibility, order, etc)
+ * Allows for managing layers (visibility, order, etc) and selecting tiles
  */
-const LayerPanel = ({ layers, currentLayer, setCurrentLayer, onToggleLayerVisibility, onAddLayer, onRemoveLayer, onMoveLayerUp, onMoveLayerDown, onRenameLayer }) => {
+const LayerPanel = ({ 
+  layers, 
+  currentLayer, 
+  setCurrentLayer, 
+  onToggleLayerVisibility, 
+  onAddLayer, 
+  onRemoveLayer, 
+  onMoveLayerUp, 
+  onMoveLayerDown, 
+  onRenameLayer,
+  showTilePalette = false,
+  selectedTileId = 0,
+  onSelectTile 
+}) => {
   return (
     <div className="w-64 bg-stone-800 border-l border-stone-700 flex flex-col">
       <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
@@ -128,6 +142,16 @@ const LayerPanel = ({ layers, currentLayer, setCurrentLayer, onToggleLayerVisibi
           <div className="text-stone-500">No layer selected</div>
         )}
       </div>
+      
+      {/* Tile Palette (conditionally rendered) */}
+      {showTilePalette && onSelectTile && (
+        <div className="border-t border-stone-700">
+          <TilePalette 
+            selectedTileId={selectedTileId}
+            onSelectTile={onSelectTile}
+          />
+        </div>
+      )}
     </div>
   );
 };
