@@ -77,8 +77,8 @@ const TilePalette = ({ onSelectTile, selectedTileId = 0 }) => {
           {displayTiles.map(tileIndex => (
             <div
               key={tileIndex}
-              className={`rounded cursor-pointer ${
-                selectedTileId === tileIndex ? 'bg-teal-900 border border-teal-500' : 'hover:bg-stone-700'
+              className={`rounded cursor-pointer border ${
+                selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
               }`}
               onClick={() => onSelectTile(tileIndex)}
               title={getTileName(tileIndex)}
