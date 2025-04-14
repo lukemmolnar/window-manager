@@ -70,31 +70,10 @@ const TilePalette = ({
   // Get tiles to display based on current section filter
   const displayTiles = useMemo(() => {
     if (currentSection === null) {
-      // Show all tiles up to the calculated total, but intelligently filter out likely blank spaces
+      // Show all tiles from the tileset - all positions are valid
       if (totalTiles > 0) {
-        const allTiles = [];
-        for (let i = 0; i < totalTiles; i++) {
-          // Add the tile if it's likely to be valid (based on tileset organization pattern)
-          // Tiles seem to be organized in 16-index columns, with meaningful tiles in consistent positions
-          // This includes tiles that might not be in the TILE_SECTIONS definitions
-          const col = i % TILESET_COLS;
-          const row = Math.floor(i / TILESET_COLS);
-
-          // This pattern attempts to include all tiles that might be valid in the set
-          if (i < 7 || // First row (0-6)
-              (i >= 16 && i < 23) || // Second row (16-22) 
-              (i >= 32 && i < 39) || // Third row (32-38)
-              (i >= 48 && i < 55) || // Fourth row (48-54)
-              (i >= 64 && i < 71) || // Fifth row (64-70)
-              (i >= 80 && i < 87) || // Sixth row (80-86)
-              (i >= 96 && i < 103) || // Seventh row (96-102)
-              (i >= 112 && i < 119) || // Eighth row (112-118)
-              (i >= 128 && i < 135) || // Ninth row (128-134)
-              (i >= 144 && i < 151)) { // Tenth row (144-150)
-            allTiles.push(i);
-          }
-        }
-        return allTiles;
+        // Simply create an array of indices from 0 to totalTiles-1
+        return Array.from({ length: totalTiles }, (_, i) => i);
       }
       return [];
     } else {
