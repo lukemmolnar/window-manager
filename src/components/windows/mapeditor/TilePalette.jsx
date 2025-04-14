@@ -23,11 +23,9 @@ const TilePalette = ({
   
   // Available tile types
   const tileTypes = [
-    { id: 'select', name: 'Select' },
     { id: 'floor', name: 'Floor' },
     { id: 'wall', name: 'Wall' },
-    { id: 'door', name: 'Door' },
-    { id: 'erase', name: 'Erase' }
+    { id: 'door', name: 'Door' }
   ];
   
   // Load the tileset image

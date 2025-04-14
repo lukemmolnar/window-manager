@@ -450,14 +450,40 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
   };
 
   const handleWheel = (e) => {
-    // Zoom in/out with mouse wheel
+    // Get cursor position relative to canvas
+    const rect = canvasRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Get grid coordinates under cursor before zoom
+    const gridCoordsBefore = screenToGridCoordinates(mouseX, mouseY, gridSize, viewportOffset);
+    
+    // Calculate new grid size
+    let newGridSize;
     if (e.deltaY < 0) {
       // Zoom in - increase grid size
-      setGridSize(prev => Math.min(prev + 4, 64));
+      newGridSize = Math.min(gridSize + 4, 64);
     } else {
       // Zoom out - decrease grid size
-      setGridSize(prev => Math.max(prev - 4, 16));
+      newGridSize = Math.max(gridSize - 4, 16);
     }
+    
+    // Calculate screen coordinates after zoom with the current viewport offset
+    const screenCoordsAfter = {
+      x: gridCoordsBefore.x * newGridSize + viewportOffset.x,
+      y: gridCoordsBefore.y * newGridSize + viewportOffset.y
+    };
+    
+    // Calculate the difference to maintain cursor position
+    const dx = mouseX - screenCoordsAfter.x;
+    const dy = mouseY - screenCoordsAfter.y;
+    
+    // Update grid size and adjust viewport offset
+    setGridSize(newGridSize);
+    setViewportOffset(prev => ({
+      x: prev.x + dx,
+      y: prev.y + dy
+    }));
   };
 
   return (

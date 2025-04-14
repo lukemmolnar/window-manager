@@ -32,21 +32,6 @@ const MapToolbar = ({
         >
           <Save size={18} />
         </button>
-        
-        <button 
-          className="p-2 hover:bg-stone-700 rounded text-teal-400"
-          title="Undo"
-          onClick={onUndo}
-        >
-          <Undo size={18} />
-        </button>
-        <button 
-          className="p-2 hover:bg-stone-700 rounded text-teal-400"
-          title="Redo"
-          onClick={onRedo}
-        >
-          <Redo size={18} />
-        </button>
         <button 
           className="p-2 hover:bg-stone-700 rounded text-teal-400"
           title="Clear map"
@@ -96,18 +81,6 @@ const MapToolbar = ({
           title={showGrid ? "Hide grid" : "Show grid"}
         >
           <Grid size={18} />
-        </button>
-        <button 
-          className="p-2 hover:bg-stone-700 rounded text-teal-400"
-          title="Zoom in"
-        >
-          <ZoomIn size={18} />
-        </button>
-        <button 
-          className="p-2 hover:bg-stone-700 rounded text-teal-400"
-          title="Zoom out"
-        >
-          <ZoomOut size={18} />
         </button>
         <button 
           className="p-2 hover:bg-stone-700 rounded text-teal-400"
