@@ -2,15 +2,17 @@
  * Tile registry and helper functions for managing sprite sheet tiles
  */
 
-// Import the tileset directly
+// Import the tilesets directly
 import terrainTilesetImage from '../../../../assets/sheets/floors/uf_terrain_sheet.png';
+import wallTilesetImage from '/sheets/walls/uf_terrain_sheet_walls.png'; // Using absolute path from public folder
 
 // Tile dimensions and sprite sheet configuration
 export const TILE_SIZE = 48; // Size of each tile in pixels
 export const TILESET_COLS = 16; // Number of columns in the sprite sheet (adjust based on actual width)
 
-// Path to the floor tileset (using imported image)
+// Path to the tilesets (using imported images)
 export const FLOOR_TILESET_PATH = terrainTilesetImage;
+export const WALL_TILESET_PATH = wallTilesetImage;
 
 // Named sections for better organization
 export const TILE_SECTIONS = {
@@ -23,6 +25,14 @@ export const TILE_SECTIONS = {
   STONE_PATTERN: { startIndex: 96, count: 3, name: "Stone Pattern" },
   CHECKERED: { startIndex: 112, count: 3, name: "Checkered" },
   // Add more sections as needed
+};
+
+// Wall tile sections
+export const WALL_TILE_SECTIONS = {
+  STONE_WALLS: { startIndex: 0, count: 8, name: "Stone Walls" },
+  BRICK_WALLS: { startIndex: 16, count: 8, name: "Brick Walls" },
+  WOOD_WALLS: { startIndex: 32, count: 4, name: "Wooden Walls" },
+  // Add more wall sections as needed
 };
 
 /**
@@ -47,15 +57,26 @@ export const getTileCoordinates = (tileIndex) => {
 /**
  * Gets a descriptive name for a tile based on its index
  * @param {number} tileIndex - The index of the tile
+ * @param {string} tileType - The type of tile ('floor', 'wall', etc.)
  * @returns {string} A human-readable name for the tile
  */
-export const getTileName = (tileIndex) => {
+export const getTileName = (tileIndex, tileType = 'floor') => {
   // Find which section this tile belongs to
-  for (const [sectionKey, section] of Object.entries(TILE_SECTIONS)) {
-    if (tileIndex >= section.startIndex && tileIndex < section.startIndex + section.count) {
-      const tileNumber = tileIndex - section.startIndex + 1;
-      return `${section.name} ${tileNumber}`;
+  if (tileType === 'floor') {
+    for (const [sectionKey, section] of Object.entries(TILE_SECTIONS)) {
+      if (tileIndex >= section.startIndex && tileIndex < section.startIndex + section.count) {
+        const tileNumber = tileIndex - section.startIndex + 1;
+        return `${section.name} ${tileNumber}`;
+      }
     }
+  } else if (tileType === 'wall') {
+    for (const [sectionKey, section] of Object.entries(WALL_TILE_SECTIONS)) {
+      if (tileIndex >= section.startIndex && tileIndex < section.startIndex + section.count) {
+        const tileNumber = tileIndex - section.startIndex + 1;
+        return `${section.name} ${tileNumber}`;
+      }
+    }
+    return `Wall Tile ${tileIndex}`;
   }
   
   // Fallback if not in a named section

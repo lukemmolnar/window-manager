@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
-  FLOOR_TILESET_PATH, 
+  FLOOR_TILESET_PATH,
+  WALL_TILESET_PATH,
   TILE_SIZE, 
   TILESET_COLS,
   getTileCoordinates, 
   getTileName, 
-  TILE_SECTIONS 
+  TILE_SECTIONS,
+  WALL_TILE_SECTIONS
 } from './utils/tileRegistry';
 
 /**
@@ -17,10 +19,13 @@ const TilePalette = ({
   tileType = 'floor',
   onChangeTileType
 }) => {
-  const [tilesetImage, setTilesetImage] = useState(null);
+  const [floorTilesetImage, setFloorTilesetImage] = useState(null);
+  const [wallTilesetImage, setWallTilesetImage] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentSection, setCurrentSection] = useState(null); // Filter by section
-  const [totalTiles, setTotalTiles] = useState(0);
+  const [currentSection, setCurrentSection] = useState(null); // Filter by section for floor
+  const [currentWallSection, setCurrentWallSection] = useState(null); // Filter by section for wall
+  const [totalFloorTiles, setTotalFloorTiles] = useState(0);
+  const [totalWallTiles, setTotalWallTiles] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const initialTileTypeRef = useRef(tileType);
   
@@ -39,45 +44,79 @@ const TilePalette = ({
   // Track the actual columns detected in the image
   const [actualColumns, setActualColumns] = useState(TILESET_COLS);
   
-  // Load the tileset image
+  // Load the tileset images
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      setTilesetImage(img);
+    // Load floor tileset
+    const floorImg = new Image();
+    floorImg.onload = () => {
+      setFloorTilesetImage(floorImg);
       
       // Calculate total available tiles based on image dimensions
-      const cols = Math.floor(img.width / TILE_SIZE);
-      const rows = Math.floor(img.height / TILE_SIZE);
+      const cols = Math.floor(floorImg.width / TILE_SIZE);
+      const rows = Math.floor(floorImg.height / TILE_SIZE);
       const total = cols * rows;
       
-      console.log(`Detected ${total} tiles (${cols}x${rows}) in the sprite sheet`);
+      console.log(`Detected ${total} floor tiles (${cols}x${rows}) in the sprite sheet`);
       setActualColumns(cols); // Store the actual number of columns
-      setTotalTiles(total);
-      setLoading(false);
-      setIsInitialized(true); // Mark as initialized after image loads
+      setTotalFloorTiles(total);
+      
+      if (wallTilesetImage || tileType !== 'wall') {
+        setLoading(false);
+        setIsInitialized(true); // Mark as initialized after image loads
+      }
     };
-    img.onerror = () => {
-      console.error('Failed to load tileset image');
-      setLoading(false);
-      setIsInitialized(true); // Mark as initialized even if image fails to load
+    floorImg.onerror = () => {
+      console.error('Failed to load floor tileset image');
+      if (wallTilesetImage || tileType !== 'wall') {
+        setLoading(false);
+        setIsInitialized(true);
+      }
     };
-    img.src = FLOOR_TILESET_PATH;
+    floorImg.src = FLOOR_TILESET_PATH;
+    
+    // Load wall tileset
+    const wallImg = new Image();
+    wallImg.onload = () => {
+      setWallTilesetImage(wallImg);
+      
+      // Calculate total available tiles based on image dimensions
+      const cols = Math.floor(wallImg.width / TILE_SIZE);
+      const rows = Math.floor(wallImg.height / TILE_SIZE);
+      const total = cols * rows;
+      
+      console.log(`Detected ${total} wall tiles (${cols}x${rows}) in the sprite sheet`);
+      setTotalWallTiles(total);
+      
+      if (floorTilesetImage || tileType !== 'floor') {
+        setLoading(false);
+        setIsInitialized(true); // Mark as initialized after image loads
+      }
+    };
+    wallImg.onerror = () => {
+      console.error('Failed to load wall tileset image');
+      if (floorTilesetImage || tileType !== 'floor') {
+        setLoading(false);
+        setIsInitialized(true);
+      }
+    };
+    wallImg.src = WALL_TILESET_PATH;
   }, []);
 
-  // Force a re-render when the component first mounts with floor type
+  // Force a re-render when the component first mounts
   useEffect(() => {
-    if (tileType === 'floor' && tilesetImage && !isInitialized) {
+    const currentImage = tileType === 'floor' ? floorTilesetImage : wallTilesetImage;
+    if (currentImage && !isInitialized) {
       setIsInitialized(true);
     }
-  }, [tileType, tilesetImage, isInitialized]);
+  }, [tileType, floorTilesetImage, wallTilesetImage, isInitialized]);
   
-  // Get tiles to display based on current section filter
-  const displayTiles = useMemo(() => {
+  // Get floor tiles to display based on current section filter
+  const displayFloorTiles = useMemo(() => {
     if (currentSection === null) {
       // Show all tiles from the tileset - all positions are valid
-      if (totalTiles > 0) {
-        // Simply create an array of indices from 0 to totalTiles-1
-        return Array.from({ length: totalTiles }, (_, i) => i);
+      if (totalFloorTiles > 0) {
+        // Simply create an array of indices from 0 to totalFloorTiles-1
+        return Array.from({ length: totalFloorTiles }, (_, i) => i);
       }
       return [];
     } else {
@@ -85,7 +124,23 @@ const TilePalette = ({
       const section = TILE_SECTIONS[currentSection];
       return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
     }
-  }, [currentSection, totalTiles]);
+  }, [currentSection, totalFloorTiles]);
+  
+  // Get wall tiles to display based on current section filter
+  const displayWallTiles = useMemo(() => {
+    if (currentWallSection === null) {
+      // Show all tiles from the tileset - all positions are valid
+      if (totalWallTiles > 0) {
+        // Simply create an array of indices from 0 to totalWallTiles-1
+        return Array.from({ length: totalWallTiles }, (_, i) => i);
+      }
+      return [];
+    } else {
+      // Show only tiles from the selected section
+      const section = WALL_TILE_SECTIONS[currentWallSection];
+      return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
+    }
+  }, [currentWallSection, totalWallTiles]);
 
   return (
     <div className="bg-stone-800 border-t border-stone-700 p-2 max-h-64 overflow-y-auto">
@@ -126,20 +181,78 @@ const TilePalette = ({
         </>
       )}
       
-      {/* Wall tile simple selector - shown when wall type is selected */}
+      {/* Wall tile palette - shown when wall type is selected */}
       {tileType === 'wall' && (
-        <div className="mb-2">
-          <h3 className="text-sm font-mono text-teal-400 mb-2">WALL STYLE</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <div 
-              className="bg-stone-700 p-3 rounded cursor-pointer border-2 border-teal-500 text-center"
-              onClick={() => onSelectTile(0)}
+        <>
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-mono text-teal-400">WALL STYLES</h3>
+            
+            {/* Section filter dropdown */}
+            <select 
+              className="bg-stone-700 text-teal-300 text-xs rounded p-1 border-none"
+              value={currentWallSection || ""}
+              onChange={(e) => setCurrentWallSection(e.target.value || null)}
             >
-              <div className="bg-slate-600 h-10 w-full"></div>
-              <div className="mt-1 text-xs text-teal-300">Basic Wall</div>
-            </div>
+              <option value="">All Wall Tiles</option>
+              {Object.entries(WALL_TILE_SECTIONS).map(([key, section]) => (
+                <option key={key} value={key}>{section.name}</option>
+              ))}
+            </select>
           </div>
-        </div>
+          
+          {loading ? (
+            <div className="text-center p-4 text-stone-400">Loading wall tiles...</div>
+          ) : !wallTilesetImage ? (
+            <div className="text-center p-4 text-red-400">Failed to load wall tile set</div>
+          ) : (
+            <div key={`wall-grid-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
+              {displayWallTiles.map(tileIndex => (
+                <div
+                  key={tileIndex}
+                  className={`rounded cursor-pointer border ${
+                    selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
+                  }`}
+                  onClick={() => onSelectTile(tileIndex)}
+                  title={getTileName(tileIndex, 'wall')}
+                >
+                  <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
+                    <canvas
+                      ref={canvas => {
+                        if (canvas && wallTilesetImage) {
+                          const ctx = canvas.getContext('2d');
+                          ctx.clearRect(0, 0, 40, 40);
+                          
+                          // Calculate coordinates based on actual columns in the sheet
+                          const col = tileIndex % actualColumns;
+                          const row = Math.floor(tileIndex / actualColumns);
+                          const sourceX = col * TILE_SIZE;
+                          const sourceY = row * TILE_SIZE;
+                          
+                          // Center the tile in the canvas
+                          ctx.drawImage(
+                            wallTilesetImage,
+                            sourceX, // sourceX
+                            sourceY, // sourceY
+                            TILE_SIZE, // sourceWidth
+                            TILE_SIZE, // sourceHeight
+                            0, // destX
+                            0, // destY
+                            40, // destWidth
+                            40  // destHeight
+                          );
+                        }
+                      }}
+                      width={40}
+                      height={40}
+                      className="mx-auto"
+                      style={{ display: 'block' }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
       
       {/* Door tile simple selector - shown when door type is selected */}
@@ -165,11 +278,11 @@ const TilePalette = ({
       {tileType === 'floor' && (
         loading ? (
           <div className="text-center p-4 text-stone-400">Loading tile set...</div>
-        ) : !tilesetImage ? (
+        ) : !floorTilesetImage ? (
           <div className="text-center p-4 text-red-400">Failed to load tile set</div>
         ) : (
           <div key={`floor-grid-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
-            {displayTiles.map(tileIndex => (
+            {displayFloorTiles.map(tileIndex => (
               <div
                 key={tileIndex}
                 className={`rounded cursor-pointer border ${
@@ -181,7 +294,7 @@ const TilePalette = ({
                 <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
                   <canvas
                     ref={canvas => {
-                      if (canvas && tilesetImage) {
+                      if (canvas && floorTilesetImage) {
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, 40, 40);
                         
@@ -194,7 +307,7 @@ const TilePalette = ({
                         
                         // Center the tile in the canvas
                         ctx.drawImage(
-                          tilesetImage,
+                          floorTilesetImage,
                           sourceX, // sourceX
                           sourceY, // sourceY
                           TILE_SIZE, // sourceWidth

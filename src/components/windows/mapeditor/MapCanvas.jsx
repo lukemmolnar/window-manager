@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
-import { getTileCoordinates, FLOOR_TILESET_PATH, TILE_SIZE, TILESET_COLS } from './utils/tileRegistry';
+import { getTileCoordinates, FLOOR_TILESET_PATH, WALL_TILESET_PATH, TILE_SIZE, TILESET_COLS } from './utils/tileRegistry';
 
 /**
  * The main canvas component for the Grid Map Editor
@@ -19,20 +19,31 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [floorTilesetImage, setFloorTilesetImage] = useState(null);
+  const [wallTilesetImage, setWallTilesetImage] = useState(null);
   const [actualColumns, setActualColumns] = useState(TILESET_COLS);
   
-  // Load the tileset image on component mount
+  // Load the tileset images on component mount
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      setFloorTilesetImage(img);
+    // Load floor tileset
+    const floorImg = new Image();
+    floorImg.onload = () => {
+      setFloorTilesetImage(floorImg);
       // Calculate and store the actual number of columns
-      const cols = Math.floor(img.width / TILE_SIZE);
-      console.log(`MapCanvas: Detected ${cols} columns in the sprite sheet`);
+      const cols = Math.floor(floorImg.width / TILE_SIZE);
+      console.log(`MapCanvas: Detected ${cols} columns in the floor sprite sheet`);
       setActualColumns(cols);
     };
-    img.onerror = () => console.error('Failed to load floor tileset');
-    img.src = FLOOR_TILESET_PATH;
+    floorImg.onerror = () => console.error('Failed to load floor tileset');
+    floorImg.src = FLOOR_TILESET_PATH;
+    
+    // Load wall tileset
+    const wallImg = new Image();
+    wallImg.onload = () => {
+      setWallTilesetImage(wallImg);
+      console.log('MapCanvas: Wall tileset loaded successfully');
+    };
+    wallImg.onerror = () => console.error('Failed to load wall tileset');
+    wallImg.src = WALL_TILESET_PATH;
   }, []);
 
   /**
@@ -47,6 +58,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
   const drawTile = (ctx, x, y, size, cell) => {
     const { type, tileId } = cell;
     
+    // Handle floor tiles with tileset
     if (type === 'floor' && tileId !== undefined && floorTilesetImage) {
       // Calculate coordinates based on actual columns in the sheet
       // instead of using getTileCoordinates which might use the wrong column count
@@ -69,9 +81,32 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
       return;
     }
     
+    // Handle wall tiles with tileset
+    if (type === 'wall' && tileId !== undefined && wallTilesetImage) {
+      // Calculate coordinates based on actual columns in the sheet
+      const col = tileId % actualColumns;
+      const row = Math.floor(tileId / actualColumns);
+      const sourceX = col * TILE_SIZE;
+      const sourceY = row * TILE_SIZE;
+      
+      ctx.drawImage(
+        wallTilesetImage,
+        sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+        x, y, size, size
+      );
+      
+      // Draw grid lines on top only if showGrid is true
+      if (showGrid) {
+        ctx.strokeStyle = '#44403c'; // Stone-700
+        ctx.strokeRect(x, y, size, size);
+      }
+      return;
+    }
+    
     // Fall back to original color-based rendering for other types
     switch(type) {
       case 'wall':
+        // Fallback if wall tileset image failed to load or tileId is undefined
         ctx.fillStyle = '#6b7280'; // Gray
         ctx.fillRect(x, y, size, size);
         break;
@@ -366,6 +401,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     activeMouseButton, 
     showGrid, 
     floorTilesetImage,
+    wallTilesetImage,
     actualColumns  // Add actualColumns as a dependency since we use it in drawTile
   ]);
   
@@ -383,12 +419,12 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     }
   }, [canvasSize, drawCanvas]);
 
-  // Manually trigger a redraw whenever floorTilesetImage is loaded
+  // Manually trigger a redraw whenever tileset images are loaded
   useEffect(() => {
-    if (floorTilesetImage) {
+    if (floorTilesetImage || wallTilesetImage) {
       drawCanvas();
     }
-  }, [floorTilesetImage, drawCanvas]);
+  }, [floorTilesetImage, wallTilesetImage, drawCanvas]);
 
   // Handle canvas mouse events
   const handleMouseDown = (e) => {
