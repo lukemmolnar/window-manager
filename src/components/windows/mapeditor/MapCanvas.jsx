@@ -7,7 +7,7 @@ import { getTileCoordinates, FLOOR_TILESET_PATH, TILE_SIZE } from './utils/tileR
  * The main canvas component for the Grid Map Editor
  * Handles rendering and interaction with the grid map
  */
-const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onEdit }) => {
+const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onEdit, showGrid = true }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [gridSize, setGridSize] = useState(32);
@@ -293,28 +293,30 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
       });
     }
     
-    // Draw grid on top
-    ctx.strokeStyle = '#44403c'; // Stone-700 from Tailwind
-    ctx.lineWidth = 1;
-    
-    // Calculate grid line positioning
-    const gridOffsetX = offsetX % gridSize;
-    const gridOffsetY = offsetY % gridSize;
-    
-    // Draw vertical lines
-    for (let x = gridOffsetX; x < width; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    
-    // Draw horizontal lines
-    for (let y = gridOffsetY; y < height; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
+    // Draw grid on top (only if showGrid is true)
+    if (showGrid) {
+      ctx.strokeStyle = '#44403c'; // Stone-700 from Tailwind
+      ctx.lineWidth = 1;
+      
+      // Calculate grid line positioning
+      const gridOffsetX = offsetX % gridSize;
+      const gridOffsetY = offsetY % gridSize;
+      
+      // Draw vertical lines
+      for (let x = gridOffsetX; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      
+      // Draw horizontal lines
+      for (let y = gridOffsetY; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
     }
     
     // Draw hover highlight
@@ -426,6 +428,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
       <div className="absolute top-2 left-2 bg-stone-800 p-2 rounded text-xs text-teal-400 flex items-center z-10">
         <Grid size={14} className="mr-1" />
         <span>Grid Size: {gridSize}px</span>
+        {!showGrid && <span className="ml-2">(Grid Hidden)</span>}
       </div>
       
       <canvas 

@@ -34,6 +34,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [showPropertiesPanel, setShowPropertiesPanel] = useState(false);
   const [showTilePalette, setShowTilePalette] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(0);
+  const [showGrid, setShowGrid] = useState(true); // State for grid visibility
   
   // Reference for auto-save functionality
   const autoSaveTimeoutRef = useRef(null);
@@ -404,6 +405,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
         onExportAscii={handleExportAscii}
         onImportAscii={handleImportAscii}
         onShowProperties={handleTogglePropertiesPanel}
+        onToggleGrid={() => setShowGrid(!showGrid)}
+        showGrid={showGrid}
         saveStatus={saveStatus}
       />
       
@@ -423,6 +426,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           currentTool={currentTool}
           selectedTileId={selectedTileId}
           onEdit={handleEdit}
+          showGrid={showGrid}
         />
         
         {/* Layer panel with integrated tile palette */}

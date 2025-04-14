@@ -18,6 +18,8 @@ const MapToolbar = ({
   onExportAscii, 
   onImportAscii,
   onShowProperties,
+  onToggleGrid,
+  showGrid = true,
   saveStatus = 'saved' // default to 'saved'
 }) => {
   const tools = [
@@ -108,6 +110,15 @@ const MapToolbar = ({
 
       {/* View options */}
       <div className="flex space-x-1">
+        <button
+          onClick={onToggleGrid}
+          className={`p-2 hover:bg-stone-700 rounded ${
+            showGrid ? 'text-teal-400' : 'text-stone-500'
+          }`}
+          title={showGrid ? "Hide grid" : "Show grid"}
+        >
+          <Grid size={18} />
+        </button>
         <button 
           className="p-2 hover:bg-stone-700 rounded text-teal-400"
           title="Zoom in"
