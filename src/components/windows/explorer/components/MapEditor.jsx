@@ -23,7 +23,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   // State for map data
   const [mapData, setMapData] = useState(null);
   const [currentLayer, setCurrentLayer] = useState(0);
-  const [currentTool, setCurrentTool] = useState('select');
+  const [currentTool, setCurrentTool] = useState('floor'); // Default to floor instead of select
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'

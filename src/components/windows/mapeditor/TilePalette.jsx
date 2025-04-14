@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   FLOOR_TILESET_PATH, 
   TILE_SIZE, 
@@ -20,6 +20,8 @@ const TilePalette = ({
   const [loading, setLoading] = useState(true);
   const [currentSection, setCurrentSection] = useState(null); // Filter by section
   const [totalTiles, setTotalTiles] = useState(0);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const initialTileTypeRef = useRef(tileType);
   
   // Available tile types
   const tileTypes = [
@@ -28,6 +30,11 @@ const TilePalette = ({
     { id: 'door', name: 'Door' }
   ];
   
+  // Store the initial tile type to handle first render properly
+  useEffect(() => {
+    initialTileTypeRef.current = tileType;
+  }, []);
+
   // Load the tileset image
   useEffect(() => {
     const img = new Image();
@@ -42,13 +49,22 @@ const TilePalette = ({
       console.log(`Detected ${total} tiles (${cols}x${rows}) in the sprite sheet`);
       setTotalTiles(total);
       setLoading(false);
+      setIsInitialized(true); // Mark as initialized after image loads
     };
     img.onerror = () => {
       console.error('Failed to load tileset image');
       setLoading(false);
+      setIsInitialized(true); // Mark as initialized even if image fails to load
     };
     img.src = FLOOR_TILESET_PATH;
   }, []);
+
+  // Force a re-render when the component first mounts with floor type
+  useEffect(() => {
+    if (tileType === 'floor' && tilesetImage && !isInitialized) {
+      setIsInitialized(true);
+    }
+  }, [tileType, tilesetImage, isInitialized]);
   
   // Get tiles to display based on current section filter
   const displayTiles = useMemo(() => {
@@ -80,7 +96,7 @@ const TilePalette = ({
         </select>
       </div>
       
-      {/* Only show floor tile palette when floor type is selected */}
+      {/* Always include the floor section headings when floor type is selected */}
       {tileType === 'floor' && (
         <>
           <div className="flex justify-between items-center mb-2">
@@ -135,14 +151,15 @@ const TilePalette = ({
         </div>
       )}
       
-      {/* Floor tile palette - shown when floor type is selected */}
+      {/* Floor tile palette - shown when floor type is selected 
+          The key addition forces a re-render when initialized changes */}
       {tileType === 'floor' && (
         loading ? (
           <div className="text-center p-4 text-stone-400">Loading tile set...</div>
         ) : !tilesetImage ? (
           <div className="text-center p-4 text-red-400">Failed to load tile set</div>
         ) : (
-          <div className="grid grid-cols-5 gap-1 justify-items-center">
+          <div key={`floor-grid-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
             {displayTiles.map(tileIndex => (
               <div
                 key={tileIndex}
