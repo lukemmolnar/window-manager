@@ -142,12 +142,6 @@ const MapToolbar = ({
             <Grid size={18} />
           </button>
           <button 
-            className="p-2 hover:bg-stone-700 rounded text-teal-400"
-            title="Manage layers"
-          >
-            <Layers size={18} />
-          </button>
-          <button 
             className={`p-2 hover:bg-stone-700 rounded ${showProperties ? 'bg-stone-700 text-teal-300' : 'text-teal-400'}`}
             title="Map Properties"
             onClick={toggleProperties}
