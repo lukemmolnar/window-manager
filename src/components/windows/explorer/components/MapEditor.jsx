@@ -380,7 +380,17 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
         onUndo={() => console.log('Undo not implemented')}
         onRedo={() => console.log('Redo not implemented')}
         onClear={() => {
-          setMapData(createEmptyMap(mapData.name));
+          // Create a new empty map but preserve properties like name, width, height, gridSize
+          const newMap = createEmptyMap();
+          newMap.name = mapData.name;
+          newMap.width = mapData.width;
+          newMap.height = mapData.height;
+          newMap.gridSize = mapData.gridSize;
+          // Preserve metadata if it exists
+          if (mapData.metadata) {
+            newMap.metadata = { ...mapData.metadata };
+          }
+          setMapData(newMap);
           setIsDirty(true);
         }}
         onExportAscii={handleExportAscii}
