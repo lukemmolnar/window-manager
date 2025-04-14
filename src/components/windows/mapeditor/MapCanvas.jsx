@@ -36,6 +36,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
    * @param {number} size - Size of the tile
    * @param {Object} cell - The cell data including type and tileId
    */
+  // Pass showGrid to the drawTile function
   const drawTile = (ctx, x, y, size, cell) => {
     const { type, tileId } = cell;
     
@@ -49,9 +50,11 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
         x, y, size, size
       );
       
-      // Draw grid lines on top
-      ctx.strokeStyle = '#44403c'; // Stone-700
-      ctx.strokeRect(x, y, size, size);
+      // Draw grid lines on top only if showGrid is true
+      if (showGrid) {
+        ctx.strokeStyle = '#44403c'; // Stone-700
+        ctx.strokeRect(x, y, size, size);
+      }
       return;
     }
     
@@ -81,9 +84,11 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
         ctx.fillRect(x, y, size, size);
     }
     
-    // Draw grid lines on top
-    ctx.strokeStyle = '#44403c'; // Stone-700
-    ctx.strokeRect(x, y, size, size);
+    // Draw grid lines on top only if showGrid is true
+    if (showGrid) {
+      ctx.strokeStyle = '#44403c'; // Stone-700
+      ctx.strokeRect(x, y, size, size);
+    }
   };
 
   /**
@@ -275,8 +280,8 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
           }
         });
         
-        // Highlight current layer with a subtle border if it matches the currentLayer
-        if (layerIndex === currentLayer) {
+        // Highlight current layer with a subtle border if it matches the currentLayer (only if showGrid is true)
+        if (layerIndex === currentLayer && showGrid) {
           ctx.strokeStyle = 'rgba(20, 184, 166, 0.5)'; // Teal with opacity
           ctx.lineWidth = 2;
           
