@@ -69,14 +69,16 @@ const TilePalette = ({
   // Get tiles to display based on current section filter
   const displayTiles = useMemo(() => {
     if (currentSection === null) {
-      // Show all tiles up to the calculated total
-      return Array.from({ length: totalTiles }, (_, i) => i);
+      // Show all valid tiles from all defined sections
+      return Object.values(TILE_SECTIONS).flatMap(section => 
+        Array.from({ length: section.count }, (_, i) => section.startIndex + i)
+      );
     } else {
       // Show only tiles from the selected section
       const section = TILE_SECTIONS[currentSection];
       return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
     }
-  }, [currentSection, totalTiles]);
+  }, [currentSection]);
 
   return (
     <div className="bg-stone-800 border-t border-stone-700 p-2 max-h-64 overflow-y-auto">
