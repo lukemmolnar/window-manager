@@ -32,7 +32,6 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [asciiImportText, setAsciiImportText] = useState('');
   const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
   const [showPropertiesPanel, setShowPropertiesPanel] = useState(false);
-  const [showTilePalette, setShowTilePalette] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(0);
   const [showGrid, setShowGrid] = useState(true); // State for grid visibility
   
@@ -61,11 +60,6 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     }
   }, [fileContent]);
   
-  // Show/hide tile palette based on current tool
-  useEffect(() => {
-    setShowTilePalette(currentTool === 'floor');
-  }, [currentTool]);
-
   // Auto-save when map data changes
   useEffect(() => {
     // If the map is dirty (has unsaved changes), auto-save after a delay
@@ -393,8 +387,6 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     <div className="h-full w-full flex flex-col bg-stone-900 text-teal-400 overflow-hidden">
       {/* Toolbar */}
       <MapToolbar 
-        currentTool={currentTool}
-        setCurrentTool={setCurrentTool}
         onSave={handleSaveMap}
         onUndo={() => console.log('Undo not implemented')}
         onRedo={() => console.log('Redo not implemented')}
@@ -440,9 +432,10 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           onMoveLayerUp={handleMoveLayerUp}
           onMoveLayerDown={handleMoveLayerDown}
           onRenameLayer={handleRenameLayer}
-          showTilePalette={showTilePalette}
           selectedTileId={selectedTileId}
           onSelectTile={setSelectedTileId}
+          currentTool={currentTool}
+          setCurrentTool={setCurrentTool}
         />
       </div>
       

@@ -9,8 +9,6 @@ import {
  * Toolbar component for the Map Editor
  */
 const MapToolbar = ({ 
-  currentTool, 
-  setCurrentTool, 
   onSave, 
   onUndo, 
   onRedo, 
@@ -22,13 +20,6 @@ const MapToolbar = ({
   showGrid = true,
   saveStatus = 'saved' // default to 'saved'
 }) => {
-  const tools = [
-    { id: 'select', icon: <MousePointer size={18} />, name: 'Select' },
-    { id: 'wall', icon: <Square size={18} />, name: 'Wall' },
-    { id: 'floor', icon: <Grid size={18} />, name: 'Floor' },
-    { id: 'door', icon: <Minus size={18} />, name: 'Door' },
-    { id: 'erase', icon: <Trash2 size={18} />, name: 'Erase' },
-  ];
 
   return (
     <div className="flex justify-between items-center p-2 bg-stone-800 border-b border-stone-700">
@@ -92,21 +83,8 @@ const MapToolbar = ({
         </button>
       </div>
 
-      {/* Drawing tools */}
-      <div className="flex space-x-1">
-        {tools.map(tool => (
-          <button
-            key={tool.id}
-            className={`p-2 rounded hover:bg-stone-700 ${
-              currentTool === tool.id ? 'bg-teal-900 text-teal-300' : 'text-teal-400'
-            }`}
-            title={tool.name}
-            onClick={() => setCurrentTool(tool.id)}
-          >
-            {tool.icon}
-          </button>
-        ))}
-      </div>
+      {/* Empty space in the middle to maintain layout */}
+      <div className="flex-1"></div>
 
       {/* View options */}
       <div className="flex space-x-1">

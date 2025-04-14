@@ -16,12 +16,22 @@ const LayerPanel = ({
   onMoveLayerUp, 
   onMoveLayerDown, 
   onRenameLayer,
-  showTilePalette = false,
   selectedTileId = 0,
-  onSelectTile 
+  onSelectTile,
+  currentTool,
+  setCurrentTool
 }) => {
   return (
-    <div className="w-64 bg-stone-800 border-l border-stone-700 flex flex-col">
+    <div className="w-64 bg-stone-800 border-l border-stone-700 flex flex-col overflow-hidden">
+      {/* Tile Type and Palette Section */}
+      <div className="border-b border-stone-700">
+        <TilePalette 
+          selectedTileId={selectedTileId}
+          onSelectTile={onSelectTile}
+          tileType={currentTool}
+          onChangeTileType={setCurrentTool}
+        />
+      </div>
       <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
         <div className="flex items-center">
           <Layers size={14} className="mr-2" />
@@ -142,16 +152,6 @@ const LayerPanel = ({
           <div className="text-stone-500">No layer selected</div>
         )}
       </div>
-      
-      {/* Tile Palette (conditionally rendered) */}
-      {showTilePalette && onSelectTile && (
-        <div className="border-t border-stone-700">
-          <TilePalette 
-            selectedTileId={selectedTileId}
-            onSelectTile={onSelectTile}
-          />
-        </div>
-      )}
     </div>
   );
 };
