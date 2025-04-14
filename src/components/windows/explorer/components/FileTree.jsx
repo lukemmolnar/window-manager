@@ -166,7 +166,7 @@ const FileTree = ({
   };
 
   return (
-    <div className="w-1/3 border-r border-stone-700 flex flex-col overflow-hidden">
+    <div className="w-1/4 border-r border-stone-700 flex flex-col overflow-hidden">
       <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
         <div className="flex items-center">
           <span>FILES</span>
