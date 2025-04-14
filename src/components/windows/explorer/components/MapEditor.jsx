@@ -33,8 +33,9 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [selectedTileId, setSelectedTileId] = useState(0);
   const [showGrid, setShowGrid] = useState(true); // State for grid visibility
   
-  // Reference for auto-save functionality
+  // References
   const autoSaveTimeoutRef = useRef(null);
+  const isInitialLoadRef = useRef(true); // Track initial load to prevent layer reset during auto-save
 
   // Load map data when fileContent changes
   useEffect(() => {
@@ -42,7 +43,13 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       if (fileContent) {
         const parsedMap = parseMapFile(fileContent);
         setMapData(parsedMap);
-        setCurrentLayer(0);
+        
+        // Only reset currentLayer on initial load, not on auto-saves
+        if (isInitialLoadRef.current) {
+          setCurrentLayer(0);
+          isInitialLoadRef.current = false;
+        }
+        
         setIsDirty(false);
         setError(null);
       } else {
