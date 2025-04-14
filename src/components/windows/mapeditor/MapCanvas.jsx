@@ -198,12 +198,17 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     };
   }, []);
 
-  // Set up the canvas and draw the grid and map
-  useEffect(() => {
+  // Reference to the canvas context
+  const ctxRef = useRef(null);
+  
+  // Function to draw the canvas contents
+  const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !mapData) return;
 
     const ctx = canvas.getContext('2d');
+    ctxRef.current = ctx;
+    
     const width = canvas.width;
     const height = canvas.height;
 
@@ -340,8 +345,38 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
       const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
       ctx.fillText(displayTool, screenX + 5, screenY + 15);
     }
-    
-  }, [gridSize, viewportOffset, mapData, currentLayer, hoverCell, currentTool, activeMouseButton]);
+  }, [
+    gridSize, 
+    viewportOffset, 
+    mapData, 
+    currentLayer, 
+    hoverCell, 
+    currentTool, 
+    activeMouseButton, 
+    showGrid, 
+    floorTilesetImage
+  ]);
+  
+  // Call drawCanvas whenever relevant dependencies change
+  useEffect(() => {
+    if (canvasRef.current && mapData) {
+      drawCanvas();
+    }
+  }, [drawCanvas]);
+  
+  // Update canvas size when container size changes
+  useEffect(() => {
+    if (canvasRef.current && canvasSize.width > 0 && canvasSize.height > 0) {
+      drawCanvas();
+    }
+  }, [canvasSize, drawCanvas]);
+
+  // Manually trigger a redraw whenever floorTilesetImage is loaded
+  useEffect(() => {
+    if (floorTilesetImage) {
+      drawCanvas();
+    }
+  }, [floorTilesetImage, drawCanvas]);
 
   // Handle canvas mouse events
   const handleMouseDown = (e) => {
