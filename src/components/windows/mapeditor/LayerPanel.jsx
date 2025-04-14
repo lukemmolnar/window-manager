@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
 import TilePalette from './TilePalette';
 
@@ -21,6 +21,42 @@ const LayerPanel = ({
   currentTool,
   setCurrentTool
 }) => {
+  // State for tracking which layer is being edited and the current edited name
+  const [editingLayerIndex, setEditingLayerIndex] = useState(null);
+  const [editedLayerName, setEditedLayerName] = useState('');
+  const layerNameInputRef = useRef(null);
+  
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingLayerIndex !== null && layerNameInputRef.current) {
+      layerNameInputRef.current.focus();
+    }
+  }, [editingLayerIndex]);
+  
+  // Handle starting the edit process
+  const handleStartEditing = (e, layerIndex) => {
+    e.stopPropagation();
+    setEditingLayerIndex(layerIndex);
+    setEditedLayerName(layers[layerIndex].name);
+  };
+  
+  // Handle saving the edited name
+  const handleSaveLayerName = (layerIndex) => {
+    if (editedLayerName.trim()) {
+      onRenameLayer(layerIndex, editedLayerName);
+    }
+    setEditingLayerIndex(null);
+  };
+  
+  // Handle keydown events in the input field
+  const handleInputKeyDown = (e, layerIndex) => {
+    if (e.key === 'Enter') {
+      handleSaveLayerName(layerIndex);
+    } else if (e.key === 'Escape') {
+      setEditingLayerIndex(null);
+    }
+  };
+
   return (
     <div className="w-64 bg-stone-800 border-l border-stone-700 flex flex-col overflow-hidden">
       {/* Tile Type and Palette Section */}
@@ -79,17 +115,27 @@ const LayerPanel = ({
                         {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
                       </button>
                       
-                      {/* Layer name */}
-                      <span className="text-sm">{layer.name}</span>
+                      {/* Layer name - either editable or static */}
+                      {editingLayerIndex === actualIndex ? (
+                        <input
+                          ref={layerNameInputRef}
+                          className="bg-stone-600 text-sm text-teal-100 px-1 py-0.5 rounded border border-teal-500 focus:outline-none"
+                          value={editedLayerName}
+                          onChange={(e) => setEditedLayerName(e.target.value)}
+                          onKeyDown={(e) => handleInputKeyDown(e, actualIndex)}
+                          onBlur={() => handleSaveLayerName(actualIndex)}
+                          onClick={(e) => e.stopPropagation()}
+                          size={15}
+                        />
+                      ) : (
+                        <span className="text-sm">{layer.name}</span>
+                      )}
                     </div>
                     
                     {/* Layer operations */}
                     <div className="flex">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRenameLayer(actualIndex);
-                        }}
+                        onClick={(e) => handleStartEditing(e, actualIndex)}
                         className="p-1 hover:bg-stone-600 rounded"
                         title="Rename layer"
                       >

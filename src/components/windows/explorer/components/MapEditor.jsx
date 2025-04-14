@@ -254,12 +254,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     setIsDirty(true);
   };
 
-  const handleRenameLayer = (layerIndex) => {
-    if (!mapData || !mapData.layers || !mapData.layers[layerIndex]) return;
-    
-    // In a real implementation, this would use a dialog component
-    const newName = prompt('Enter new layer name:', mapData.layers[layerIndex].name);
-    if (!newName) return;
+  const handleRenameLayer = (layerIndex, newName) => {
+    if (!mapData || !mapData.layers || !mapData.layers[layerIndex] || !newName) return;
     
     const newMapData = { ...mapData };
     newMapData.layers[layerIndex] = {
