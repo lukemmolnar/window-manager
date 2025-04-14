@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
-import { getTileCoordinates, FLOOR_TILESET_PATH, TILE_SIZE } from './utils/tileRegistry';
+import { getTileCoordinates, FLOOR_TILESET_PATH, TILE_SIZE, TILESET_COLS } from './utils/tileRegistry';
 
 /**
  * The main canvas component for the Grid Map Editor
@@ -19,11 +19,18 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [floorTilesetImage, setFloorTilesetImage] = useState(null);
+  const [actualColumns, setActualColumns] = useState(TILESET_COLS);
   
   // Load the tileset image on component mount
   useEffect(() => {
     const img = new Image();
-    img.onload = () => setFloorTilesetImage(img);
+    img.onload = () => {
+      setFloorTilesetImage(img);
+      // Calculate and store the actual number of columns
+      const cols = Math.floor(img.width / TILE_SIZE);
+      console.log(`MapCanvas: Detected ${cols} columns in the sprite sheet`);
+      setActualColumns(cols);
+    };
     img.onerror = () => console.error('Failed to load floor tileset');
     img.src = FLOOR_TILESET_PATH;
   }, []);
@@ -41,8 +48,12 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     const { type, tileId } = cell;
     
     if (type === 'floor' && tileId !== undefined && floorTilesetImage) {
-      // Draw from sprite sheet
-      const { sourceX, sourceY } = getTileCoordinates(tileId);
+      // Calculate coordinates based on actual columns in the sheet
+      // instead of using getTileCoordinates which might use the wrong column count
+      const col = tileId % actualColumns;
+      const row = Math.floor(tileId / actualColumns);
+      const sourceX = col * TILE_SIZE;
+      const sourceY = row * TILE_SIZE;
       
       ctx.drawImage(
         floorTilesetImage,
@@ -354,7 +365,8 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     currentTool, 
     activeMouseButton, 
     showGrid, 
-    floorTilesetImage
+    floorTilesetImage,
+    actualColumns  // Add actualColumns as a dependency since we use it in drawTile
   ]);
   
   // Call drawCanvas whenever relevant dependencies change

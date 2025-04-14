@@ -36,6 +36,9 @@ const TilePalette = ({
     initialTileTypeRef.current = tileType;
   }, []);
 
+  // Track the actual columns detected in the image
+  const [actualColumns, setActualColumns] = useState(TILESET_COLS);
+  
   // Load the tileset image
   useEffect(() => {
     const img = new Image();
@@ -48,6 +51,7 @@ const TilePalette = ({
       const total = cols * rows;
       
       console.log(`Detected ${total} tiles (${cols}x${rows}) in the sprite sheet`);
+      setActualColumns(cols); // Store the actual number of columns
       setTotalTiles(total);
       setLoading(false);
       setIsInitialized(true); // Mark as initialized after image loads
@@ -181,7 +185,12 @@ const TilePalette = ({
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, 40, 40);
                         
-                        const { sourceX, sourceY } = getTileCoordinates(tileIndex);
+                        // Calculate coordinates based on actual columns in the sheet
+                        // (This overrides the getTileCoordinates from tileRegistry.js)
+                        const col = tileIndex % actualColumns;
+                        const row = Math.floor(tileIndex / actualColumns);
+                        const sourceX = col * TILE_SIZE;
+                        const sourceY = row * TILE_SIZE;
                         
                         // Center the tile in the canvas
                         ctx.drawImage(
