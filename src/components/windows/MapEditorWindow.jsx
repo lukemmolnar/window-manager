@@ -261,12 +261,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     setIsDirty(true);
   };
 
-  const handleRenameLayer = (layerIndex) => {
+  const handleRenameLayer = (layerIndex, newName) => {
     if (!mapData || !mapData.layers || !mapData.layers[layerIndex]) return;
     
-    // In a real implementation, this would open a dialog
-    const newName = prompt('Enter new layer name:', mapData.layers[layerIndex].name);
-    if (!newName) return;
+    // Use the provided name instead of prompting
+    if (!newName || newName.trim() === '') return;
     
     const newMapData = { ...mapData };
     newMapData.layers[layerIndex] = {
@@ -276,6 +275,9 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     
     setMapData(newMapData);
     setIsDirty(true);
+    
+    // Save the changes to the file
+    handleSaveMap();
   };
 
   // Show placeholder if no file is loaded
