@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Map, Save, FileDown } from 'lucide-react';
 import { 
   createEmptyMap, 
@@ -32,6 +32,9 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
   const [selectedTileId, setSelectedTileId] = useState(0);
   const [showGrid, setShowGrid] = useState(true); // State for grid visibility
+  
+  // Use ref instead of state for the reset view function to avoid render-phase updates
+  const resetViewFnRef = useRef(null);
   
   // References
   const autoSaveTimeoutRef = useRef(null);
@@ -403,6 +406,12 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
         onExportAscii={handleExportAscii}
         onImportAscii={handleImportAscii}
         onToggleGrid={() => setShowGrid(!showGrid)}
+        onResetView={() => {
+          // Call the reset view function if it exists
+          if (resetViewFnRef.current) {
+            resetViewFnRef.current();
+          }
+        }}
         showGrid={showGrid}
         saveStatus={saveStatus}
         mapData={mapData}
@@ -426,6 +435,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           selectedTileId={selectedTileId}
           onEdit={handleEdit}
           showGrid={showGrid}
+          resetViewRef={resetViewFnRef} // Pass ref instead of setter function
         />
         
         {/* Layer panel with integrated tile palette */}

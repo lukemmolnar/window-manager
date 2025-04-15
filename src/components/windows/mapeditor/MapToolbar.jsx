@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Save, Undo, Redo, Trash2, Copy, Square, Circle, 
   Grid, ZoomIn, ZoomOut, Download, Upload, Plus, Minus,
-  Layers, MousePointer, Hammer, Wand2, FileText, Settings
+  Layers, MousePointer, Hammer, Wand2, FileText, Settings,
+  Home
 } from 'lucide-react';
 
 /**
@@ -16,6 +17,7 @@ const MapToolbar = ({
   onExportAscii, 
   onImportAscii,
   onToggleGrid,
+  onResetView,
   showGrid = true,
   saveStatus = 'saved', // default to 'saved'
   mapData,
@@ -140,6 +142,13 @@ const MapToolbar = ({
             title={showGrid ? "Hide grid" : "Show grid"}
           >
             <Grid size={18} />
+          </button>
+          <button
+            onClick={onResetView}
+            className="p-2 hover:bg-stone-700 rounded text-teal-400"
+            title="Return to origin (0,0)"
+          >
+            <Home size={18} />
           </button>
           <button 
             className={`p-2 hover:bg-stone-700 rounded ${showProperties ? 'bg-stone-700 text-teal-300' : 'text-teal-400'}`}

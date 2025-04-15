@@ -7,7 +7,7 @@ import { getTileCoordinates, FLOOR_TILESET_PATH, WALL_TILESET_PATH, TILE_SIZE, T
  * The main canvas component for the Grid Map Editor
  * Handles rendering and interaction with the grid map
  */
-const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onEdit, showGrid = true }) => {
+const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onEdit, showGrid = true, resetViewRef }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [gridSize, setGridSize] = useState(32);
@@ -21,6 +21,18 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
   const [floorTilesetImage, setFloorTilesetImage] = useState(null);
   const [wallTilesetImage, setWallTilesetImage] = useState(null);
   const [actualColumns, setActualColumns] = useState(TILESET_COLS);
+  
+  // Reset view to origin (0,0) function
+  const resetViewToOrigin = useCallback(() => {
+    setViewportOffset({ x: 0, y: 0 });
+  }, []);
+
+  // Store the reset function in the provided ref
+  useEffect(() => {
+    if (resetViewRef) {
+      resetViewRef.current = resetViewToOrigin;
+    }
+  }, [resetViewToOrigin, resetViewRef]);
   
   // Load the tileset images on component mount
   useEffect(() => {
