@@ -332,6 +332,10 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
       mapData.layers.forEach((layer, layerIndex) => {
         if (!layer.visible) return;
         
+        // Set layer opacity if defined, default to 1.0 (fully opaque)
+        const layerOpacity = layer.opacity !== undefined ? layer.opacity : 1.0;
+        ctx.globalAlpha = layerOpacity;
+        
         // Draw cells
         layer.cells.forEach(cell => {
           // Calculate screen position for this cell
@@ -347,6 +351,8 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
         
         // Highlight current layer with a subtle border if it matches the currentLayer (only if showGrid is true)
         if (layerIndex === currentLayer && showGrid) {
+          // Make sure we use full opacity for the highlight, regardless of layer opacity
+          ctx.globalAlpha = 1.0;
           ctx.strokeStyle = 'rgba(20, 184, 166, 0.5)'; // Teal with opacity
           ctx.lineWidth = 2;
           
@@ -360,6 +366,9 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
             }
           });
         }
+        
+        // Reset global alpha to default (1.0) after drawing this layer
+        ctx.globalAlpha = 1.0;
       });
     }
     

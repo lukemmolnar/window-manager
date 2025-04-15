@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
+import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2, Transparency } from 'lucide-react';
 import TilePalette from './TilePalette';
+import OpacitySlider from './components/OpacitySlider';
 
 /**
  * Layer panel component for the Map Editor
@@ -16,6 +17,7 @@ const LayerPanel = ({
   onMoveLayerUp, 
   onMoveLayerDown, 
   onRenameLayer,
+  onUpdateLayerOpacity,
   selectedTileId = 0,
   onSelectTile,
   currentTool,
@@ -24,6 +26,7 @@ const LayerPanel = ({
   // State for tracking which layer is being edited and the current edited name
   const [editingLayerIndex, setEditingLayerIndex] = useState(null);
   const [editedLayerName, setEditedLayerName] = useState('');
+  const [showOpacityControls, setShowOpacityControls] = useState({});
   const layerNameInputRef = useRef(null);
   
   // Focus input when editing starts
@@ -135,6 +138,20 @@ const LayerPanel = ({
                     {/* Layer operations */}
                     <div className="flex">
                       <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Toggle opacity controls for this layer
+                          setShowOpacityControls(prev => ({
+                            ...prev,
+                            [actualIndex]: !prev[actualIndex]
+                          }));
+                        }}
+                        className={`p-1 hover:bg-stone-600 rounded ${showOpacityControls[actualIndex] ? 'bg-stone-600' : ''}`}
+                        title="Adjust layer opacity"
+                      >
+                        <Transparency size={14} />
+                      </button>
+                      <button
                         onClick={(e) => handleStartEditing(e, actualIndex)}
                         className="p-1 hover:bg-stone-600 rounded"
                         title="Rename layer"
@@ -174,8 +191,25 @@ const LayerPanel = ({
                       >
                         <Trash2 size={14} className={layers.length <= 1 ? "opacity-30" : ""} />
                       </button>
-                    </div>
                   </div>
+                  
+                  {/* Opacity Controls - shown when opacity button is clicked */}
+                  {showOpacityControls[actualIndex] && (
+                    <div 
+                      className="mt-2 px-1" 
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <OpacitySlider 
+                        value={layer.opacity || 1.0}
+                        onChange={(value) => {
+                          if (onUpdateLayerOpacity) {
+                            onUpdateLayerOpacity(actualIndex, value);
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
                 </div>
               );
             })}

@@ -372,6 +372,20 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     setMapData(newMapData);
     setIsDirty(true);
   };
+  
+  // Handler for updating layer opacity
+  const handleUpdateLayerOpacity = (layerIndex, opacity) => {
+    if (!mapData || !mapData.layers || !mapData.layers[layerIndex]) return;
+    
+    const newMapData = { ...mapData };
+    newMapData.layers[layerIndex] = {
+      ...newMapData.layers[layerIndex],
+      opacity: opacity
+    };
+    
+    setMapData(newMapData);
+    setIsDirty(true);
+  };
 
   // If map data isn't loaded yet, show a loading state
   if (!mapData) {
@@ -449,6 +463,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           onMoveLayerUp={handleMoveLayerUp}
           onMoveLayerDown={handleMoveLayerDown}
           onRenameLayer={handleRenameLayer}
+          onUpdateLayerOpacity={handleUpdateLayerOpacity}
           selectedTileId={selectedTileId}
           onSelectTile={setSelectedTileId}
           currentTool={currentTool}
