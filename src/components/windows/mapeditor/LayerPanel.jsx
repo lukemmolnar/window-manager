@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
+import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import TilePalette from './TilePalette';
+import OpacitySlider from './components/OpacitySlider';
 
 /**
  * Layer panel component for the Map Editor
@@ -25,7 +26,17 @@ const LayerPanel = ({
   // State for tracking which layer is being edited and the current edited name
   const [editingLayerIndex, setEditingLayerIndex] = useState(null);
   const [editedLayerName, setEditedLayerName] = useState('');
+  const [expandedOpacityLayers, setExpandedOpacityLayers] = useState({});
   const layerNameInputRef = useRef(null);
+  
+  // Toggle opacity controls for a layer
+  const toggleOpacityControls = (layerIndex, e) => {
+    e.stopPropagation();
+    setExpandedOpacityLayers(prev => ({
+      ...prev,
+      [layerIndex]: !prev[layerIndex]
+    }));
+  };
   
   // Focus input when editing starts
   useEffect(() => {
@@ -131,35 +142,21 @@ const LayerPanel = ({
                       ) : (
                         <span className="text-sm">{layer.name}</span>
                       )}
-                      
-                      {/* Opacity input field */}
-                      <div className="ml-2 flex items-center" onClick={e => e.stopPropagation()}>
-                        <input
-                          type="text"
-                          value={Math.round((layer.opacity || 1.0) * 100)}
-                          onChange={(e) => {
-                            // Get the value as a number
-                            let value = parseInt(e.target.value, 10);
-                            
-                            // Validate: ensure it's a number between 0-100
-                            if (isNaN(value)) value = 100;
-                            value = Math.max(0, Math.min(100, value));
-                            
-                            // Convert percentage to decimal (0-1 range) and update
-                            const opacityValue = value / 100;
-                            if (onUpdateLayerOpacity) {
-                              onUpdateLayerOpacity(actualIndex, opacityValue);
-                            }
-                          }}
-                          className="w-10 h-5 bg-stone-700 text-xs text-teal-100 px-1 rounded border border-stone-600 focus:border-teal-500 focus:outline-none text-center"
-                          title="Layer opacity (0-100%)"
-                        />
-                        <span className="text-xs text-stone-400 ml-1">%</span>
-                      </div>
                     </div>
                     
                     {/* Layer operations */}
                     <div className="flex">
+                      {/* Toggle opacity controls button */}
+                      <button
+                        onClick={(e) => toggleOpacityControls(actualIndex, e)}
+                        className={`p-1 hover:bg-stone-600 rounded ${expandedOpacityLayers[actualIndex] ? 'bg-stone-600' : ''}`}
+                        title="Toggle opacity controls"
+                      >
+                        {expandedOpacityLayers[actualIndex] ? 
+                          <ChevronUp size={14} /> : 
+                          <ChevronDown size={14} />
+                        }
+                      </button>
                       <button
                         onClick={(e) => handleStartEditing(e, actualIndex)}
                         className="p-1 hover:bg-stone-600 rounded"
@@ -200,8 +197,45 @@ const LayerPanel = ({
                       >
                         <Trash2 size={14} className={layers.length <= 1 ? "opacity-30" : ""} />
                       </button>
+                    </div>
                   </div>
-                </div>
+                  
+                  {/* Opacity controls - only shown when expanded */}
+                  {expandedOpacityLayers[actualIndex] && (
+                    <div 
+                      className="mt-2 px-1 pt-2 border-t border-stone-600" 
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="flex items-center">
+                        <div className="text-xs text-stone-400 mr-2 w-14">Opacity:</div>
+                        
+                        {/* Numeric input */}
+                        <div className="flex items-center">
+                          <input
+                            type="text"
+                            value={Math.round((layer.opacity || 1.0) * 100)}
+                            onChange={(e) => {
+                              // Get the value as a number
+                              let value = parseInt(e.target.value, 10);
+                              
+                              // Validate: ensure it's a number between 0-100
+                              if (isNaN(value)) value = 100;
+                              value = Math.max(0, Math.min(100, value));
+                              
+                              // Convert percentage to decimal (0-1 range) and update
+                              const opacityValue = value / 100;
+                              if (onUpdateLayerOpacity) {
+                                onUpdateLayerOpacity(actualIndex, opacityValue);
+                              }
+                            }}
+                            className="w-10 bg-stone-700 text-xs text-teal-100 px-1 py-0.5 rounded border border-stone-600 focus:border-teal-500 focus:outline-none text-center"
+                            title="Layer opacity (0-100%)"
+                          />
+                          <span className="text-xs text-stone-400 ml-1">%</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
