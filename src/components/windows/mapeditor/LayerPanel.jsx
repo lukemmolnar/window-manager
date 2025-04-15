@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2, Droplet } from 'lucide-react';
+import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
 import TilePalette from './TilePalette';
-import OpacitySlider from './components/OpacitySlider';
 
 /**
  * Layer panel component for the Map Editor
@@ -26,7 +25,6 @@ const LayerPanel = ({
   // State for tracking which layer is being edited and the current edited name
   const [editingLayerIndex, setEditingLayerIndex] = useState(null);
   const [editedLayerName, setEditedLayerName] = useState('');
-  const [showOpacityControls, setShowOpacityControls] = useState({});
   const layerNameInputRef = useRef(null);
   
   // Focus input when editing starts
@@ -133,24 +131,35 @@ const LayerPanel = ({
                       ) : (
                         <span className="text-sm">{layer.name}</span>
                       )}
+                      
+                      {/* Opacity input field */}
+                      <div className="ml-2 flex items-center" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={Math.round((layer.opacity || 1.0) * 100)}
+                          onChange={(e) => {
+                            // Get the value as a number
+                            let value = parseInt(e.target.value, 10);
+                            
+                            // Validate: ensure it's a number between 0-100
+                            if (isNaN(value)) value = 100;
+                            value = Math.max(0, Math.min(100, value));
+                            
+                            // Convert percentage to decimal (0-1 range) and update
+                            const opacityValue = value / 100;
+                            if (onUpdateLayerOpacity) {
+                              onUpdateLayerOpacity(actualIndex, opacityValue);
+                            }
+                          }}
+                          className="w-10 h-5 bg-stone-700 text-xs text-teal-100 px-1 rounded border border-stone-600 focus:border-teal-500 focus:outline-none text-center"
+                          title="Layer opacity (0-100%)"
+                        />
+                        <span className="text-xs text-stone-400 ml-1">%</span>
+                      </div>
                     </div>
                     
                     {/* Layer operations */}
                     <div className="flex">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Toggle opacity controls for this layer
-                          setShowOpacityControls(prev => ({
-                            ...prev,
-                            [actualIndex]: !prev[actualIndex]
-                          }));
-                        }}
-                        className={`p-1 hover:bg-stone-600 rounded ${showOpacityControls[actualIndex] ? 'bg-stone-600' : ''}`}
-                        title="Adjust layer opacity"
-                      >
-                        <Droplet size={14} />
-                      </button>
                       <button
                         onClick={(e) => handleStartEditing(e, actualIndex)}
                         className="p-1 hover:bg-stone-600 rounded"
@@ -192,23 +201,6 @@ const LayerPanel = ({
                         <Trash2 size={14} className={layers.length <= 1 ? "opacity-30" : ""} />
                       </button>
                   </div>
-                  
-                  {/* Opacity Controls - shown when opacity button is clicked */}
-                  {showOpacityControls[actualIndex] && (
-                    <div 
-                      className="mt-2 px-1" 
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <OpacitySlider 
-                        value={layer.opacity || 1.0}
-                        onChange={(value) => {
-                          if (onUpdateLayerOpacity) {
-                            onUpdateLayerOpacity(actualIndex, value);
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
                 </div>
               );
