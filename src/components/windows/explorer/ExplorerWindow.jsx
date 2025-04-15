@@ -5,7 +5,6 @@ import FileTree from './components/FileTree';
 import FileContent from './components/FileContent';
 import CommandInput from './components/CommandInput';
 import StorageStats from './components/StorageStats';
-import { CreateFileDialog, RenameDialog, DeleteDialog } from './components/dialogs/FileDialogs';
 import '../ExplorerWindow.css';
 
 const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
@@ -43,6 +42,26 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           handleContainerDrop={explorerState.handleContainerDrop}
           dropTarget={explorerState.dropTarget}
           storageStats={explorerState.storageStats}
+          // Dialog-related props
+          showCreateDialog={explorerState.showCreateDialog}
+          createType={explorerState.createType}
+          newItemName={explorerState.newItemName}
+          setNewItemName={explorerState.setNewItemName}
+          isCreating={explorerState.isCreating}
+          closeCreateDialog={explorerState.closeCreateDialog}
+          createNewItem={explorerState.createNewItem}
+          showRenameDialog={explorerState.showRenameDialog}
+          itemToRename={explorerState.itemToRename}
+          newName={explorerState.newName}
+          setNewName={explorerState.setNewName}
+          isRenaming={explorerState.isRenaming}
+          closeRenameDialog={explorerState.closeRenameDialog}
+          renameItem={explorerState.renameItem}
+          showDeleteDialog={explorerState.showDeleteDialog}
+          itemToDelete={explorerState.itemToDelete}
+          isDeleting={explorerState.isDeleting}
+          closeDeleteDialog={explorerState.closeDeleteDialog}
+          handleDeleteItem={explorerState.handleDeleteItem}
         />
         
         
@@ -66,38 +85,6 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           handleExportFile={explorerState.handleExportFile}
         />
       </div>
-      
-      {/* File operation dialogs */}
-      <CreateFileDialog
-        showCreateDialog={explorerState.showCreateDialog}
-        createType={explorerState.createType}
-        newItemName={explorerState.newItemName}
-        setNewItemName={explorerState.setNewItemName}
-        isCreating={explorerState.isCreating}
-        errorMessage={explorerState.errorMessage}
-        closeCreateDialog={explorerState.closeCreateDialog}
-        createNewItem={explorerState.createNewItem}
-      />
-        
-      <RenameDialog
-        showRenameDialog={explorerState.showRenameDialog}
-        itemToRename={explorerState.itemToRename}
-        newName={explorerState.newName}
-        setNewName={explorerState.setNewName}
-        isRenaming={explorerState.isRenaming}
-        errorMessage={explorerState.errorMessage}
-        closeRenameDialog={explorerState.closeRenameDialog}
-        renameItem={explorerState.renameItem}
-      />
-        
-      <DeleteDialog
-        showDeleteDialog={explorerState.showDeleteDialog}
-        itemToDelete={explorerState.itemToDelete}
-        isDeleting={explorerState.isDeleting}
-        errorMessage={explorerState.errorMessage}
-        closeDeleteDialog={explorerState.closeDeleteDialog}
-        handleDeleteItem={explorerState.handleDeleteItem}
-      />
       
       {/* Command input */}
       <CommandInput

@@ -170,16 +170,6 @@ const MapToolbar = ({
           )}
           
           <div className="flex items-center">
-            <label className="mr-2 text-stone-400">Name:</label>
-            <input
-              type="text"
-              value={mapName}
-              onChange={(e) => setMapName(e.target.value)}
-              className="flex-1 bg-stone-900 border border-stone-700 rounded px-2 py-1 text-sm text-teal-100 focus:outline-none focus:border-teal-600"
-            />
-          </div>
-          
-          <div className="flex items-center">
             <label className="mr-2 text-stone-400">Width:</label>
             <input
               type="text"

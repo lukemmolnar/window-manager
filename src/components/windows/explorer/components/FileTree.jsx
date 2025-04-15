@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { getFileIconName } from '../utils/fileUtils';
 import StorageStats from './StorageStats';
+import { CreateFileDialog, RenameDialog, DeleteDialog } from './dialogs/FileDialogs';
 
 const FileTree = ({ 
   files, 
@@ -31,7 +32,27 @@ const FileTree = ({
   handleContainerDragLeave,
   handleContainerDrop,
   dropTarget,
-  storageStats
+  storageStats,
+  // Dialog-related props
+  showCreateDialog,
+  createType,
+  newItemName,
+  setNewItemName,
+  isCreating,
+  closeCreateDialog,
+  createNewItem,
+  showRenameDialog,
+  itemToRename,
+  newName,
+  setNewName,
+  isRenaming,
+  closeRenameDialog,
+  renameItem,
+  showDeleteDialog,
+  itemToDelete,
+  isDeleting,
+  closeDeleteDialog,
+  handleDeleteItem
 }) => {
   
   // Get file icon based on file extension
@@ -298,6 +319,38 @@ const FileTree = ({
       {(isAdmin || (user && user.has_file_access)) && (
         <StorageStats stats={storageStats} />
       )}
+      
+      {/* File operation dialogs */}
+      <CreateFileDialog
+        showCreateDialog={showCreateDialog}
+        createType={createType}
+        newItemName={newItemName}
+        setNewItemName={setNewItemName}
+        isCreating={isCreating}
+        errorMessage={errorMessage}
+        closeCreateDialog={closeCreateDialog}
+        createNewItem={createNewItem}
+      />
+        
+      <RenameDialog
+        showRenameDialog={showRenameDialog}
+        itemToRename={itemToRename}
+        newName={newName}
+        setNewName={setNewName}
+        isRenaming={isRenaming}
+        errorMessage={errorMessage}
+        closeRenameDialog={closeRenameDialog}
+        renameItem={renameItem}
+      />
+        
+      <DeleteDialog
+        showDeleteDialog={showDeleteDialog}
+        itemToDelete={itemToDelete}
+        isDeleting={isDeleting}
+        errorMessage={errorMessage}
+        closeDeleteDialog={closeDeleteDialog}
+        handleDeleteItem={handleDeleteItem}
+      />
     </div>
   );
 };
