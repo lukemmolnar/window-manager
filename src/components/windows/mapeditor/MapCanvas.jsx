@@ -27,11 +27,13 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     // Load floor tileset
     const floorImg = new Image();
     floorImg.onload = () => {
-      setFloorTilesetImage(floorImg);
-      // Calculate and store the actual number of columns
+      // Calculate columns based on the image width
       const cols = Math.floor(floorImg.width / TILE_SIZE);
       console.log(`MapCanvas: Detected ${cols} columns in the floor sprite sheet`);
+      
+      // Batch state updates to avoid multiple re-renders
       setActualColumns(cols);
+      setFloorTilesetImage(floorImg);
     };
     floorImg.onerror = () => console.error('Failed to load floor tileset');
     floorImg.src = FLOOR_TILESET_PATH;
@@ -420,11 +422,13 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
   }, [canvasSize, drawCanvas]);
 
   // Manually trigger a redraw whenever tileset images are loaded
+  // Breaking the circular dependency by removing drawCanvas from dependencies
   useEffect(() => {
-    if (floorTilesetImage || wallTilesetImage) {
+    if ((floorTilesetImage || wallTilesetImage) && canvasRef.current && mapData) {
+      // Call drawCanvas without adding it to dependency array
       drawCanvas();
     }
-  }, [floorTilesetImage, wallTilesetImage, drawCanvas]);
+  }, [floorTilesetImage, wallTilesetImage, mapData]); // Removed drawCanvas dependency
 
   // Handle canvas mouse events
   const handleMouseDown = (e) => {
