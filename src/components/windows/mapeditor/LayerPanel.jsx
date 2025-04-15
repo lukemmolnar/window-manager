@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2, Transparency } from 'lucide-react';
+import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2, Droplet } from 'lucide-react';
 import TilePalette from './TilePalette';
 import OpacitySlider from './components/OpacitySlider';
 
@@ -149,7 +149,7 @@ const LayerPanel = ({
                         className={`p-1 hover:bg-stone-600 rounded ${showOpacityControls[actualIndex] ? 'bg-stone-600' : ''}`}
                         title="Adjust layer opacity"
                       >
-                        <Transparency size={14} />
+                        <Droplet size={14} />
                       </button>
                       <button
                         onClick={(e) => handleStartEditing(e, actualIndex)}
