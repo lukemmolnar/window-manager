@@ -143,8 +143,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       // Create the cell data based on the tool type
       let cellData = { x, y, type: tool };
       
-      // For floor tiles, include the selected tile ID
-      if (tool === 'floor') {
+      // Include the selected tile ID for both floor and wall tools
+      if (tool === 'floor' || tool === 'wall') {
         cellData.tileId = selectedTileId;
       }
       
