@@ -26,8 +26,18 @@ There are two ways to create new text nodes:
 
 ### Editing Nodes
 
-- **Hover** over any node and click the **Edit** button that appears in the top-right corner
-- A text area will appear, allowing you to modify the text
+There are two ways to edit nodes:
+
+1. **Using the toolbar**:
+   - Click once on a node to select it
+   - Click the "Edit" button that appears in the toolbar
+   - A text area will appear, allowing you to modify the content
+
+2. **Using the node's edit button**:
+   - Hover over any node to reveal an edit button in its top-right corner
+   - Click the edit button to enter edit mode
+
+When editing:
 - Press **Ctrl+Enter** or click outside the node to save your changes
 - Press **Escape** to cancel editing
 

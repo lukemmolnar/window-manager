@@ -20,6 +20,9 @@ import {
   Edit,
 } from 'lucide-react';
 
+// Import node types from the node registry
+import nodeTypes from './nodes';
+
 /**
  * Canvas Editor component for use within the FileContent area
  * This component handles the editing of .canvas files in the file explorer
@@ -45,82 +48,42 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
   // For auto-save functionality
   const saveTimeoutRef = useRef(null);
   
-  // Custom node types
-  const nodeTypes = {
-    text: ({ id, data }) => {
-      const isEditing = editingNode === id;
-      const [isHovered, setIsHovered] = useState(false);
-      
-      const handleEditClick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        setEditingNode(id);
-      };
-      
-      const handleEdit = (e) => {
-        const updatedText = e.target.value;
-        
-        // Update the node data
-        setNodes((nds) => 
-          nds.map((node) => {
-            if (node.id === id) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  text: updatedText
-                }
-              };
-            }
-            return node;
-          })
-        );
-      };
-      
-      const handleBlur = () => {
-        setEditingNode(null);
-      };
-      
-      const handleKeyDown = (e) => {
-        if (e.key === 'Escape') {
-          setEditingNode(null);
-        } else if (e.key === 'Enter' && e.ctrlKey) {
-          setEditingNode(null);
-        }
-      };
-      
-      return (
-        <div 
-          className="p-2 bg-stone-800 border border-stone-700 rounded shadow-md relative"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          {isEditing ? (
-            <textarea
-              className="w-full h-full bg-stone-700 text-teal-400 p-2 rounded font-mono text-sm focus:outline-none resize-none min-h-[80px]"
-              value={data.text}
-              onChange={handleEdit}
-              onBlur={handleBlur}
-              onKeyDown={handleKeyDown}
-              autoFocus
-            />
-          ) : (
-            <>
-              <div className="text-teal-400 text-sm whitespace-pre-wrap pr-6">{data.text}</div>
-              {isHovered && (
-                <button
-                  className="absolute top-1 right-1 bg-stone-700 p-1 rounded-sm hover:bg-stone-600 transition-colors"
-                  onClick={handleEditClick}
-                  title="Edit node"
-                >
-                  <Edit size={14} className="text-teal-400" />
-                </button>
-              )}
-            </>
-          )}
-        </div>
+  // Setup custom node types with required props
+  const customNodeTypes = {};
+  
+  // Add the TextNode and pass required props
+  customNodeTypes.text = (props) => {
+    // Create a handler for text updates
+    const handleNodeTextChange = (nodeId, newText) => {
+      setNodes((nds) => 
+        nds.map((node) => {
+          if (node.id === nodeId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                text: newText
+              }
+            };
+          }
+          return node;
+        })
       );
-    }
+    };
+    
+    // Add the onChange handler to node data
+    const nodeWithHandlers = {
+      ...props,
+      data: {
+        ...props.data,
+        onChange: handleNodeTextChange
+      },
+      editingNode: editingNode,
+      setEditingNode: setEditingNode
+    };
+    
+    // Use the TextNode component from the registry
+    return React.createElement(nodeTypes.text, nodeWithHandlers);
   };
   
   // Load canvas data when fileContent changes
@@ -420,6 +383,18 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
             Add Node
           </button>
           
+          {/* Edit button - appears when a node is selected */}
+          {selectedElements.length === 1 && selectedElements[0].type === 'text' && (
+            <button 
+              onClick={() => setEditingNode(selectedElements[0].id)}
+              className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs flex items-center gap-1"
+              title="Edit selected node"
+            >
+              <Edit size={14} />
+              Edit
+            </button>
+          )}
+          
           {selectedElements.length > 0 && (
             <button 
               onClick={deleteSelected}
@@ -487,7 +462,7 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
           onDrop={onDrop}
           onDragOver={onDragOver}
           onSelectionChange={onSelectionChange}
-          nodeTypes={nodeTypes}
+          nodeTypes={customNodeTypes}
           fitView
           snapToGrid
           snapGrid={[15, 15]}
