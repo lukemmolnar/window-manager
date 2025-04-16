@@ -7,7 +7,16 @@ import { getTileCoordinates, FLOOR_TILESET_PATH, WALL_TILESET_PATH, TILE_SIZE, T
  * The main canvas component for the Grid Map Editor
  * Handles rendering and interaction with the grid map
  */
-const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onEdit, showGrid = true, resetViewRef }) => {
+const MapCanvas = ({ 
+  mapData, 
+  currentLayer, 
+  currentTool, 
+  selectedTileId = 0, 
+  onEdit, 
+  showGrid = true, 
+  resetViewRef,
+  brushSize = 1
+}) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [gridSize, setGridSize] = useState(32);
@@ -165,7 +174,7 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     // Convert to grid coordinates
     const gridCoords = screenToGridCoordinates(mouseX, mouseY, gridSize, viewportOffset);
     
-    // Validate coordinates are within map boundaries
+    // Basic validation if the center point is outside map boundaries
     if (gridCoords.x < 0 || gridCoords.x >= mapData.width || 
         gridCoords.y < 0 || gridCoords.y >= mapData.height) {
       // Coordinates outside map boundary - do nothing
@@ -179,8 +188,35 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     // Only edit if using a tool other than select
     if (toolToUse === 'select') return;
     
-    // Call onEdit with the grid coordinates and the tool to use
-    onEdit(gridCoords.x, gridCoords.y, toolToUse);
+    // For brush size of 1, just edit the single cell
+    if (brushSize === 1) {
+      onEdit(gridCoords.x, gridCoords.y, toolToUse);
+      return;
+    }
+    
+    // For larger brushes, calculate the starting points based on brush size
+    // For even brush sizes, start from the clicked cell
+    // For odd brush sizes, center the brush on the clicked cell
+    const halfBrush = Math.floor(brushSize / 2);
+    const startX = brushSize % 2 === 0 ? gridCoords.x : gridCoords.x - halfBrush;
+    const startY = brushSize % 2 === 0 ? gridCoords.y : gridCoords.y - halfBrush;
+    
+    // Apply to all cells in the brush area
+    for (let offsetY = 0; offsetY < brushSize; offsetY++) {
+      for (let offsetX = 0; offsetX < brushSize; offsetX++) {
+        const cellX = startX + offsetX;
+        const cellY = startY + offsetY;
+        
+        // Skip if outside map boundaries
+        if (cellX < 0 || cellX >= mapData.width || 
+            cellY < 0 || cellY >= mapData.height) {
+          continue;
+        }
+        
+        // Edit this cell
+        onEdit(cellX, cellY, toolToUse);
+      }
+    }
   };
 
   // Set up ResizeObserver to update canvas dimensions
@@ -400,19 +436,58 @@ const MapCanvas = ({ mapData, currentLayer, currentTool, selectedTileId = 0, onE
     
     // Draw hover highlight
     if (hoverCell) {
-      const screenX = Math.floor(hoverCell.x * gridSize + offsetX);
-      const screenY = Math.floor(hoverCell.y * gridSize + offsetY);
-      
-      ctx.fillStyle = 'rgba(20, 184, 166, 0.3)'; // Teal with opacity
-      ctx.fillRect(screenX, screenY, gridSize, gridSize);
-      
-      // Show tool indicator
-      ctx.fillStyle = '#14b8a6';
-      ctx.font = '12px monospace';
-      
-      // If right mouse button is pressed, show "erase" as the tool
-      const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
-      ctx.fillText(displayTool, screenX + 5, screenY + 15);
+      // For brush size of 1, just highlight the single cell
+      if (brushSize === 1) {
+        const screenX = Math.floor(hoverCell.x * gridSize + offsetX);
+        const screenY = Math.floor(hoverCell.y * gridSize + offsetY);
+        
+        ctx.fillStyle = 'rgba(20, 184, 166, 0.3)'; // Teal with opacity
+        ctx.fillRect(screenX, screenY, gridSize, gridSize);
+        
+        // Show tool indicator
+        ctx.fillStyle = '#14b8a6';
+        ctx.font = '12px monospace';
+        
+        // If right mouse button is pressed, show "erase" as the tool
+        const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
+        ctx.fillText(displayTool, screenX + 5, screenY + 15);
+      } else {
+        // For larger brushes, calculate the starting points
+        const halfBrush = Math.floor(brushSize / 2);
+        const startX = brushSize % 2 === 0 ? hoverCell.x : hoverCell.x - halfBrush;
+        const startY = brushSize % 2 === 0 ? hoverCell.y : hoverCell.y - halfBrush;
+        
+        // Highlight all cells in the brush area
+        for (let offsetY = 0; offsetY < brushSize; offsetY++) {
+          for (let offsetX = 0; offsetX < brushSize; offsetX++) {
+            const cellX = startX + offsetX;
+            const cellY = startY + offsetY;
+            
+            // Skip if outside map boundaries
+            if (cellX < 0 || cellX >= mapData.width || 
+                cellY < 0 || cellY >= mapData.height) {
+              continue;
+            }
+            
+            const screenX = Math.floor(cellX * gridSize + offsetX);
+            const screenY = Math.floor(cellY * gridSize + offsetY);
+            
+            ctx.fillStyle = 'rgba(20, 184, 166, 0.3)'; // Teal with opacity
+            ctx.fillRect(screenX, screenY, gridSize, gridSize);
+          }
+        }
+        
+        // Show tool indicator on the center or top-left cell
+        const indicatorX = Math.floor(hoverCell.x * gridSize + offsetX);
+        const indicatorY = Math.floor(hoverCell.y * gridSize + offsetY);
+        
+        ctx.fillStyle = '#14b8a6';
+        ctx.font = '12px monospace';
+        
+        // If right mouse button is pressed, show "erase" as the tool
+        const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
+        ctx.fillText(`${displayTool} (${brushSize}×${brushSize})`, indicatorX + 5, indicatorY + 15);
+      }
     }
   }, [
     gridSize, 

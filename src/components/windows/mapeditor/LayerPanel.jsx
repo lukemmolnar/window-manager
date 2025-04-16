@@ -21,7 +21,9 @@ const LayerPanel = ({
   selectedTileId = 0,
   onSelectTile,
   currentTool,
-  setCurrentTool
+  setCurrentTool,
+  brushSize = 1,
+  setBrushSize
 }) => {
   // State for tracking which layer is being edited and the current edited name
   const [editingLayerIndex, setEditingLayerIndex] = useState(null);
@@ -71,6 +73,41 @@ const LayerPanel = ({
 
   return (
     <div className="w-64 bg-stone-800 border-l border-stone-700 flex flex-col overflow-hidden">
+      {/* Brush Size Control */}
+      <div className="p-2 border-b border-stone-700">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-teal-400">Brush Size:</span>
+          <div className="flex items-center">
+            <button
+              onClick={() => setBrushSize(Math.max(1, brushSize - 1))}
+              className="px-2 py-0.5 bg-stone-700 hover:bg-stone-600 rounded-l text-teal-300 text-xs focus:outline-none"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              value={brushSize}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value) && value > 0) setBrushSize(value);
+              }}
+              className="w-10 bg-stone-700 text-xs text-teal-100 px-1 py-0.5 border-x-0 focus:outline-none text-center"
+              min="1"
+              max="10"
+            />
+            <button
+              onClick={() => setBrushSize(Math.min(10, brushSize + 1))}
+              className="px-2 py-0.5 bg-stone-700 hover:bg-stone-600 rounded-r text-teal-300 text-xs focus:outline-none"
+            >
+              +
+            </button>
+          </div>
+        </div>
+        <div className="text-xs text-stone-400 mt-1">
+          {brushSize === 1 ? 'Single tile editing' : `${brushSize}×${brushSize} area editing`}
+        </div>
+      </div>
+      
       {/* Tile Type and Palette Section */}
       <div className="border-b border-stone-700">
         <TilePalette 

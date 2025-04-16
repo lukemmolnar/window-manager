@@ -32,6 +32,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
   const [selectedTileId, setSelectedTileId] = useState(0);
   const [showGrid, setShowGrid] = useState(true); // State for grid visibility
+  const [brushSize, setBrushSize] = useState(1); // State for brush size
   
   // Use ref instead of state for the reset view function to avoid render-phase updates
   const resetViewFnRef = useRef(null);
@@ -450,6 +451,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           onEdit={handleEdit}
           showGrid={showGrid}
           resetViewRef={resetViewFnRef} // Pass ref instead of setter function
+          brushSize={brushSize}
         />
         
         {/* Layer panel with integrated tile palette */}
@@ -468,6 +470,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           onSelectTile={setSelectedTileId}
           currentTool={currentTool}
           setCurrentTool={setCurrentTool}
+          brushSize={brushSize}
+          setBrushSize={setBrushSize}
         />
       </div>
       
