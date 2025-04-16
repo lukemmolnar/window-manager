@@ -194,18 +194,19 @@ const MapCanvas = ({
       return;
     }
     
-    // For larger brushes, calculate the starting points based on brush size
-    // For even brush sizes, start from the clicked cell
-    // For odd brush sizes, center the brush on the clicked cell
+    // For larger brushes, always center around the hover cell
+    // This matches the hover indicator logic for consistent behavior
     const halfBrush = Math.floor(brushSize / 2);
-    const startX = brushSize % 2 === 0 ? gridCoords.x : gridCoords.x - halfBrush;
-    const startY = brushSize % 2 === 0 ? gridCoords.y : gridCoords.y - halfBrush;
+    
+    // Calculate how to position the brush so the cursor is in the center
+    // For even sizes, there's no true center cell, so we offset by half a cell
+    const offset = brushSize % 2 === 0 ? 0.5 : 0;
     
     // Apply to all cells in the brush area
-    for (let offsetY = 0; offsetY < brushSize; offsetY++) {
-      for (let offsetX = 0; offsetX < brushSize; offsetX++) {
-        const cellX = startX + offsetX;
-        const cellY = startY + offsetY;
+    for (let dy = -halfBrush + offset; dy < brushSize - halfBrush + offset; dy++) {
+      for (let dx = -halfBrush + offset; dx < brushSize - halfBrush + offset; dx++) {
+        const cellX = Math.floor(gridCoords.x + dx);
+        const cellY = Math.floor(gridCoords.y + dy);
         
         // Skip if outside map boundaries
         if (cellX < 0 || cellX >= mapData.width || 
@@ -452,16 +453,18 @@ const MapCanvas = ({
         const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
         ctx.fillText(displayTool, screenX + 5, screenY + 15);
       } else {
-        // For larger brushes, calculate the starting points
+        // For larger brushes, always center around the hoverCell
         const halfBrush = Math.floor(brushSize / 2);
-        const startX = brushSize % 2 === 0 ? hoverCell.x : hoverCell.x - halfBrush;
-        const startY = brushSize % 2 === 0 ? hoverCell.y : hoverCell.y - halfBrush;
         
-        // Highlight all cells in the brush area
-        for (let offsetY = 0; offsetY < brushSize; offsetY++) {
-          for (let offsetX = 0; offsetX < brushSize; offsetX++) {
-            const cellX = startX + offsetX;
-            const cellY = startY + offsetY;
+        // Calculate how to position the brush so the cursor is in the center
+        // For even sizes, there's no true center cell, so we need to offset by half a cell
+        const offset = brushSize % 2 === 0 ? 0.5 : 0;
+        
+        // Generate all cell positions that should be part of the brush
+        for (let dy = -halfBrush + offset; dy < brushSize - halfBrush + offset; dy++) {
+          for (let dx = -halfBrush + offset; dx < brushSize - halfBrush + offset; dx++) {
+            const cellX = Math.floor(hoverCell.x + dx);
+            const cellY = Math.floor(hoverCell.y + dy);
             
             // Skip if outside map boundaries
             if (cellX < 0 || cellX >= mapData.width || 
@@ -469,17 +472,18 @@ const MapCanvas = ({
               continue;
             }
             
-            const screenX = Math.floor(cellX * gridSize + offsetX);
-            const screenY = Math.floor(cellY * gridSize + offsetY);
+            // Calculate screen position (fixed to separate gridSize multiplication from offset)
+            const screenX = Math.floor(cellX * gridSize) + offsetX;
+            const screenY = Math.floor(cellY * gridSize) + offsetY;
             
             ctx.fillStyle = 'rgba(20, 184, 166, 0.3)'; // Teal with opacity
             ctx.fillRect(screenX, screenY, gridSize, gridSize);
           }
         }
         
-        // Show tool indicator on the center or top-left cell
-        const indicatorX = Math.floor(hoverCell.x * gridSize + offsetX);
-        const indicatorY = Math.floor(hoverCell.y * gridSize + offsetY);
+        // Show tool indicator centered on the cursor position
+        const indicatorX = Math.floor(hoverCell.x * gridSize) + offsetX;
+        const indicatorY = Math.floor(hoverCell.y * gridSize) + offsetY;
         
         ctx.fillStyle = '#14b8a6';
         ctx.font = '12px monospace';

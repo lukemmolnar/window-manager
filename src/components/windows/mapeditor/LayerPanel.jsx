@@ -85,16 +85,17 @@ const LayerPanel = ({
               -
             </button>
             <input
-              type="number"
-              value={brushSize}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (!isNaN(value) && value > 0) setBrushSize(value);
-              }}
-              className="w-10 bg-stone-700 text-xs text-teal-100 px-1 py-0.5 border-x-0 focus:outline-none text-center"
-              min="1"
-              max="10"
-            />
+                type="number"
+                value={brushSize}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value) && value > 0) setBrushSize(value);
+                }}
+                className="w-10 bg-stone-700 text-xs text-teal-100 px-1 py-0.5 border-x-0 focus:outline-none text-center
+                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                min="1"
+                max="10"
+              />
             <button
               onClick={() => setBrushSize(Math.min(10, brushSize + 1))}
               className="px-2 py-0.5 bg-stone-700 hover:bg-stone-600 rounded-r text-teal-300 text-xs focus:outline-none"
@@ -104,7 +105,7 @@ const LayerPanel = ({
           </div>
         </div>
         <div className="text-xs text-stone-400 mt-1">
-          {brushSize === 1 ? 'Single tile editing' : `${brushSize}×${brushSize} area editing`}
+          {brushSize}×{brushSize}
         </div>
       </div>
       
