@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { FileText, Edit, Eye, Bold, Italic, Code as CodeIcon, Link, Heading, List, ListOrdered, CheckSquare, Download, Map } from 'lucide-react';
 import { handleEditorKeyDown, convertMarkdownToHtml } from '../utils/markdownUtils';
 import MapEditor from './MapEditor';
+import CanvasEditor from './CanvasEditor';
 
 const FileContent = ({
   selectedFile,
@@ -212,6 +213,13 @@ const FileContent = ({
             <div className="flex-1 flex items-center justify-center">
               <span className="text-teal-300">Loading content...</span>
             </div>
+          ) : selectedFile.name.endsWith('.canvas') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
+            // Canvas Editor for .canvas files - only for admin users and users with file access
+            <CanvasEditor
+              fileContent={fileContent}
+              selectedFile={selectedFile}
+              onSave={wrappedHandleSaveFileContent}
+            />
           ) : selectedFile.name.endsWith('.map') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
             // Map Editor for .map files - only for admin users and users with file access
             <MapEditor 
@@ -323,12 +331,12 @@ const FileContent = ({
             <p className="text-xs mt-2">All file types are supported for viewing</p>
             {isAdmin && (
               <p className="text-xs mt-1">
-                Admin users can edit markdown (.md) and map (.map) files
+                Admin users can edit markdown (.md), map (.map), and canvas (.canvas) files
               </p>
             )}
             {!isAdmin && user && user.has_file_access && (
               <p className="text-xs mt-1">
-                Users with file access can edit markdown (.md) and map (.map) files in the Private section
+                Users with file access can edit markdown (.md), map (.map), and canvas (.canvas) files in the Private section
               </p>
             )}
           </div>

@@ -1,29 +1,38 @@
 {
+  "name": "Sample Canvas",
   "nodes": [
     {
       "id": "node-1",
       "type": "text",
-      "position": { "x": 100, "y": 100 },
-      "data": { "text": "This is a sample text node.\nYou can edit this text in the canvas window." }
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "data": {
+        "text": "Welcome to Canvas Editor!\n\nThis is a text node. You can edit it by clicking the 'Add Node' button above."
+      }
     },
     {
       "id": "node-2",
       "type": "text",
-      "position": { "x": 400, "y": 100 },
-      "data": { "text": "This is another text node.\nConnect nodes by dragging from one node to another." }
+      "position": {
+        "x": 400,
+        "y": 300
+      },
+      "data": {
+        "text": "You can connect nodes with arrows.\n\nTry selecting this node and dragging from a connection point to another node."
+      }
     },
     {
       "id": "node-3",
-      "type": "group",
-      "position": { "x": 100, "y": 300 },
-      "data": { "label": "Sample Group", "color": "59, 130, 246" },
-      "style": { "width": 400, "height": 200, "backgroundColor": "rgba(59, 130, 246, 0.1)" }
-    },
-    {
-      "id": "node-4",
       "type": "text",
-      "position": { "x": 150, "y": 350 },
-      "data": { "text": "This node is inside a group.\nGroups can contain multiple nodes." }
+      "position": {
+        "x": 150,
+        "y": 400
+      },
+      "data": {
+        "text": "Drag nodes around to reposition them.\n\nYou can also delete selected nodes or connections."
+      }
     }
   ],
   "edges": [
@@ -32,16 +41,14 @@
       "source": "node-1",
       "target": "node-2",
       "type": "default",
-      "animated": false,
-      "style": { "stroke": "#14b8a6" }
-    },
-    {
-      "id": "edge-2",
-      "source": "node-2",
-      "target": "node-3",
-      "type": "default",
-      "animated": false,
-      "style": { "stroke": "#14b8a6" }
+      "style": {
+        "stroke": "#14b8a6"
+      }
     }
-  ]
+  ],
+  "version": "1.0",
+  "metadata": {
+    "created": "2025-04-16T13:20:00.000Z",
+    "modified": "2025-04-16T13:20:00.000Z"
+  }
 }
