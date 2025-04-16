@@ -26,7 +26,7 @@ There are two ways to create new text nodes:
 
 ### Editing Nodes
 
-- **Double-click** on any node to edit its content
+- **Hover** over any node and click the **Edit** button that appears in the top-right corner
 - A text area will appear, allowing you to modify the text
 - Press **Ctrl+Enter** or click outside the node to save your changes
 - Press **Escape** to cancel editing
@@ -56,7 +56,7 @@ There are two ways to create new text nodes:
 - Use the minimap in the bottom-right to navigate large canvases
 - Press "Delete" on your keyboard to remove selected elements
 - Hold Shift while selecting to select multiple elements
-- Double-click on nodes to edit their content
+- Hover over nodes to reveal the edit button in the top-right corner
 
 ## Example Usage
 

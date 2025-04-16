@@ -17,6 +17,7 @@ import {
   Type,
   Square,
   Link as LinkIcon,
+  Edit,
 } from 'lucide-react';
 
 /**
@@ -48,9 +49,11 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
   const nodeTypes = {
     text: ({ id, data }) => {
       const isEditing = editingNode === id;
+      const [isHovered, setIsHovered] = useState(false);
       
-      const handleDoubleClick = (e) => {
+      const handleEditClick = (e) => {
         e.stopPropagation();
+        e.preventDefault();
         setEditingNode(id);
       };
       
@@ -88,12 +91,13 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
       
       return (
         <div 
-          className="p-2 bg-stone-800 border border-stone-700 rounded shadow-md"
-          onDoubleClick={handleDoubleClick}
+          className="p-2 bg-stone-800 border border-stone-700 rounded shadow-md relative"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
           {isEditing ? (
             <textarea
-              className="w-full h-full bg-stone-700 text-teal-400 p-2 rounded font-mono text-sm focus:outline-none resize-none"
+              className="w-full h-full bg-stone-700 text-teal-400 p-2 rounded font-mono text-sm focus:outline-none resize-none min-h-[80px]"
               value={data.text}
               onChange={handleEdit}
               onBlur={handleBlur}
@@ -101,7 +105,18 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
               autoFocus
             />
           ) : (
-            <div className="text-teal-400 text-sm whitespace-pre-wrap">{data.text}</div>
+            <>
+              <div className="text-teal-400 text-sm whitespace-pre-wrap pr-6">{data.text}</div>
+              {isHovered && (
+                <button
+                  className="absolute top-1 right-1 bg-stone-700 p-1 rounded-sm hover:bg-stone-600 transition-colors"
+                  onClick={handleEditClick}
+                  title="Edit node"
+                >
+                  <Edit size={14} className="text-teal-400" />
+                </button>
+              )}
+            </>
           )}
         </div>
       );
@@ -118,7 +133,27 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
         const canvasData = JSON.parse(fileContent);
         
         if (canvasData.nodes && canvasData.edges) {
-          setNodes(canvasData.nodes);
+          // Transform nodes from JSONCanvas format to ReactFlow format
+          const transformedNodes = canvasData.nodes.map(node => {
+            // Check if node has position as an object or direct x/y properties
+            const nodeX = node.position?.x !== undefined ? node.position.x : (node.x || 0);
+            const nodeY = node.position?.y !== undefined ? node.position.y : (node.y || 0);
+            
+            return {
+              id: node.id,
+              type: node.type,
+              // For ReactFlow, use position property
+              position: {
+                x: nodeX,
+                y: nodeY
+              },
+              // Preserve data, or create default data object with text if not present
+              data: node.data || { text: node.text || "Text node" }
+            };
+          });
+          
+          console.log('[DEBUG] Transformed nodes:', transformedNodes.length);
+          setNodes(transformedNodes);
           setEdges(canvasData.edges);
           
           // Extract canvas name from file path or use from canvas data
@@ -199,10 +234,28 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
     if (!selectedFile) return;
     
     try {
+      // Transform nodes from ReactFlow format back to JSONCanvas format
+      const transformedNodes = nodes.map(node => {
+        // Extract position from ReactFlow format
+        const nodePosition = node.position || { x: 0, y: 0 };
+        
+        return {
+          id: node.id,
+          type: node.type,
+          // Store position in a position object for compatibility with JSONCanvas format
+          position: {
+            x: nodePosition.x,
+            y: nodePosition.y
+          },
+          // Preserve the data object
+          data: node.data
+        };
+      });
+      
       // Create canvas data structure
       const canvasData = {
         name: canvasName,
-        nodes,
+        nodes: transformedNodes,
         edges,
         version: "1.0",
         metadata: {
@@ -213,7 +266,7 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
       
       // Debug logs to track the data flow
       console.log('[DEBUG] Canvas Editor - Saving canvas data:', {
-        nodesLength: nodes.length,
+        nodesLength: transformedNodes.length,
         edgesLength: edges.length,
         selectedFile: selectedFile?.path
       });
@@ -456,9 +509,9 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
                 </p>
                 <ul className="text-left text-stone-300 space-y-2 mb-4">
                   <li>• Click "Add Node" to create a new text node</li>
-                  <li>• Double-click nodes to edit them</li>
+                  <li>• Hover over a node and click the edit button to edit content</li>
                   <li>• Drag between nodes to create connections</li>
-                  <li>• Delete nodes by selecting and pressing Delete</li>
+                  <li>• Select nodes and press Delete or use the Delete button</li>
                 </ul>
                 <p className="text-stone-400 text-sm">
                   See canvas-editor-documentation.md for more details
