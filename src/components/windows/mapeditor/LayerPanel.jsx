@@ -76,7 +76,7 @@ const LayerPanel = ({
       {/* Brush Size Control */}
       <div className="p-2 border-b border-stone-700">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-teal-400">Brush Size:</span>
+          <span className="text-sm text-teal-400">BRUSH SIZE:</span>
           <div className="flex items-center">
             <button
               onClick={() => setBrushSize(Math.max(1, brushSize - 1))}
