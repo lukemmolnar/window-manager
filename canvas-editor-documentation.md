@@ -43,10 +43,15 @@ When editing:
 
 ### Connecting Nodes
 
-1. Select a node (click on it once)
-2. You'll see connection points appear on the node
-3. Click and drag from one of these points to another node
-4. Release to create a connection arrow
+Nodes have connection handles that are visible on all four sides (top, right, bottom, left):
+
+1. Look for the teal connection dots on each node
+2. Click and drag from any handle to another node's handle
+3. Release to create a connection arrow
+4. Connections can flow in any direction between nodes
+5. You can have multiple connections between the same nodes
+
+Note: The connection handles are currently always visible for better usability while this feature is being developed.
 
 ### Managing Elements
 

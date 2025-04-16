@@ -485,7 +485,7 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
                 <ul className="text-left text-stone-300 space-y-2 mb-4">
                   <li>• Click "Add Node" to create a new text node</li>
                   <li>• Hover over a node and click the edit button to edit content</li>
-                  <li>• Drag between nodes to create connections</li>
+                  <li>• Drag from a node's connection handle (teal dot) to another node to create a connection</li>
                   <li>• Select nodes and press Delete or use the Delete button</li>
                 </ul>
                 <p className="text-stone-400 text-sm">

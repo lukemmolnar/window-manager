@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Edit } from 'lucide-react';
+import { Handle, Position } from 'reactflow';
 
 /**
  * TextNode component for displaying and editing text nodes in the canvas
@@ -43,6 +44,39 @@ const TextNode = ({ id, data, isConnectable, setEditingNode, editingNode }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Making handles always visible for debugging */}
+      {/* Input handle at the top */}
+      <Handle 
+        type="target" 
+        position={Position.Top} 
+        isConnectable={isConnectable} 
+        className="bg-teal-500 border-teal-600 w-3 h-3" // Increasing size for better visibility
+      />
+      
+      {/* Output handle at the bottom */}
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        isConnectable={isConnectable} 
+        className="bg-teal-500 border-teal-600 w-3 h-3" // Increasing size for better visibility
+      />
+      
+      {/* Optional handles on the sides for more connection points */}
+      <Handle 
+        type="source" 
+        position={Position.Right} 
+        id="right"
+        isConnectable={isConnectable} 
+        className="bg-teal-500 border-teal-600 w-3 h-3" // Increasing size for better visibility
+      />
+      
+      <Handle 
+        type="target" 
+        position={Position.Left} 
+        id="left"
+        isConnectable={isConnectable} 
+        className="bg-teal-500 border-teal-600 w-3 h-3" // Increasing size for better visibility
+      />
       {isEditing ? (
         <textarea
           className="w-full h-full bg-stone-700 text-teal-400 p-2 rounded font-mono text-sm focus:outline-none resize-none min-h-[80px]"
