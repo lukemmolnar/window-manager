@@ -164,7 +164,7 @@ const TilePalette = ({
       {tileType === 'floor' && (
         <>
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-mono text-teal-400">FLOOR STYLES</h3>
+            <h3 className="text-sm font-mono text-teal-400">FLOORS</h3>
             
             {/* Section filter dropdown */}
             <select 
@@ -185,7 +185,7 @@ const TilePalette = ({
       {tileType === 'wall' && (
         <>
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-mono text-teal-400">WALL STYLES</h3>
+            <h3 className="text-sm font-mono text-teal-400">WALLS</h3>
             
             {/* Section filter dropdown */}
             <select 
