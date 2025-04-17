@@ -44,38 +44,61 @@ const TextNode = ({ id, data, isConnectable, setEditingNode, editingNode }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Making handles always visible for debugging */}
-      {/* Input handle at the top */}
       <Handle 
-        type="target" 
+        type="source" 
         position={Position.Top} 
         isConnectable={isConnectable} 
-        className="bg-teal-500 border-teal-600 w-3 h-3" // Increasing size for better visibility
+        style={{ 
+          background: '#14b8a6', // teal-500 color
+          width: '0.45rem',
+          height: '0.45rem',
+          borderRadius: '9999px',
+          border: 'none'
+        }}
       />
-      
-      {/* Output handle at the bottom */}
+
+      {/* Bottom handle */}
       <Handle 
         type="source" 
         position={Position.Bottom} 
         isConnectable={isConnectable} 
-        className="bg-teal-500 border-teal-600 w-3 h-3" // Increasing size for better visibility
+        style={{ 
+          background: '#14b8a6', // teal-500 color
+          width: '0.45rem',
+          height: '0.45rem',
+          borderRadius: '9999px',
+          border: 'none'
+        }}
       />
-      
-      {/* Optional handles on the sides for more connection points */}
+
+      {/* Right handle */}
       <Handle 
         type="source" 
         position={Position.Right} 
         id="right"
         isConnectable={isConnectable} 
-        className="bg-teal-500 border-teal-600 w-3 h-3" // Increasing size for better visibility
+        style={{ 
+          background: '#14b8a6', // teal-500 color
+          width: '0.45rem',
+          height: '0.45rem',
+          borderRadius: '9999px',
+          border: 'none'
+        }}
       />
-      
+
+      {/* Left handle */}
       <Handle 
-        type="target" 
+        type="source" 
         position={Position.Left} 
         id="left"
         isConnectable={isConnectable} 
-        className="bg-teal-500 border-teal-600 w-3 h-3" // Increasing size for better visibility
+        style={{ 
+          background: '#14b8a6', // teal-500 color
+          width: '0.45rem',
+          height: '0.45rem',
+          borderRadius: '9999px',
+          border: 'none'
+        }}
       />
       {isEditing ? (
         <textarea

@@ -45,8 +45,8 @@ When editing:
 
 Nodes have connection handles that are visible on all four sides (top, right, bottom, left):
 
-1. Look for the teal connection dots on each node
-2. Click and drag from any handle to another node's handle
+1. Look for the teal circular dots on each node
+2. Click and drag from any handle to another node's handle 
 3. Release to create a connection arrow
 4. Connections can flow in any direction between nodes
 5. You can have multiple connections between the same nodes

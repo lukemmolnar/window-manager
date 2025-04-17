@@ -457,6 +457,7 @@ const CanvasEditor = ({ fileContent, selectedFile, onSave }) => {
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          connectionMode="loose"
           onConnect={onConnect}
           onInit={setReactFlowInstance}
           onDrop={onDrop}
