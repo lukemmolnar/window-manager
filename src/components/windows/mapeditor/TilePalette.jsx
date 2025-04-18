@@ -64,7 +64,7 @@ const TilePalette = ({
   // Function to load favorite tiles
   const loadFavoriteTiles = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       if (!token) return;
 
       const response = await axios.get('/api/favorite-tiles', {
@@ -80,7 +80,7 @@ const TilePalette = ({
   // Function to check if selected tile is a favorite
   const checkIsFavorite = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       if (!token) return;
 
       const response = await axios.get(`/api/favorite-tiles/check/${selectedTileId}/${tileType}`, {
@@ -100,7 +100,7 @@ const TilePalette = ({
     setAddFavoriteError(null);
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       if (!token) {
         setAddFavoriteError('Authentication required');
         setIsAddingToFavorites(false);
@@ -126,7 +126,7 @@ const TilePalette = ({
   // Function to remove a tile from favorites
   const removeFromFavorites = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       if (!token) return;
 
       await axios.delete(`/api/favorite-tiles/${selectedTileId}/${tileType}`, {
