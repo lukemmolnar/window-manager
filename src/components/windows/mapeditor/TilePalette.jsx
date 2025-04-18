@@ -11,6 +11,37 @@ import {
 } from './utils/tileRegistry';
 import { Heart, CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
+import API_CONFIG from '../../../config/api';
+
+// Create an axios instance with the correct base URL
+const apiClient = axios.create({
+  // Using the proxy defined in vite.config.js
+  baseURL: '/api' 
+});
+
+// Add a request interceptor for debugging
+apiClient.interceptors.request.use(request => {
+  console.log('API Request:', request.method, request.url);
+  console.log('Request Headers:', request.headers);
+  return request;
+});
+
+// Add a response interceptor for debugging
+apiClient.interceptors.response.use(
+  response => {
+    console.log('API Response Status:', response.status);
+    console.log('API Response Data:', response.data);
+    return response;
+  },
+  error => {
+    console.error('API Error:', error.message);
+    if (error.response) {
+      console.error('Error Status:', error.response.status);
+      console.error('Error Data:', error.response.data);
+    }
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Component for displaying and selecting tiles from a tileset
@@ -67,7 +98,8 @@ const TilePalette = ({
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      const response = await axios.get('/api/favorite-tiles', {
+      console.log('Fetching favorite tiles from:', apiClient.defaults.baseURL + '/favorite-tiles');
+      const response = await apiClient.get('/favorite-tiles', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -94,7 +126,7 @@ const TilePalette = ({
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      const response = await axios.get(`/api/favorite-tiles/check/${selectedTileId}/${tileType}`, {
+      const response = await apiClient.get(`/favorite-tiles/check/${selectedTileId}/${tileType}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -118,7 +150,7 @@ const TilePalette = ({
         return;
       }
 
-      await axios.post('/api/favorite-tiles', 
+      await apiClient.post('/favorite-tiles', 
         { tileIndex: selectedTileId, tileType }, 
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -140,7 +172,7 @@ const TilePalette = ({
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      await axios.delete(`/api/favorite-tiles/${selectedTileId}/${tileType}`, {
+      await apiClient.delete(`/favorite-tiles/${selectedTileId}/${tileType}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

@@ -6,6 +6,27 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 // This configuration sets up Vite with both React and Tailwind CSS support
 export default defineConfig({
+  // Configure dev server with proxy for API requests
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://45.45.239.125:3001',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response:', proxyRes.statusCode, req.url);
+          });
+        }
+      }
+    }
+  },
   plugins: [
     // The React plugin enables JSX processing and Fast Refresh
     react(),
