@@ -15,8 +15,8 @@ import API_CONFIG from '../../../config/api';
 
 // Create an axios instance with the correct base URL
 const apiClient = axios.create({
-  // Using the proxy defined in vite.config.js
-  baseURL: '/api' 
+  // Directly use the remote server instead of relying on the proxy
+  baseURL: 'http://45.45.239.125:3001/api'
 });
 
 // Add a request interceptor for debugging
