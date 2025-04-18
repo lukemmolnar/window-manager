@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { 
   FLOOR_TILESET_PATH,
   WALL_TILESET_PATH,
@@ -9,6 +9,8 @@ import {
   TILE_SECTIONS,
   WALL_TILE_SECTIONS
 } from './utils/tileRegistry';
+import { Heart, CheckCircle, XCircle } from 'lucide-react';
+import axios from 'axios';
 
 /**
  * Component for displaying and selecting tiles from a tileset
@@ -19,6 +21,10 @@ const TilePalette = ({
   tileType = 'floor',
   onChangeTileType
 }) => {
+  const [favoriteTiles, setFavoriteTiles] = useState([]);
+  const [isAddingToFavorites, setIsAddingToFavorites] = useState(false);
+  const [addFavoriteError, setAddFavoriteError] = useState(null);
+  const [isFavorited, setIsFavorited] = useState(false);
   const [floorTilesetImage, setFloorTilesetImage] = useState(null);
   const [wallTilesetImage, setWallTilesetImage] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,6 +34,7 @@ const TilePalette = ({
   const [totalWallTiles, setTotalWallTiles] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const initialTileTypeRef = useRef(tileType);
+  const [showFavoritesSection, setShowFavoritesSection] = useState(true);
   
   // Available tile types
   const tileTypes = [
@@ -43,6 +50,137 @@ const TilePalette = ({
 
   // Track the actual columns detected in the image
   const [actualColumns, setActualColumns] = useState(TILESET_COLS);
+
+  // Load favorite tiles when component mounts
+  useEffect(() => {
+    loadFavoriteTiles();
+  }, []);
+
+  // Check if the currently selected tile is a favorite
+  useEffect(() => {
+    checkIsFavorite();
+  }, [selectedTileId, tileType]);
+
+  // Function to load favorite tiles
+  const loadFavoriteTiles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await axios.get('/api/favorite-tiles', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setFavoriteTiles(response.data);
+    } catch (error) {
+      console.error('Error loading favorite tiles:', error);
+    }
+  };
+
+  // Function to check if selected tile is a favorite
+  const checkIsFavorite = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await axios.get(`/api/favorite-tiles/check/${selectedTileId}/${tileType}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setIsFavorited(response.data.isFavorite);
+    } catch (error) {
+      console.error('Error checking favorite status:', error);
+      setIsFavorited(false);
+    }
+  };
+
+  // Function to add a tile to favorites
+  const addToFavorites = async () => {
+    setIsAddingToFavorites(true);
+    setAddFavoriteError(null);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setAddFavoriteError('Authentication required');
+        setIsAddingToFavorites(false);
+        return;
+      }
+
+      await axios.post('/api/favorite-tiles', 
+        { tileIndex: selectedTileId, tileType }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Reload favorite tiles
+      await loadFavoriteTiles();
+      setIsFavorited(true);
+    } catch (error) {
+      console.error('Error adding tile to favorites:', error);
+      setAddFavoriteError(error.response?.data?.message || 'Failed to add to favorites');
+    } finally {
+      setIsAddingToFavorites(false);
+    }
+  };
+
+  // Function to remove a tile from favorites
+  const removeFromFavorites = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      await axios.delete(`/api/favorite-tiles/${selectedTileId}/${tileType}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Reload favorite tiles
+      await loadFavoriteTiles();
+      setIsFavorited(false);
+    } catch (error) {
+      console.error('Error removing tile from favorites:', error);
+    }
+  };
+
+  // Render a tile canvas
+  const renderTileCanvas = (tileIndex, tileType, size = 40) => {
+    const image = tileType === 'floor' ? floorTilesetImage : wallTilesetImage;
+    
+    if (!image) return null;
+    
+    return (
+      <canvas
+        ref={canvas => {
+          if (canvas && image) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, size, size);
+            
+            // Calculate coordinates based on actual columns in the sheet
+            const col = tileIndex % actualColumns;
+            const row = Math.floor(tileIndex / actualColumns);
+            const sourceX = col * TILE_SIZE;
+            const sourceY = row * TILE_SIZE;
+            
+            // Center the tile in the canvas
+            ctx.drawImage(
+              image,
+              sourceX, // sourceX
+              sourceY, // sourceY
+              TILE_SIZE, // sourceWidth
+              TILE_SIZE, // sourceHeight
+              0, // destX
+              0, // destY
+              size, // destWidth
+              size  // destHeight
+            );
+          }
+        }}
+        width={size}
+        height={size}
+        className="mx-auto"
+        style={{ display: 'block' }}
+      />
+    );
+  };
   
   // Load the tileset images
   useEffect(() => {
@@ -148,7 +286,36 @@ const TilePalette = ({
       <div className="flex flex-col space-y-2 mb-4">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-mono text-teal-400">TILE TYPE</h3>
+          
+          {/* Favorite Button for Selected Tile */}
+          <div className="flex items-center">
+            {isFavorited ? (
+              <button 
+                className="text-pink-500 hover:text-pink-400 flex items-center mr-2"
+                onClick={removeFromFavorites}
+                title="Remove from favorites"
+              >
+                <Heart size={16} fill="currentColor" className="mr-1" />
+                <span className="text-xs">Unfavorite</span>
+              </button>
+            ) : (
+              <button 
+                className="text-gray-400 hover:text-pink-500 flex items-center mr-2"
+                onClick={addToFavorites}
+                title="Add to favorites"
+                disabled={isAddingToFavorites}
+              >
+                <Heart size={16} className="mr-1" />
+                <span className="text-xs">{isAddingToFavorites ? 'Adding...' : 'Favorite'}</span>
+              </button>
+            )}
+          </div>
         </div>
+        
+        {addFavoriteError && (
+          <div className="text-red-500 text-xs mb-2">{addFavoriteError}</div>
+        )}
+        
         <select
           className="bg-stone-700 text-teal-300 text-sm rounded p-2 w-full border-none"
           value={tileType}
@@ -159,6 +326,51 @@ const TilePalette = ({
           ))}
         </select>
       </div>
+      
+      {/* Favorite Tiles Section */}
+      {favoriteTiles.length > 0 && (
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-mono text-pink-400">FAVORITE TILES</h3>
+            <button 
+              className="text-xs text-stone-400 hover:text-stone-300"
+              onClick={() => setShowFavoritesSection(!showFavoritesSection)}
+            >
+              {showFavoritesSection ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          
+          {showFavoritesSection && (
+            <div className="grid grid-cols-5 gap-1 justify-items-center mb-3">
+              {favoriteTiles.map((tile) => (
+                <div
+                  key={`fav-${tile.tile_type}-${tile.tile_index}`}
+                  className={`rounded cursor-pointer border ${
+                    selectedTileId === tile.tile_index && tileType === tile.tile_type 
+                      ? 'bg-teal-900 border-teal-500' 
+                      : 'hover:bg-stone-700 border-transparent'
+                  }`}
+                  onClick={() => {
+                    onSelectTile(tile.tile_index);
+                    if (tile.tile_type !== tileType) {
+                      onChangeTileType(tile.tile_type);
+                    }
+                  }}
+                  title={getTileName(tile.tile_index, tile.tile_type)}
+                >
+                  <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
+                    {(tile.tile_type === 'floor' && floorTilesetImage) || 
+                     (tile.tile_type === 'wall' && wallTilesetImage) 
+                      ? renderTileCanvas(tile.tile_index, tile.tile_type)
+                      : <div className="w-full h-full flex items-center justify-center text-xs text-stone-500">Loading</div>
+                    }
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Always include the floor section headings when floor type is selected */}
       {tileType === 'floor' && (
