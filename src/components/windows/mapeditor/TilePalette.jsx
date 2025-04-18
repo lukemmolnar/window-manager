@@ -71,9 +71,20 @@ const TilePalette = ({
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setFavoriteTiles(response.data);
+      console.log('Favorite tiles response:', response.data);
+      
+      // Ensure we have an array, even if the response is unexpected
+      if (Array.isArray(response.data)) {
+        setFavoriteTiles(response.data);
+      } else if (response.data && Array.isArray(response.data.favorites)) {
+        setFavoriteTiles(response.data.favorites);
+      } else {
+        console.error('Unexpected response format for favorite tiles:', response.data);
+        setFavoriteTiles([]);
+      }
     } catch (error) {
       console.error('Error loading favorite tiles:', error);
+      setFavoriteTiles([]);
     }
   };
 
@@ -328,7 +339,7 @@ const TilePalette = ({
       </div>
       
       {/* Favorite Tiles Section */}
-      {favoriteTiles.length > 0 && (
+      {Array.isArray(favoriteTiles) && favoriteTiles.length > 0 && (
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-mono text-pink-400">FAVORITE TILES</h3>
@@ -342,7 +353,7 @@ const TilePalette = ({
           
           {showFavoritesSection && (
             <div className="grid grid-cols-5 gap-1 justify-items-center mb-3">
-              {favoriteTiles.map((tile) => (
+              {Array.isArray(favoriteTiles) && favoriteTiles.map((tile) => (
                 <div
                   key={`fav-${tile.tile_type}-${tile.tile_index}`}
                   className={`rounded cursor-pointer border ${
