@@ -101,9 +101,11 @@ export const findCellInLayer = (mapData, layerIndex, x, y) => {
  * @param {number} x - The x coordinate
  * @param {number} y - The y coordinate
  * @param {string} type - The type of the cell
+ * @param {number} tileId - The ID of the tile (optional)
+ * @param {number} rotation - The rotation angle in degrees (0, 90, 180, 270) (optional)
  * @returns {Object} The updated map data
  */
-export const setCellInLayer = (mapData, layerIndex, x, y, type) => {
+export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation = 0) => {
   if (!mapData || !mapData.layers || !mapData.layers[layerIndex]) return mapData;
   
   // Clone the map data to avoid direct state mutation
@@ -116,12 +118,27 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type) => {
   // Find if the cell already exists in this layer
   const existingCellIndex = layerData.cells.findIndex(cell => cell.x === x && cell.y === y);
   
+  // Create cell data with optional properties
+  const cellData = { x, y, type };
+  
+  // Add tileId and rotation if provided
+  if (tileId !== undefined) {
+    cellData.tileId = tileId;
+  }
+  
+  if (rotation !== 0) {
+    cellData.rotation = rotation;
+  }
+  
   if (existingCellIndex !== -1) {
-    // Update existing cell
-    layerData.cells[existingCellIndex] = { ...layerData.cells[existingCellIndex], type };
+    // Update existing cell, preserving any properties not explicitly changed
+    layerData.cells[existingCellIndex] = { 
+      ...layerData.cells[existingCellIndex], 
+      ...cellData 
+    };
   } else {
     // Add new cell
-    layerData.cells.push({ x, y, type });
+    layerData.cells.push(cellData);
   }
   
   // Update the layer in the map data

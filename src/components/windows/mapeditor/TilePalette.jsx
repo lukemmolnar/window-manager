@@ -9,7 +9,7 @@ import {
   TILE_SECTIONS,
   WALL_TILE_SECTIONS
 } from './utils/tileRegistry';
-import { Heart, CheckCircle, XCircle } from 'lucide-react';
+import { Heart, RotateCw, CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
 import API_CONFIG from '../../../config/api';
 
@@ -26,7 +26,9 @@ const TilePalette = ({
   onSelectTile, 
   selectedTileId = 0, 
   tileType = 'floor',
-  onChangeTileType
+  onChangeTileType,
+  selectedRotation = 0,
+  onRotateTile
 }) => {
   const [favoriteTiles, setFavoriteTiles] = useState([]);
   const [isAddingToFavorites, setIsAddingToFavorites] = useState(false);
@@ -174,7 +176,7 @@ const removeFromFavorites = async () => {
 };
 
   // Render a tile canvas
-  const renderTileCanvas = (tileIndex, tileType, size = 40) => {
+  const renderTileCanvas = (tileIndex, tileType, size = 40, rotation = 0) => {
     const image = tileType === 'floor' ? floorTilesetImage : wallTilesetImage;
     
     if (!image) return null;
@@ -192,18 +194,31 @@ const removeFromFavorites = async () => {
             const sourceX = col * TILE_SIZE;
             const sourceY = row * TILE_SIZE;
             
-            // Center the tile in the canvas
+            // Save the context state before transformations
+            ctx.save();
+            
+            // Move to the center of the canvas for rotation
+            ctx.translate(size/2, size/2);
+            
+            // Convert degrees to radians and rotate
+            const angleInRadians = (rotation * Math.PI) / 180;
+            ctx.rotate(angleInRadians);
+            
+            // Draw the image centered and rotated
             ctx.drawImage(
               image,
               sourceX, // sourceX
               sourceY, // sourceY
               TILE_SIZE, // sourceWidth
               TILE_SIZE, // sourceHeight
-              0, // destX
-              0, // destY
+              -size/2, // destX (negative half-size to center)
+              -size/2, // destY (negative half-size to center)
               size, // destWidth
               size  // destHeight
             );
+            
+            // Restore the context to its original state
+            ctx.restore();
           }
         }}
         width={size}
@@ -319,8 +334,19 @@ const removeFromFavorites = async () => {
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-mono text-teal-400">TILE TYPE</h3>
           
-          {/* Favorite Button for Selected Tile */}
+          {/* Buttons for Selected Tile */}
           <div className="flex items-center">
+            {/* Rotate Button */}
+            <button 
+              className="text-blue-400 hover:text-blue-300 flex items-center mr-2"
+              onClick={() => onRotateTile && onRotateTile((selectedRotation + 90) % 360)}
+              title="Rotate tile"
+            >
+              <RotateCw size={16} className="mr-1" />
+              <span className="text-xs">{selectedRotation}°</span>
+            </button>
+            
+            {/* Favorite Button */}
             {isFavorited ? (
               <button 
                 className="text-pink-500 hover:text-pink-400 flex items-center mr-2"
@@ -393,7 +419,7 @@ const removeFromFavorites = async () => {
                   <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
                     {(tile.tile_type === 'floor' && floorTilesetImage) || 
                      (tile.tile_type === 'wall' && wallTilesetImage) 
-                      ? renderTileCanvas(tile.tile_index, tile.tile_type)
+                      ? renderTileCanvas(tile.tile_index, tile.tile_type, 40, selectedTileId === tile.tile_index && tileType === tile.tile_type ? selectedRotation : 0)
                       : <div className="w-full h-full flex items-center justify-center text-xs text-stone-500">Loading</div>
                     }
                   </div>
@@ -460,37 +486,7 @@ const removeFromFavorites = async () => {
                   title={getTileName(tileIndex, 'wall')}
                 >
                   <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                    <canvas
-                      ref={canvas => {
-                        if (canvas && wallTilesetImage) {
-                          const ctx = canvas.getContext('2d');
-                          ctx.clearRect(0, 0, 40, 40);
-                          
-                          // Calculate coordinates based on actual columns in the sheet
-                          const col = tileIndex % actualColumns;
-                          const row = Math.floor(tileIndex / actualColumns);
-                          const sourceX = col * TILE_SIZE;
-                          const sourceY = row * TILE_SIZE;
-                          
-                          // Center the tile in the canvas
-                          ctx.drawImage(
-                            wallTilesetImage,
-                            sourceX, // sourceX
-                            sourceY, // sourceY
-                            TILE_SIZE, // sourceWidth
-                            TILE_SIZE, // sourceHeight
-                            0, // destX
-                            0, // destY
-                            40, // destWidth
-                            40  // destHeight
-                          );
-                        }
-                      }}
-                      width={40}
-                      height={40}
-                      className="mx-auto"
-                      style={{ display: 'block' }}
-                    />
+                    {renderTileCanvas(tileIndex, 'wall', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
                   </div>
                 </div>
               ))}
@@ -536,38 +532,7 @@ const removeFromFavorites = async () => {
                 title={getTileName(tileIndex)}
               >
                 <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                  <canvas
-                    ref={canvas => {
-                      if (canvas && floorTilesetImage) {
-                        const ctx = canvas.getContext('2d');
-                        ctx.clearRect(0, 0, 40, 40);
-                        
-                        // Calculate coordinates based on actual columns in the sheet
-                        // (This overrides the getTileCoordinates from tileRegistry.js)
-                        const col = tileIndex % actualColumns;
-                        const row = Math.floor(tileIndex / actualColumns);
-                        const sourceX = col * TILE_SIZE;
-                        const sourceY = row * TILE_SIZE;
-                        
-                        // Center the tile in the canvas
-                        ctx.drawImage(
-                          floorTilesetImage,
-                          sourceX, // sourceX
-                          sourceY, // sourceY
-                          TILE_SIZE, // sourceWidth
-                          TILE_SIZE, // sourceHeight
-                          0, // destX
-                          0, // destY
-                          40, // destWidth
-                          40  // destHeight
-                        );
-                      }
-                    }}
-                    width={40}
-                    height={40}
-                    className="mx-auto" // Add margin auto to center the canvas horizontally
-                    style={{ display: 'block' }} // Make canvas a block element
-                  />
+                  {renderTileCanvas(tileIndex, 'floor', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
                 </div>
               </div>
             ))}

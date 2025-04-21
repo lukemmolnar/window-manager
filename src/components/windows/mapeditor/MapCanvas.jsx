@@ -79,7 +79,7 @@ const MapCanvas = ({
    */
   // Pass showGrid to the drawTile function
   const drawTile = (ctx, x, y, size, cell) => {
-    const { type, tileId } = cell;
+    const { type, tileId, rotation = 0 } = cell;
     
     // Handle floor tiles with tileset
     if (type === 'floor' && tileId !== undefined && floorTilesetImage) {
@@ -90,16 +90,46 @@ const MapCanvas = ({
       const sourceX = col * TILE_SIZE;
       const sourceY = row * TILE_SIZE;
       
-      ctx.drawImage(
-        floorTilesetImage,
-        sourceX, sourceY, TILE_SIZE, TILE_SIZE,
-        x, y, size, size
-      );
-      
-      // Draw grid lines on top only if showGrid is true
-      if (showGrid) {
-        ctx.strokeStyle = '#44403c'; // Stone-700
-        ctx.strokeRect(x, y, size, size);
+      // Handle rotation
+      if (rotation !== 0) {
+        // Save the current context state
+        ctx.save();
+        
+        // Move to the center of the tile position
+        ctx.translate(x + size/2, y + size/2);
+        
+        // Rotate the context by the specified angle (convert degrees to radians)
+        const angleInRadians = (rotation * Math.PI) / 180;
+        ctx.rotate(angleInRadians);
+        
+        // Draw the tile, but with coordinates adjusted to draw centered around origin
+        ctx.drawImage(
+          floorTilesetImage,
+          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+          -size/2, -size/2, size, size
+        );
+        
+        // Restore the context to its original state
+        ctx.restore();
+        
+        // Draw grid lines on top only if showGrid is true
+        if (showGrid) {
+          ctx.strokeStyle = '#44403c'; // Stone-700
+          ctx.strokeRect(x, y, size, size);
+        }
+      } else {
+        // No rotation, draw normally
+        ctx.drawImage(
+          floorTilesetImage,
+          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+          x, y, size, size
+        );
+        
+        // Draw grid lines on top only if showGrid is true
+        if (showGrid) {
+          ctx.strokeStyle = '#44403c'; // Stone-700
+          ctx.strokeRect(x, y, size, size);
+        }
       }
       return;
     }
@@ -112,16 +142,46 @@ const MapCanvas = ({
       const sourceX = col * TILE_SIZE;
       const sourceY = row * TILE_SIZE;
       
-      ctx.drawImage(
-        wallTilesetImage,
-        sourceX, sourceY, TILE_SIZE, TILE_SIZE,
-        x, y, size, size
-      );
-      
-      // Draw grid lines on top only if showGrid is true
-      if (showGrid) {
-        ctx.strokeStyle = '#44403c'; // Stone-700
-        ctx.strokeRect(x, y, size, size);
+      // Handle rotation
+      if (rotation !== 0) {
+        // Save the current context state
+        ctx.save();
+        
+        // Move to the center of the tile position
+        ctx.translate(x + size/2, y + size/2);
+        
+        // Rotate the context by the specified angle (convert degrees to radians)
+        const angleInRadians = (rotation * Math.PI) / 180;
+        ctx.rotate(angleInRadians);
+        
+        // Draw the tile, but with coordinates adjusted to draw centered around origin
+        ctx.drawImage(
+          wallTilesetImage,
+          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+          -size/2, -size/2, size, size
+        );
+        
+        // Restore the context to its original state
+        ctx.restore();
+        
+        // Draw grid lines on top only if showGrid is true
+        if (showGrid) {
+          ctx.strokeStyle = '#44403c'; // Stone-700
+          ctx.strokeRect(x, y, size, size);
+        }
+      } else {
+        // No rotation, draw normally
+        ctx.drawImage(
+          wallTilesetImage,
+          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+          x, y, size, size
+        );
+        
+        // Draw grid lines on top only if showGrid is true
+        if (showGrid) {
+          ctx.strokeStyle = '#44403c'; // Stone-700
+          ctx.strokeRect(x, y, size, size);
+        }
       }
       return;
     }
@@ -139,12 +199,36 @@ const MapCanvas = ({
         ctx.fillRect(x, y, size, size);
         break;
       case 'door':
-        // Draw floor first
-        ctx.fillStyle = '#1e293b'; // Slate background
-        ctx.fillRect(x, y, size, size);
-        // Then draw door
-        ctx.fillStyle = '#b45309'; // Amber-700
-        ctx.fillRect(x + size/4, y + size/4, size/2, size/2);
+        // For doors, apply rotation to the whole door element
+        if (rotation !== 0) {
+          // Save the current context state
+          ctx.save();
+          
+          // Move to the center of the tile position
+          ctx.translate(x + size/2, y + size/2);
+          
+          // Rotate the context by the specified angle (convert degrees to radians)
+          const angleInRadians = (rotation * Math.PI) / 180;
+          ctx.rotate(angleInRadians);
+          
+          // Draw floor background
+          ctx.fillStyle = '#1e293b'; // Slate background
+          ctx.fillRect(-size/2, -size/2, size, size);
+          
+          // Draw door centered
+          ctx.fillStyle = '#b45309'; // Amber-700
+          ctx.fillRect(-size/4, -size/4, size/2, size/2);
+          
+          // Restore the context to its original state
+          ctx.restore();
+        } else {
+          // Draw floor first (no rotation)
+          ctx.fillStyle = '#1e293b'; // Slate background
+          ctx.fillRect(x, y, size, size);
+          // Then draw door
+          ctx.fillStyle = '#b45309'; // Amber-700
+          ctx.fillRect(x + size/4, y + size/4, size/2, size/2);
+        }
         break;
       // Add more tile types as needed
       default:

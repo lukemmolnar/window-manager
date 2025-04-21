@@ -3,6 +3,8 @@ import { Map } from 'lucide-react';
 import MapCanvas from './mapeditor/MapCanvas';
 import MapToolbar from './mapeditor/MapToolbar';
 import LayerPanel from './mapeditor/LayerPanel';
+import TilePalette from './mapeditor/TilePalette';
+import { setCellInLayer, removeCellFromLayer } from './mapeditor/utils/mapUtils';
 
 /**
  * Map Editor Window Component
@@ -15,6 +17,9 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   const [currentTool, setCurrentTool] = useState('select');
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedTileId, setSelectedTileId] = useState(0);
+  const [selectedTileType, setSelectedTileType] = useState('floor');
+  const [selectedRotation, setSelectedRotation] = useState(0); // 0, 90, 180, 270 degrees
 
   // Load map data from file when selected
   useEffect(() => {
@@ -137,34 +142,54 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   const handleEdit = (x, y, tool) => {
     if (!mapData || !mapData.layers || !mapData.layers[currentLayer]) return;
     
-    // Clone the current map data to avoid direct state mutation
-    const newMapData = { ...mapData };
-    const layerData = { ...newMapData.layers[currentLayer] };
-    
-    // Find if the cell already exists in this layer
-    const existingCellIndex = layerData.cells.findIndex(cell => cell.x === x && cell.y === y);
+    let newMapData;
     
     if (tool === 'erase') {
-      // If erasing and the cell exists, remove it
-      if (existingCellIndex !== -1) {
-        layerData.cells = layerData.cells.filter((_, index) => index !== existingCellIndex);
-      }
+      // If erasing, remove the cell from the layer
+      newMapData = removeCellFromLayer(mapData, currentLayer, x, y);
     } else {
-      // If a cell already exists at this position, update it
-      if (existingCellIndex !== -1) {
-        layerData.cells[existingCellIndex] = { x, y, type: tool };
-      } else {
-        // Otherwise, add a new cell
-        layerData.cells.push({ x, y, type: tool });
-      }
+      // For tile placement tools (floor, wall, etc.), use the selected tile
+      newMapData = setCellInLayer(
+        mapData, 
+        currentLayer, 
+        x, 
+        y, 
+        tool, 
+        selectedTileId, 
+        selectedRotation
+      );
     }
-    
-    // Update the layer in the map data
-    newMapData.layers[currentLayer] = layerData;
     
     // Update state
     setMapData(newMapData);
     setIsDirty(true);
+  };
+  
+  // Handle tile selection
+  const handleSelectTile = (tileId) => {
+    setSelectedTileId(tileId);
+    // When selecting a tile, switch to the corresponding tool
+    if (currentTool === 'select' || currentTool === 'erase') {
+      setCurrentTool(selectedTileType);
+    }
+  };
+  
+  // Handle tile type change
+  const handleChangeTileType = (tileType) => {
+    setSelectedTileType(tileType);
+    // When changing tile type, also change the current tool
+    if (currentTool !== 'select' && currentTool !== 'erase') {
+      setCurrentTool(tileType);
+    }
+  };
+  
+  // Handle tile rotation
+  const handleRotateTile = (rotation) => {
+    setSelectedRotation(rotation);
+    // When rotating a tile, make sure we're in a tile placement mode
+    if (currentTool === 'select' || currentTool === 'erase') {
+      setCurrentTool(selectedTileType);
+    }
   };
 
   // Layer management functions
@@ -338,26 +363,40 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       />
       
       {/* Main content area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Canvas for map editing */}
-        <MapCanvas 
-          mapData={mapData}
-          currentLayer={currentLayer}
-          currentTool={currentTool}
-          onEdit={handleEdit}
-        />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex overflow-hidden">
+          {/* Canvas for map editing */}
+          <MapCanvas 
+            mapData={mapData}
+            currentLayer={currentLayer}
+            currentTool={currentTool}
+            onEdit={handleEdit}
+            selectedTileId={selectedTileId}
+            selectedRotation={selectedRotation}
+          />
+          
+          {/* Layer panel */}
+          <LayerPanel 
+            layers={mapData.layers}
+            currentLayer={currentLayer}
+            setCurrentLayer={setCurrentLayer}
+            onToggleLayerVisibility={handleToggleLayerVisibility}
+            onAddLayer={handleAddLayer}
+            onRemoveLayer={handleRemoveLayer}
+            onMoveLayerUp={handleMoveLayerUp}
+            onMoveLayerDown={handleMoveLayerDown}
+            onRenameLayer={handleRenameLayer}
+          />
+        </div>
         
-        {/* Layer panel */}
-        <LayerPanel 
-          layers={mapData.layers}
-          currentLayer={currentLayer}
-          setCurrentLayer={setCurrentLayer}
-          onToggleLayerVisibility={handleToggleLayerVisibility}
-          onAddLayer={handleAddLayer}
-          onRemoveLayer={handleRemoveLayer}
-          onMoveLayerUp={handleMoveLayerUp}
-          onMoveLayerDown={handleMoveLayerDown}
-          onRenameLayer={handleRenameLayer}
+        {/* Tile Palette */}
+        <TilePalette 
+          onSelectTile={handleSelectTile}
+          selectedTileId={selectedTileId}
+          tileType={selectedTileType}
+          onChangeTileType={handleChangeTileType}
+          selectedRotation={selectedRotation}
+          onRotateTile={handleRotateTile}
         />
       </div>
     </div>
