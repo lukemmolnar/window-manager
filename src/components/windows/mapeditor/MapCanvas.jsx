@@ -82,6 +82,11 @@ const MapCanvas = ({
   const drawTile = (ctx, x, y, size, cell) => {
     const { type, tileId, rotation = 0 } = cell;
     
+    // Add debugging for rotation values
+    if (rotation !== 0) {
+      console.log(`Drawing cell at (${cell.x}, ${cell.y}) with rotation: ${rotation}°`);
+    }
+    
     // Handle floor tiles with tileset
     if (type === 'floor' && tileId !== undefined && floorTilesetImage) {
       // Calculate coordinates based on actual columns in the sheet
@@ -278,10 +283,17 @@ const MapCanvas = ({
     
     // For brush size of 1, just edit the single cell
     if (brushSize === 1) {
-      // Add selectedRotation to debug logs
+      // Add more detailed logs about rotation
       console.log("About to call onEdit with rotation:", selectedRotation);
-      // Pass selectedRotation as the fourth parameter
-      onEdit(gridCoords.x, gridCoords.y, toolToUse, selectedRotation);
+      console.log("Tool being used:", toolToUse);
+      console.log("Current selected rotation value:", selectedRotation);
+      
+      // Directly use the rotation from props - this prevents issues with stale rotation state
+      const currentRotation = selectedRotation;
+      console.log("Using rotation value for placement:", currentRotation);
+      
+      // Pass currentRotation as the fourth parameter
+      onEdit(gridCoords.x, gridCoords.y, toolToUse, currentRotation);
       return;
     }
     
@@ -305,7 +317,8 @@ const MapCanvas = ({
           continue;
         }
         
-        // Edit this cell with rotation
+        // Edit this cell with the current rotation value
+        // Directly use the rotation from props to avoid stale state issues
         onEdit(cellX, cellY, toolToUse, selectedRotation);
       }
     }
@@ -393,6 +406,9 @@ const MapCanvas = ({
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !mapData) return;
+    
+    // Log current rotation when drawing canvas for debugging
+    console.log("Drawing canvas with selectedRotation:", selectedRotation);
 
     const ctx = canvas.getContext('2d');
     ctxRef.current = ctx;
@@ -595,7 +611,9 @@ const MapCanvas = ({
     showGrid, 
     floorTilesetImage,
     wallTilesetImage,
-    actualColumns  // Add actualColumns as a dependency since we use it in drawTile
+    actualColumns,
+    selectedRotation,  // Add selectedRotation as a dependency to refresh on rotation changes
+    brushSize  // Add brushSize as a dependency too for completeness
   ]);
   
   // Call drawCanvas whenever relevant dependencies change

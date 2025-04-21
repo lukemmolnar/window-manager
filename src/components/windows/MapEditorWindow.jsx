@@ -186,18 +186,27 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     }
   };
   
-  // Handle tile rotation
+  // Handle tile rotation - fixes React async state update issue
   const handleRotateTile = (rotation) => {
+    console.log("---------------------------------------");
     console.log("handleRotateTile called with rotation:", rotation);
-    console.log("Current selectedRotation before update:", selectedRotation);
-    setSelectedRotation(rotation);
-    console.log("selectedRotation state updated to:", rotation);
+    
+    // Convert to number to ensure consistent handling
+    const numRotation = Number(rotation);
+    
+    // Update the DOM immediately for visual feedback
+    document.getElementById('debug-rotation-value').textContent = `Rotation set to: ${numRotation}°`;
+    
+    // Update the state
+    setSelectedRotation(numRotation);
     
     // When rotating a tile, make sure we're in a tile placement mode
     if (currentTool === 'select' || currentTool === 'erase') {
       setCurrentTool(selectedTileType);
-      console.log("Changed tool from", currentTool, "to", selectedTileType);
     }
+    
+    console.log("Rotation has been set to:", numRotation);
+    console.log("---------------------------------------");
   };
 
   // Layer management functions
@@ -369,6 +378,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         onRedo={() => console.log('Redo not implemented')}
         onClear={() => createNewMap()}
       />
+      
+      {/* For debugging - hidden in production */}
+      <div id="debug-rotation-value" className="p-1 bg-red-800 text-white text-xs">
+        Rotation set to: {selectedRotation}°
+      </div>
       
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">

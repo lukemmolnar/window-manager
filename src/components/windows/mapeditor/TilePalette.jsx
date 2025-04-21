@@ -30,6 +30,13 @@ const TilePalette = ({
   selectedRotation = 0,
   onRotateTile
 }) => {
+  // Local state to track rotation, will sync back to parent
+  const [localRotation, setLocalRotation] = useState(selectedRotation);
+  
+  // Sync with parent's rotation when it changes
+  useEffect(() => {
+    setLocalRotation(selectedRotation);
+  }, [selectedRotation]);
   const [favoriteTiles, setFavoriteTiles] = useState([]);
   const [isAddingToFavorites, setIsAddingToFavorites] = useState(false);
   const [addFavoriteError, setAddFavoriteError] = useState(null);
@@ -341,18 +348,25 @@ const removeFromFavorites = async () => {
               className="text-blue-400 hover:text-blue-300 flex items-center mr-2"
               onClick={() => {
                 console.log("Rotate button clicked!");
-                console.log("Current rotation:", selectedRotation);
-                console.log("onRotateTile function exists:", !!onRotateTile);
-                if (onRotateTile) {
-                  const newRotation = (selectedRotation + 90) % 360;
-                  console.log("New rotation value:", newRotation);
+                // Use local state to ensure rotation changes visually
+                const newRotation = (localRotation + 90) % 360;
+                console.log("New rotation value:", newRotation);
+                
+                // Update local state first
+                setLocalRotation(newRotation);
+                
+                // Then notify parent (if callback exists)
+                if (typeof onRotateTile === 'function') {
+                  console.log("Calling parent onRotateTile");
                   onRotateTile(newRotation);
+                } else {
+                  console.warn("onRotateTile is not a function:", onRotateTile);
                 }
               }}
               title="Rotate tile"
             >
               <RotateCw size={16} className="mr-1" />
-              <span className="text-xs">{selectedRotation}°</span>
+              <span className="text-xs">{localRotation}°</span>
             </button>
             
             {/* Favorite Button */}
