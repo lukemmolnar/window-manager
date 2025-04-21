@@ -348,17 +348,29 @@ const removeFromFavorites = async () => {
               className="text-blue-400 hover:text-blue-300 flex items-center mr-2"
               onClick={() => {
                 console.log("Rotate button clicked!");
-                // Use local state to ensure rotation changes visually
+                // Keep track of the previous value for debugging
+                console.log("Previous rotation value (local):", localRotation);
+                console.log("Previous rotation value (props):", selectedRotation);
+                
+                // Calculate the new rotation value
                 const newRotation = (localRotation + 90) % 360;
                 console.log("New rotation value:", newRotation);
                 
-                // Update local state first
+                // Update local state immediately for visual feedback
                 setLocalRotation(newRotation);
                 
-                // Then notify parent (if callback exists)
+                // Force update of the DOM display
+                document.getElementById('debug-rotation-value').textContent = `Rotation set to: ${newRotation}°`;
+                
+                // Then notify parent (if callback exists) 
                 if (typeof onRotateTile === 'function') {
-                  console.log("Calling parent onRotateTile");
+                  console.log("Calling parent onRotateTile with:", newRotation);
+                  // Pass the value explicitly (not relying on state)
                   onRotateTile(newRotation);
+                  
+                  // Force a global rotation state update
+                  window.lastSetRotation = newRotation;
+                  console.log("Set global rotation state:", window.lastSetRotation);
                 } else {
                   console.warn("onRotateTile is not a function:", onRotateTile);
                 }
@@ -366,7 +378,7 @@ const removeFromFavorites = async () => {
               title="Rotate tile"
             >
               <RotateCw size={16} className="mr-1" />
-              <span className="text-xs">{localRotation}°</span>
+              <span className="text-xs" id="tile-rotation-display">{localRotation}°</span>
             </button>
             
             {/* Favorite Button */}

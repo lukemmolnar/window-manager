@@ -290,11 +290,24 @@ const MapCanvas = ({
   console.log("Current selected rotation value:", selectedRotation);
   console.log("At coordinates:", gridCoords);
   
-  // Force the rotation to be a number
-  const currentRotation = Number(selectedRotation);
-  console.log("Using rotation value for placement:", currentRotation);
+  // Use global tracking to ensure we have the latest rotation value
+  // Try multiple sources in order of priority
+  let currentRotation;
   
-  // Pass currentRotation as the fourth parameter and make sure it's a number
+  // 1. Check global window variable first (most reliable)
+  if (window.currentMapRotation !== undefined) {
+    currentRotation = Number(window.currentMapRotation);
+    console.log("Using global window.currentMapRotation:", currentRotation);
+  } 
+  // 2. Fall back to props
+  else {
+    currentRotation = Number(selectedRotation);
+    console.log("Using prop selectedRotation:", currentRotation);
+  }
+  
+  console.log("Final rotation value for placement:", currentRotation);
+  
+  // Pass currentRotation as the fourth parameter
   onEdit(gridCoords.x, gridCoords.y, toolToUse, currentRotation);
   
   // This log should help us verify the call was made
@@ -324,8 +337,18 @@ const MapCanvas = ({
         }
         
         // Edit this cell with the current rotation value
-        // Make sure we use a numeric rotation value
-        const currentRotation = Number(selectedRotation);
+        // Try multiple sources in order of priority, just like in the single tile case
+        let currentRotation;
+        
+        // 1. Check global window variable first (most reliable)
+        if (window.currentMapRotation !== undefined) {
+          currentRotation = Number(window.currentMapRotation);
+        } 
+        // 2. Fall back to props
+        else {
+          currentRotation = Number(selectedRotation);
+        }
+        
         console.log(`Placing brushed tile at (${cellX}, ${cellY}) with rotation: ${currentRotation}°`);
         onEdit(cellX, cellY, toolToUse, currentRotation);
       }

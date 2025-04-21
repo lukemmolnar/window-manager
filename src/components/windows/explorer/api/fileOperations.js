@@ -223,10 +223,52 @@ export const saveFileContent = async (filePath, content) => {
       throw new Error('No file selected. Please select a file first.');
     }
     
+    // Special handling for .map files to ensure rotation is included
+    let contentToSave = content;
+    if (filePath?.endsWith('.map') && typeof content === 'string') {
+      // For map files, parse the JSON, process it, and re-stringify it
+      try {
+        const mapData = JSON.parse(content);
+        
+        // Ensure all cells have rotation property
+        if (mapData.layers && Array.isArray(mapData.layers)) {
+          mapData.layers.forEach(layer => {
+            if (layer.cells && Array.isArray(layer.cells)) {
+              layer.cells = layer.cells.map(cell => {
+                // If rotation doesn't exist, add it with default value of 0
+                if (cell.rotation === undefined) {
+                  return { ...cell, rotation: 0 };
+                }
+                // Ensure rotation is a number
+                if (typeof cell.rotation !== 'number') {
+                  return { ...cell, rotation: Number(cell.rotation) };
+                }
+                return cell;
+              });
+            }
+          });
+        }
+        
+        // Use a custom replacer to guarantee rotation values are included
+        contentToSave = JSON.stringify(mapData, (key, value) => {
+          if (key === 'rotation') {
+            return value === undefined ? 0 : Number(value);
+          }
+          return value;
+        }, 2);
+        
+        console.log('[DEBUG] saveFileContent - Map file processed to ensure rotation values');
+      } catch (parseError) {
+        console.error('[DEBUG] saveFileContent - Error processing map data:', parseError);
+        // If we can't parse, just use the original content
+        contentToSave = content;
+      }
+    }
+    
     // Create request body
     const requestBody = JSON.stringify({
       path: filePath,
-      content: content
+      content: contentToSave
     });
     
     console.log(`[DEBUG] saveFileContent - Request body size: ${requestBody.length} bytes`);

@@ -269,8 +269,16 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     // Update the DOM immediately for visual feedback
     document.getElementById('debug-rotation-value').textContent = `Rotation set to: ${numRotation}°`;
     
+    // Set window-level variable to ensure it's globally accessible
+    window.currentMapRotation = numRotation;
+    
     // Update the state
     setSelectedRotation(numRotation);
+    
+    // Force update any tile displays
+    if (document.getElementById('tile-rotation-display')) {
+      document.getElementById('tile-rotation-display').textContent = `${numRotation}°`;
+    }
     
     // When rotating a tile, make sure we're in a tile placement mode
     if (currentTool === 'select' || currentTool === 'erase') {
@@ -278,6 +286,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     }
     
     console.log("Rotation has been set to:", numRotation);
+    console.log("Global rotation tracker:", window.currentMapRotation);
     console.log("---------------------------------------");
   };
 
