@@ -15,19 +15,13 @@ import API_CONFIG from '../../../config/api';
 
 // Create an axios instance with the correct base URL
 const apiClient = axios.create({
-  // Directly use the remote server instead of relying on the proxy
-  baseURL: 'http://45.45.239.125:3001/api',
-  // Add CORS headers
+  // Use the proxy defined in vite.config.js by using a relative URL
+  baseURL: API_CONFIG.BASE_URL,
+  // Only include necessary content-type header
   headers: {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Content-Type': 'application/json'
   }
 });
-
-// Local storage keys for favorite tiles fallback
-const FAVORITE_TILES_KEY = 'map_editor_favorite_tiles';
 
 // Add a request interceptor for debugging
 apiClient.interceptors.request.use(request => {
@@ -102,29 +96,6 @@ const TilePalette = ({
     checkIsFavorite();
   }, [selectedTileId, tileType]);
 
-// Helper functions for localStorage fallback
-const getLocalFavorites = () => {
-  const favoritesJson = localStorage.getItem(FAVORITE_TILES_KEY);
-  if (!favoritesJson) return [];
-  try {
-    return JSON.parse(favoritesJson);
-  } catch (e) {
-    console.error('Error parsing favorites from localStorage:', e);
-    return [];
-  }
-};
-
-const saveLocalFavorites = (favorites) => {
-  localStorage.setItem(FAVORITE_TILES_KEY, JSON.stringify(favorites));
-};
-
-const isLocalFavorite = (tileIndex, tileType) => {
-  const favorites = getLocalFavorites();
-  return favorites.some(fav => 
-    fav.tile_index === tileIndex && fav.tile_type === tileType
-  );
-};
-
 // Function to load favorite tiles
 const loadFavoriteTiles = async () => {
   try {
@@ -148,10 +119,8 @@ const loadFavoriteTiles = async () => {
       setFavoriteTiles([]);
     }
   } catch (error) {
-    console.error('Error loading favorite tiles from server, using localStorage fallback:', error);
-    // Use localStorage fallback
-    const localFavorites = getLocalFavorites();
-    setFavoriteTiles(localFavorites);
+    console.error('Error loading favorite tiles from server:', error);
+    setFavoriteTiles([]);
   }
 };
 
@@ -167,9 +136,8 @@ const checkIsFavorite = async () => {
 
     setIsFavorited(response.data.isFavorite);
   } catch (error) {
-    console.error('Error checking favorite status from server, using localStorage fallback:', error);
-    // Use localStorage fallback
-    setIsFavorited(isLocalFavorite(selectedTileId, tileType));
+    console.error('Error checking favorite status from server:', error);
+    setIsFavorited(false);
   }
 };
 
@@ -186,38 +154,17 @@ const addToFavorites = async () => {
       return;
     }
 
-    try {
-      await apiClient.post('/favorite-tiles', 
-        { tileIndex: selectedTileId, tileType }, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Reload favorite tiles from server
-      await loadFavoriteTiles();
-    } catch (serverError) {
-      console.error('Error adding tile to server favorites, using localStorage fallback:', serverError);
-      
-      // Use localStorage fallback if server fails
-      const localFavorites = getLocalFavorites();
-      
-      // Only add if not already a favorite
-      if (!isLocalFavorite(selectedTileId, tileType)) {
-        const newFavorite = {
-          tile_index: selectedTileId,
-          tile_type: tileType,
-          added_at: new Date().toISOString()
-        };
-        
-        localFavorites.push(newFavorite);
-        saveLocalFavorites(localFavorites);
-        setFavoriteTiles(localFavorites);
-      }
-    }
+    await apiClient.post('/favorite-tiles', 
+      { tileIndex: selectedTileId, tileType }, 
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
     
+    // Reload favorite tiles
+    await loadFavoriteTiles();
     setIsFavorited(true);
   } catch (error) {
-    console.error('Error in favorite operation:', error);
-    setAddFavoriteError('Failed to add to favorites');
+    console.error('Error adding tile to favorites:', error);
+    setAddFavoriteError(error.response?.data?.message || 'Failed to add to favorites');
   } finally {
     setIsAddingToFavorites(false);
   }
@@ -229,29 +176,15 @@ const removeFromFavorites = async () => {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
 
-    try {
-      await apiClient.delete(`/favorite-tiles/${selectedTileId}/${tileType}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      // Reload favorite tiles from server
-      await loadFavoriteTiles();
-    } catch (serverError) {
-      console.error('Error removing tile from server favorites, using localStorage fallback:', serverError);
-      
-      // Use localStorage fallback if server fails
-      const localFavorites = getLocalFavorites();
-      const updatedFavorites = localFavorites.filter(
-        fav => !(fav.tile_index === selectedTileId && fav.tile_type === tileType)
-      );
-      
-      saveLocalFavorites(updatedFavorites);
-      setFavoriteTiles(updatedFavorites);
-    }
+    await apiClient.delete(`/favorite-tiles/${selectedTileId}/${tileType}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     
+    // Reload favorite tiles
+    await loadFavoriteTiles();
     setIsFavorited(false);
   } catch (error) {
-    console.error('Error in favorite operation:', error);
+    console.error('Error removing tile from favorites:', error);
   }
 };
 
