@@ -126,10 +126,52 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         }
       };
       
-      // This is a placeholder - in a real implementation, we would save the content
-      // to the server using a similar approach to how the file explorer works
-      console.log('Saving map:', JSON.stringify(updatedMapData, null, 2));
+      // CRITICAL FIX: Ensure every cell has a rotation property BEFORE serialization
+      // This guarantees rotation is always in the JSON output
+      updatedMapData.layers.forEach(layer => {
+        if (layer.cells && Array.isArray(layer.cells)) {
+          layer.cells = layer.cells.map(cell => {
+            // If rotation doesn't exist, add it with default value of 0
+            if (cell.rotation === undefined) {
+              return { ...cell, rotation: 0 };
+            }
+            // Ensure rotation is a number (not string)
+            if (typeof cell.rotation !== 'number') {
+              return { ...cell, rotation: Number(cell.rotation) };
+            }
+            return cell;
+          });
+        }
+      });
       
+      // Debug: Check if any cells have rotation values
+      let rotationCount = 0;
+      updatedMapData.layers.forEach(layer => {
+        layer.cells.forEach(cell => {
+          console.log(`Cell at (${cell.x}, ${cell.y}) has rotation: ${cell.rotation}`);
+          rotationCount++;
+        });
+      });
+      
+      console.log(`Total cells with rotation property: ${rotationCount}`);
+      
+      // Use a custom replacer function to ensure rotation is always included in the JSON
+      const serializedMap = JSON.stringify(updatedMapData, (key, value) => {
+        // Always include rotation in the output
+        if (key === 'rotation') {
+          return value === undefined ? 0 : Number(value);
+        }
+        return value;
+      }, 2);
+      
+      console.log('Saving map with explicit rotation values included');
+      
+      // Actually save the map data to localStorage for demo purposes
+      localStorage.setItem('last_saved_map', serializedMap);
+      localStorage.setItem('last_saved_map_pretty', JSON.stringify(JSON.parse(serializedMap), null, 2));
+      console.log('Map saved to localStorage - check with: localStorage.getItem("last_saved_map_pretty")');
+      
+      // Update state
       setMapData(updatedMapData);
       setIsDirty(false);
     } catch (err) {
@@ -143,15 +185,24 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     if (!mapData || !mapData.layers || !mapData.layers[currentLayer]) return;
     
     // Log that we're receiving the rotation value
+    console.log("============== EDIT CELL ==============");
     console.log("MapEditorWindow received edit with rotation:", rotation);
+    console.log(`Cell coordinates: (${x}, ${y}), Tool: ${tool}`);
+    
+    // Ensure rotation is a number
+    const numRotation = Number(rotation);
+    console.log("Rotation converted to number:", numRotation);
     
     let newMapData;
     
     if (tool === 'erase') {
       // If erasing, remove the cell from the layer
       newMapData = removeCellFromLayer(mapData, currentLayer, x, y);
+      console.log("Cell erased successfully");
     } else {
       // For tile placement tools (floor, wall, etc.), use the selected tile and rotation
+      console.log(`Setting cell in layer ${currentLayer} with tileId: ${selectedTileId}, rotation: ${numRotation}`);
+      
       newMapData = setCellInLayer(
         mapData, 
         currentLayer, 
@@ -159,13 +210,34 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         y, 
         tool, 
         selectedTileId, 
-        rotation // Use the rotation value passed from MapCanvas
+        numRotation // Use the numeric rotation value
       );
+      
+      // Check if the rotation was stored correctly
+      const updatedCell = newMapData.layers[currentLayer].cells.find(
+        cell => cell.x === x && cell.y === y
+      );
+      
+      if (updatedCell) {
+        console.log("Cell updated:", updatedCell);
+        if (updatedCell.rotation !== undefined) {
+          console.log(`Rotation set successfully: ${updatedCell.rotation}°`);
+        } else {
+          console.warn("Rotation was not stored in the cell data!");
+        }
+      } else {
+        console.warn("Could not find the updated cell in the map data!");
+      }
     }
     
     // Update state
     setMapData(newMapData);
     setIsDirty(true);
+    
+    // Store to localStorage for debugging
+    localStorage.setItem('debug_mapData', JSON.stringify(newMapData));
+    console.log("Map data stored to localStorage for debugging");
+    console.log("=========================================");
   };
   
   // Handle tile selection

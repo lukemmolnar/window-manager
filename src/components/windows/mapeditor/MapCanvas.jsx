@@ -283,17 +283,23 @@ const MapCanvas = ({
     
     // For brush size of 1, just edit the single cell
     if (brushSize === 1) {
-      // Add more detailed logs about rotation
-      console.log("About to call onEdit with rotation:", selectedRotation);
-      console.log("Tool being used:", toolToUse);
-      console.log("Current selected rotation value:", selectedRotation);
-      
-      // Directly use the rotation from props - this prevents issues with stale rotation state
-      const currentRotation = selectedRotation;
-      console.log("Using rotation value for placement:", currentRotation);
-      
-      // Pass currentRotation as the fourth parameter
-      onEdit(gridCoords.x, gridCoords.y, toolToUse, currentRotation);
+  // Add more detailed logs about rotation
+  console.log("=================== PLACING TILE ===================");
+  console.log("About to call onEdit with rotation:", selectedRotation);
+  console.log("Tool being used:", toolToUse);
+  console.log("Current selected rotation value:", selectedRotation);
+  console.log("At coordinates:", gridCoords);
+  
+  // Force the rotation to be a number
+  const currentRotation = Number(selectedRotation);
+  console.log("Using rotation value for placement:", currentRotation);
+  
+  // Pass currentRotation as the fourth parameter and make sure it's a number
+  onEdit(gridCoords.x, gridCoords.y, toolToUse, currentRotation);
+  
+  // This log should help us verify the call was made
+  console.log("onEdit called with rotation:", currentRotation);
+  console.log("=================================================");
       return;
     }
     
@@ -318,8 +324,10 @@ const MapCanvas = ({
         }
         
         // Edit this cell with the current rotation value
-        // Directly use the rotation from props to avoid stale state issues
-        onEdit(cellX, cellY, toolToUse, selectedRotation);
+        // Make sure we use a numeric rotation value
+        const currentRotation = Number(selectedRotation);
+        console.log(`Placing brushed tile at (${cellX}, ${cellY}) with rotation: ${currentRotation}°`);
+        onEdit(cellX, cellY, toolToUse, currentRotation);
       }
     }
   };

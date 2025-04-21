@@ -49,6 +49,22 @@ export const parseMapFile = (mapContent) => {
       throw new Error('Invalid map file format');
     }
     
+    // Ensure all cells have a rotation property
+    mapData.layers.forEach(layer => {
+      if (layer.cells && Array.isArray(layer.cells)) {
+        layer.cells.forEach(cell => {
+          // If rotation doesn't exist, add it with default value of 0
+          if (cell.rotation === undefined) {
+            cell.rotation = 0;
+          } else {
+            // Ensure rotation is a number
+            cell.rotation = Number(cell.rotation);
+          }
+        });
+      }
+    });
+    
+    console.log("Parsed map data with proper rotation values:", mapData);
     return mapData;
   } catch (err) {
     console.error('Error parsing map file:', err);
@@ -72,7 +88,35 @@ export const serializeMap = (mapData) => {
       }
     };
     
-    return JSON.stringify(updatedMapData, null, 2);
+    // CRITICAL FIX: Process all cells to ensure they have rotation property
+    if (updatedMapData.layers && Array.isArray(updatedMapData.layers)) {
+      updatedMapData.layers = updatedMapData.layers.map(layer => {
+        if (layer.cells && Array.isArray(layer.cells)) {
+          layer.cells = layer.cells.map(cell => {
+            // If rotation doesn't exist, add it with default value of 0
+            if (cell.rotation === undefined) {
+              return { ...cell, rotation: 0 };
+            }
+            // Ensure rotation is a number (not string)
+            if (typeof cell.rotation !== 'number') {
+              return { ...cell, rotation: Number(cell.rotation) };
+            }
+            return cell;
+          });
+        }
+        return layer;
+      });
+    }
+    
+    // Use custom replacer function to ensure rotation values are preserved
+    return JSON.stringify(updatedMapData, (key, value) => {
+      // Always include rotation in the output
+      if (key === 'rotation') {
+        // If value is undefined, return 0
+        return value === undefined ? 0 : Number(value);
+      }
+      return value;
+    }, 2);
   } catch (err) {
     console.error('Error serializing map:', err);
     throw new Error('Failed to serialize map data.');
@@ -108,6 +152,8 @@ export const findCellInLayer = (mapData, layerIndex, x, y) => {
 export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation = 0) => {
   if (!mapData || !mapData.layers || !mapData.layers[layerIndex]) return mapData;
   
+  console.log(`setCellInLayer called with: x=${x}, y=${y}, type=${type}, tileId=${tileId}, rotation=${rotation}`);
+  
   // Clone the map data to avoid direct state mutation
   const newMapData = { ...mapData };
   const layerData = { ...newMapData.layers[layerIndex] };
@@ -118,27 +164,35 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation
   // Find if the cell already exists in this layer
   const existingCellIndex = layerData.cells.findIndex(cell => cell.x === x && cell.y === y);
   
-  // Create cell data with optional properties
+  // Create cell data with required properties
   const cellData = { x, y, type };
   
-  // Add tileId and rotation if provided
+  // Add tileId if provided
   if (tileId !== undefined) {
     cellData.tileId = tileId;
   }
   
-  if (rotation !== 0) {
-    cellData.rotation = rotation;
-  }
+  // Always include rotation in the cell data, even if it's 0
+  // This ensures rotation is explicitly stored in the map file
+  cellData.rotation = Number(rotation);
   
   if (existingCellIndex !== -1) {
+    console.log(`Updating existing cell at (${x}, ${y}) with rotation=${rotation}`);
     // Update existing cell, preserving any properties not explicitly changed
     layerData.cells[existingCellIndex] = { 
       ...layerData.cells[existingCellIndex], 
       ...cellData 
     };
+    
+    // Log the updated cell to verify rotation was properly set
+    console.log("Updated cell:", layerData.cells[existingCellIndex]);
   } else {
+    console.log(`Adding new cell at (${x}, ${y}) with rotation=${rotation}`);
     // Add new cell
     layerData.cells.push(cellData);
+    
+    // Log the added cell to verify rotation was properly set
+    console.log("Added cell:", cellData);
   }
   
   // Update the layer in the map data
