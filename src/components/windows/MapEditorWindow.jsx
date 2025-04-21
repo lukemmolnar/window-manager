@@ -139,8 +139,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   };
 
   // Handler for map edits
-  const handleEdit = (x, y, tool) => {
+  const handleEdit = (x, y, tool, rotation = 0) => {
     if (!mapData || !mapData.layers || !mapData.layers[currentLayer]) return;
+    
+    // Log that we're receiving the rotation value
+    console.log("MapEditorWindow received edit with rotation:", rotation);
     
     let newMapData;
     
@@ -148,7 +151,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       // If erasing, remove the cell from the layer
       newMapData = removeCellFromLayer(mapData, currentLayer, x, y);
     } else {
-      // For tile placement tools (floor, wall, etc.), use the selected tile
+      // For tile placement tools (floor, wall, etc.), use the selected tile and rotation
       newMapData = setCellInLayer(
         mapData, 
         currentLayer, 
@@ -156,7 +159,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         y, 
         tool, 
         selectedTileId, 
-        selectedRotation
+        rotation // Use the rotation value passed from MapCanvas
       );
     }
     
@@ -185,10 +188,15 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   
   // Handle tile rotation
   const handleRotateTile = (rotation) => {
+    console.log("handleRotateTile called with rotation:", rotation);
+    console.log("Current selectedRotation before update:", selectedRotation);
     setSelectedRotation(rotation);
+    console.log("selectedRotation state updated to:", rotation);
+    
     // When rotating a tile, make sure we're in a tile placement mode
     if (currentTool === 'select' || currentTool === 'erase') {
       setCurrentTool(selectedTileType);
+      console.log("Changed tool from", currentTool, "to", selectedTileType);
     }
   };
 

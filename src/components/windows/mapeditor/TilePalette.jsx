@@ -339,7 +339,16 @@ const removeFromFavorites = async () => {
             {/* Rotate Button */}
             <button 
               className="text-blue-400 hover:text-blue-300 flex items-center mr-2"
-              onClick={() => onRotateTile && onRotateTile((selectedRotation + 90) % 360)}
+              onClick={() => {
+                console.log("Rotate button clicked!");
+                console.log("Current rotation:", selectedRotation);
+                console.log("onRotateTile function exists:", !!onRotateTile);
+                if (onRotateTile) {
+                  const newRotation = (selectedRotation + 90) % 360;
+                  console.log("New rotation value:", newRotation);
+                  onRotateTile(newRotation);
+                }
+              }}
               title="Rotate tile"
             >
               <RotateCw size={16} className="mr-1" />

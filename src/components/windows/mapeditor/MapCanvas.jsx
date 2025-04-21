@@ -11,7 +11,8 @@ const MapCanvas = ({
   mapData, 
   currentLayer, 
   currentTool, 
-  selectedTileId = 0, 
+  selectedTileId = 0,
+  selectedRotation = 0,
   onEdit, 
   showGrid = true, 
   resetViewRef,
@@ -258,6 +259,9 @@ const MapCanvas = ({
     // Convert to grid coordinates
     const gridCoords = screenToGridCoordinates(mouseX, mouseY, gridSize, viewportOffset);
     
+    console.log("Editing cell at", gridCoords, "with tool:", overrideTool || currentTool);
+    console.log("Current selectedRotation value:", selectedRotation);
+    
     // Basic validation if the center point is outside map boundaries
     if (gridCoords.x < 0 || gridCoords.x >= mapData.width || 
         gridCoords.y < 0 || gridCoords.y >= mapData.height) {
@@ -274,7 +278,10 @@ const MapCanvas = ({
     
     // For brush size of 1, just edit the single cell
     if (brushSize === 1) {
-      onEdit(gridCoords.x, gridCoords.y, toolToUse);
+      // Add selectedRotation to debug logs
+      console.log("About to call onEdit with rotation:", selectedRotation);
+      // Pass selectedRotation as the fourth parameter
+      onEdit(gridCoords.x, gridCoords.y, toolToUse, selectedRotation);
       return;
     }
     
@@ -298,8 +305,8 @@ const MapCanvas = ({
           continue;
         }
         
-        // Edit this cell
-        onEdit(cellX, cellY, toolToUse);
+        // Edit this cell with rotation
+        onEdit(cellX, cellY, toolToUse, selectedRotation);
       }
     }
   };
