@@ -13,39 +13,11 @@ import { Heart, CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
 import API_CONFIG from '../../../config/api';
 
-// Create an axios instance with the correct base URL
-const apiClient = axios.create({
-  // Use the proxy defined in vite.config.js by using a relative URL
-  baseURL: API_CONFIG.BASE_URL,
-  // Only include necessary content-type header
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-// Add a request interceptor for debugging
-apiClient.interceptors.request.use(request => {
-  console.log('API Request:', request.method, request.url);
-  console.log('Request Headers:', request.headers);
-  return request;
-});
-
-// Add a response interceptor for debugging
-apiClient.interceptors.response.use(
-  response => {
-    console.log('API Response Status:', response.status);
-    console.log('API Response Data:', response.data);
-    return response;
-  },
-  error => {
-    console.error('API Error:', error.message);
-    if (error.response) {
-      console.error('Error Status:', error.response.status);
-      console.error('Error Data:', error.response.data);
-    }
-    return Promise.reject(error);
-  }
-);
+// Debug helper to log API requests and responses
+const logApiCall = (method, url, status, data) => {
+  console.log(`API ${method} ${url} - Status: ${status}`);
+  console.log('Data:', data);
+};
 
 /**
  * Component for displaying and selecting tiles from a tileset
@@ -102,12 +74,13 @@ const loadFavoriteTiles = async () => {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
 
-    console.log('Fetching favorite tiles from:', apiClient.defaults.baseURL + '/favorite-tiles');
-    const response = await apiClient.get('/favorite-tiles', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    console.log('Fetching favorite tiles from:', `${API_CONFIG.BASE_URL}/favorite-tiles`);
+    const response = await axios.get(
+      `${API_CONFIG.BASE_URL}/favorite-tiles`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-    console.log('Favorite tiles response:', response.data);
+    logApiCall('GET', '/favorite-tiles', response.status, response.data);
     
     // Ensure we have an array, even if the response is unexpected
     if (Array.isArray(response.data)) {
@@ -130,10 +103,12 @@ const checkIsFavorite = async () => {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
 
-    const response = await apiClient.get(`/favorite-tiles/check/${selectedTileId}/${tileType}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await axios.get(
+      `${API_CONFIG.BASE_URL}/favorite-tiles/check/${selectedTileId}/${tileType}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
+    logApiCall('GET', `/favorite-tiles/check/${selectedTileId}/${tileType}`, response.status, response.data);
     setIsFavorited(response.data.isFavorite);
   } catch (error) {
     console.error('Error checking favorite status from server:', error);
@@ -154,10 +129,17 @@ const addToFavorites = async () => {
       return;
     }
 
-    await apiClient.post('/favorite-tiles', 
-      { tileIndex: selectedTileId, tileType }, 
-      { headers: { Authorization: `Bearer ${token}` } }
+    const response = await axios.post(
+      `${API_CONFIG.BASE_URL}/favorite-tiles`,
+      { tileIndex: selectedTileId, tileType },
+      { headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        } 
+      }
     );
+    
+    logApiCall('POST', '/favorite-tiles', response.status, response.data);
     
     // Reload favorite tiles
     await loadFavoriteTiles();
@@ -176,9 +158,12 @@ const removeFromFavorites = async () => {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
 
-    await apiClient.delete(`/favorite-tiles/${selectedTileId}/${tileType}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await axios.delete(
+      `${API_CONFIG.BASE_URL}/favorite-tiles/${selectedTileId}/${tileType}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    
+    logApiCall('DELETE', `/favorite-tiles/${selectedTileId}/${tileType}`, response.status, response.data);
     
     // Reload favorite tiles
     await loadFavoriteTiles();
