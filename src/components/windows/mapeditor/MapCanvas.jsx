@@ -307,8 +307,13 @@ const MapCanvas = ({
   
   console.log("Final rotation value for placement:", currentRotation);
   
-  // Pass currentRotation as the fourth parameter
-  onEdit(gridCoords.x, gridCoords.y, toolToUse, currentRotation);
+  // Force the rotation to be a number with a direct conversion
+  // This ensures we always pass a numeric value
+  const rotation = parseInt(currentRotation, 10) || 0;
+  
+  // Pass rotation as the fourth parameter with additional debugging
+  console.log(`Calling onEdit with rotation value: ${rotation} (${typeof rotation})`);
+  onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation);
   
   // This log should help us verify the call was made
   console.log("onEdit called with rotation:", currentRotation);
@@ -349,8 +354,12 @@ const MapCanvas = ({
           currentRotation = Number(selectedRotation);
         }
         
-        console.log(`Placing brushed tile at (${cellX}, ${cellY}) with rotation: ${currentRotation}°`);
-        onEdit(cellX, cellY, toolToUse, currentRotation);
+        // Force the rotation to be a number with a direct conversion
+        // This ensures we always pass a numeric value
+        const rotation = parseInt(currentRotation, 10) || 0;
+        
+        console.log(`Placing brushed tile at (${cellX}, ${cellY}) with rotation: ${rotation}°`);
+        onEdit(cellX, cellY, toolToUse, rotation);
       }
     }
   };
@@ -481,13 +490,13 @@ const MapCanvas = ({
     const mapStartY = offsetY;
     
     // Draw boundary with more visible color
-    ctx.strokeStyle = '#f97316'; // Orange-500
+    ctx.strokeStyle = '#9c27b0'; // Orange-500
     ctx.lineWidth = 2;
     ctx.strokeRect(mapStartX, mapStartY, mapWidthPx, mapHeightPx);
     
     // Add small corner markers for extra visibility
     const cornerSize = 8;
-    ctx.fillStyle = '#f97316'; // Orange-500
+    ctx.fillStyle = '#9c27b0'; // Orange-500
     
     // Top-left corner
     ctx.fillRect(mapStartX - 1, mapStartY - 1, cornerSize, cornerSize);
