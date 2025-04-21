@@ -266,8 +266,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     // Convert to number to ensure consistent handling
     const numRotation = Number(rotation);
     
-    // Update the DOM immediately for visual feedback
-    document.getElementById('debug-rotation-value').textContent = `Rotation set to: ${numRotation}°`;
+    // Update the DOM immediately for visual feedback (safely)
+    const debugElement = document.getElementById('debug-rotation-value');
+    if (debugElement) {
+      debugElement.textContent = `Rotation set to: ${numRotation}°`;
+    }
     
     // Set window-level variable to ensure it's globally accessible
     window.currentMapRotation = numRotation;

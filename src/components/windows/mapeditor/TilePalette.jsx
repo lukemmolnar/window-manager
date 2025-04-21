@@ -359,8 +359,11 @@ const removeFromFavorites = async () => {
                 // Update local state immediately for visual feedback
                 setLocalRotation(newRotation);
                 
-                // Force update of the DOM display
-                document.getElementById('debug-rotation-value').textContent = `Rotation set to: ${newRotation}°`;
+                // Force update of the DOM display (safely)
+                const debugElement = document.getElementById('debug-rotation-value');
+                if (debugElement) {
+                  debugElement.textContent = `Rotation set to: ${newRotation}°`;
+                }
                 
                 // Then notify parent (if callback exists) 
                 if (typeof onRotateTile === 'function') {
@@ -368,9 +371,15 @@ const removeFromFavorites = async () => {
                   // Pass the value explicitly (not relying on state)
                   onRotateTile(newRotation);
                   
-                  // Force a global rotation state update
-                  window.lastSetRotation = newRotation;
-                  console.log("Set global rotation state:", window.lastSetRotation);
+                // Force a global rotation state update
+                window.lastSetRotation = newRotation;
+                console.log("Set global rotation state:", window.lastSetRotation);
+                
+                // Update the local rotation display
+                const tileRotationDisplay = document.getElementById('tile-rotation-display');
+                if (tileRotationDisplay) {
+                  tileRotationDisplay.textContent = `${newRotation}°`;
+                }
                 } else {
                   console.warn("onRotateTile is not a function:", onRotateTile);
                 }
