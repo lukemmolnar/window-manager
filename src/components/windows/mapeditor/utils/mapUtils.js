@@ -88,25 +88,35 @@ export const serializeMap = (mapData) => {
       }
     };
     
-    // CRITICAL FIX: Process all cells to ensure they have rotation property
-    if (updatedMapData.layers && Array.isArray(updatedMapData.layers)) {
-      updatedMapData.layers = updatedMapData.layers.map(layer => {
-        if (layer.cells && Array.isArray(layer.cells)) {
-          layer.cells = layer.cells.map(cell => {
-            // If rotation doesn't exist, add it with default value of 0
-            if (cell.rotation === undefined) {
-              return { ...cell, rotation: 0 };
-            }
-            // Ensure rotation is a number (not string)
-            if (typeof cell.rotation !== 'number') {
-              return { ...cell, rotation: Number(cell.rotation) };
-            }
-            return cell;
-          });
-        }
-        return layer;
-      });
-    }
+      // CRITICAL FIX: Process all cells to ensure they have rotation property
+      if (updatedMapData.layers && Array.isArray(updatedMapData.layers)) {
+        updatedMapData.layers = updatedMapData.layers.map(layer => {
+          if (layer.cells && Array.isArray(layer.cells)) {
+            layer.cells = layer.cells.map(cell => {
+              // Get the most current rotation value - prioritize global state
+              const globalRotation = window.currentMapRotation;
+              
+              // If rotation doesn't exist, add it with current global value or default to 0
+              if (cell.rotation === undefined) {
+                return { ...cell, rotation: globalRotation !== undefined ? Number(globalRotation) : 0 };
+              }
+              
+              // If global rotation is set, use it to update existing cells
+              if (globalRotation !== undefined) {
+                return { ...cell, rotation: Number(globalRotation) };
+              }
+              
+              // Otherwise ensure rotation is a number (not string)
+              if (typeof cell.rotation !== 'number') {
+                return { ...cell, rotation: Number(cell.rotation) };
+              }
+              
+              return cell;
+            });
+          }
+          return layer;
+        });
+      }
     
     // Use custom replacer function to ensure rotation values are preserved
     return JSON.stringify(updatedMapData, (key, value) => {

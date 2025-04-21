@@ -375,13 +375,22 @@ const removeFromFavorites = async () => {
                   tileRotationDisplay.textContent = `${newRotation}°`;
                 }
                 
+                // ALWAYS set global rotation value
+                window.currentMapRotation = newRotation;
+                console.log("Global rotation value set to:", newRotation);
+                
                 // Then notify parent (if callback exists) 
                 if (typeof onRotateTile === 'function') {
                   console.log("Calling parent onRotateTile with:", newRotation);
                   // Pass the value explicitly (not relying on state)
                   onRotateTile(newRotation);
                 } else {
-                  console.warn("onRotateTile is not a function:", onRotateTile);
+                  console.warn("onRotateTile is not a function, using only global state");
+                  // If no callback, we still need to update UI elements
+                  const debugElement = document.getElementById('debug-rotation-value');
+                  if (debugElement) {
+                    debugElement.textContent = `Rotation set to: ${newRotation}°`;
+                  }
                 }
               }}
               title="Rotate tile"
