@@ -152,7 +152,14 @@ export const findCellInLayer = (mapData, layerIndex, x, y) => {
 export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation = 0) => {
   if (!mapData || !mapData.layers || !mapData.layers[layerIndex]) return mapData;
   
-  console.log(`setCellInLayer called with: x=${x}, y=${y}, type=${type}, tileId=${tileId}, rotation=${rotation}`);
+  // Use global rotation state as fallback if available
+  const rotationValue = rotation !== undefined ? rotation : (window.currentMapRotation || 0);
+  
+  // Ensure rotation is a number with explicit conversion
+  const numRotation = parseInt(rotationValue, 10) || 0;
+  
+  console.log(`setCellInLayer called with: x=${x}, y=${y}, type=${type}, tileId=${tileId}`);
+  console.log(`Using rotation: ${numRotation} (converted from ${rotation}, global=${window.currentMapRotation})`);
   
   // Clone the map data to avoid direct state mutation
   const newMapData = { ...mapData };
@@ -174,7 +181,7 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation
   
   // Always include rotation in the cell data, even if it's 0
   // This ensures rotation is explicitly stored in the map file
-  cellData.rotation = Number(rotation);
+  cellData.rotation = numRotation;
   
   if (existingCellIndex !== -1) {
     console.log(`Updating existing cell at (${x}, ${y}) with rotation=${rotation}`);

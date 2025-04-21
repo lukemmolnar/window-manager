@@ -117,6 +117,10 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     }
     
     try {
+      console.log("========== SAVING MAP ==========");
+      console.log("Current window.currentMapRotation value:", window.currentMapRotation);
+      console.log("Current selectedRotation state value:", selectedRotation);
+      
       // Update modified timestamp
       const updatedMapData = {
         ...mapData,
