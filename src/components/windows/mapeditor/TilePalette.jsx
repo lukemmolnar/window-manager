@@ -363,7 +363,7 @@ const removeFromFavorites = async () => {
       {Array.isArray(favoriteTiles) && favoriteTiles.length > 0 && (
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-mono text-pink-400">FAVORITE TILES</h3>
+            <h3 className="text-sm font-mono text-stone-400">FAVORITE TILES</h3>
             <button 
               className="text-xs text-stone-400 hover:text-stone-300"
               onClick={() => setShowFavoritesSection(!showFavoritesSection)}
