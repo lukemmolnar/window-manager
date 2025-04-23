@@ -31,6 +31,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [asciiImportText, setAsciiImportText] = useState('');
   const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
   const [selectedTileId, setSelectedTileId] = useState(0);
+  const [selectedRotation, setSelectedRotation] = useState(0); // Add state for rotation
   const [showGrid, setShowGrid] = useState(true); // State for grid visibility
   const [brushSize, setBrushSize] = useState(1); // State for brush size
   
@@ -154,11 +155,14 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
         cellData.tileId = selectedTileId;
       }
       
-      // If a cell already exists at this position, update it
+      // If a cell already exists at this position, update it immutably
       if (existingCellIndex !== -1) {
-        layerData.cells[existingCellIndex] = cellData;
+        // Create a new array with the updated cell
+        layerData.cells = layerData.cells.map((cell, index) => 
+          index === existingCellIndex ? cellData : cell
+        );
       } else {
-        // Otherwise, add a new cell
+        // Otherwise, add a new cell (already immutable via push to a cloned array)
         layerData.cells.push(cellData);
       }
     }
@@ -169,6 +173,12 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     // Update state
     setMapData(newMapData);
     setIsDirty(true);
+  };
+
+  // Handler for rotation changes from TilePalette
+  const handleRotateTile = (newRotation) => {
+    setSelectedRotation(newRotation);
+    // Note: We don't mark as dirty here, as rotation is a tool setting, not map data change
   };
 
   // Layer management functions
@@ -450,6 +460,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           currentLayer={currentLayer}
           currentTool={currentTool}
           selectedTileId={selectedTileId}
+          selectedRotation={selectedRotation} // Pass rotation state to canvas
           onEdit={handleEdit}
           showGrid={showGrid}
           resetViewRef={resetViewFnRef} // Pass ref instead of setter function
@@ -470,6 +481,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           onUpdateLayerOpacity={handleUpdateLayerOpacity}
           selectedTileId={selectedTileId}
           onSelectTile={setSelectedTileId}
+          selectedRotation={selectedRotation} // Pass rotation state to LayerPanel
+          onRotateTile={handleRotateTile} // Pass rotation handler to LayerPanel
           currentTool={currentTool}
           setCurrentTool={setCurrentTool}
           brushSize={brushSize}

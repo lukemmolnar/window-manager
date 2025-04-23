@@ -20,6 +20,8 @@ const LayerPanel = ({
   onUpdateLayerOpacity,
   selectedTileId = 0,
   onSelectTile,
+  selectedRotation, // Add prop for receiving rotation state
+  onRotateTile,     // Add prop for passing rotation handler
   currentTool,
   setCurrentTool,
   brushSize = 1,
@@ -114,6 +116,8 @@ const LayerPanel = ({
         <TilePalette 
           selectedTileId={selectedTileId}
           onSelectTile={onSelectTile}
+          selectedRotation={selectedRotation} // Pass rotation state down
+          onRotateTile={onRotateTile}         // Pass rotation handler down
           tileType={currentTool}
           onChangeTileType={setCurrentTool}
         />

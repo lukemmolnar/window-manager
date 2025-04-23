@@ -290,33 +290,16 @@ const MapCanvas = ({
   console.log("Current selected rotation value:", selectedRotation);
   console.log("At coordinates:", gridCoords);
   
-  // Use global tracking to ensure we have the latest rotation value
-  // Try multiple sources in order of priority
-  let currentRotation;
-  
-  // 1. Check global window variable first (most reliable)
-  if (window.currentMapRotation !== undefined) {
-    currentRotation = Number(window.currentMapRotation);
-    console.log("Using global window.currentMapRotation:", currentRotation);
-  } 
-  // 2. Fall back to props
-  else {
-    currentRotation = Number(selectedRotation);
-    console.log("Using prop selectedRotation:", currentRotation);
-  }
-  
-  console.log("Final rotation value for placement:", currentRotation);
-  
-  // Force the rotation to be a number with a direct conversion
-  // This ensures we always pass a numeric value
-  const rotation = parseInt(currentRotation, 10) || 0;
+  // Use the selectedRotation prop directly
+  const rotation = parseInt(selectedRotation, 10) || 0;
+  console.log("Using prop selectedRotation for placement:", rotation);
   
   // Pass rotation as the fourth parameter with additional debugging
   console.log(`Calling onEdit with rotation value: ${rotation} (${typeof rotation})`);
   onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation);
   
   // This log should help us verify the call was made
-  console.log("onEdit called with rotation:", currentRotation);
+  console.log("onEdit called with rotation:", rotation);
   console.log("=================================================");
       return;
     }
@@ -341,22 +324,8 @@ const MapCanvas = ({
           continue;
         }
         
-        // Edit this cell with the current rotation value
-        // Try multiple sources in order of priority, just like in the single tile case
-        let currentRotation;
-        
-        // 1. Check global window variable first (most reliable)
-        if (window.currentMapRotation !== undefined) {
-          currentRotation = Number(window.currentMapRotation);
-        } 
-        // 2. Fall back to props
-        else {
-          currentRotation = Number(selectedRotation);
-        }
-        
-        // Force the rotation to be a number with a direct conversion
-        // This ensures we always pass a numeric value
-        const rotation = parseInt(currentRotation, 10) || 0;
+        // Edit this cell with the current rotation value from props
+        const rotation = parseInt(selectedRotation, 10) || 0;
         
         console.log(`Placing brushed tile at (${cellX}, ${cellY}) with rotation: ${rotation}°`);
         onEdit(cellX, cellY, toolToUse, rotation);
@@ -652,7 +621,7 @@ const MapCanvas = ({
     floorTilesetImage,
     wallTilesetImage,
     actualColumns,
-    selectedRotation,  // Add selectedRotation as a dependency to refresh on rotation changes
+    // selectedRotation, // Removed: Toolbar rotation shouldn't trigger full canvas redraw
     brushSize  // Add brushSize as a dependency too for completeness
   ]);
   
