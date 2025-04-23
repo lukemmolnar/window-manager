@@ -128,7 +128,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   };
 
   // Handler for map edits
-  const handleEdit = (x, y, tool) => {
+  // Add 'rotation' parameter to accept the rotation value from MapCanvas
+  const handleEdit = (x, y, tool, rotation) => {
     if (!mapData || !mapData.layers || !mapData.layers[currentLayer]) return;
     
     // Clone the current map data to avoid direct state mutation
@@ -145,7 +146,8 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       }
     } else {
       // Create the cell data based on the tool type
-      let cellData = { x, y, type: tool };
+      // Include the received rotation value
+      let cellData = { x, y, type: tool, rotation: rotation || 0 }; // Default to 0 if rotation is undefined/falsy
       
       // Include the selected tile ID for both floor and wall tools
       if (tool === 'floor' || tool === 'wall') {
