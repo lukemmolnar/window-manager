@@ -200,22 +200,9 @@ const MapCanvas = ({
       }
       return;
     }
-    
-    // --- DEBUG LOGGING START ---
-    if (type === 'shadow') {
-      console.log(`[drawTile] Attempting to draw shadow tile at (${cell.x}, ${cell.y})`);
-      console.log(`  - type: ${type}`);
-      console.log(`  - tileId: ${tileId} (type: ${typeof tileId})`);
-      console.log(`  - shadowTilesetImage exists: ${!!shadowTilesetImage}`);
-      if (shadowTilesetImage) {
-        console.log(`  - shadowTilesetImage src: ${shadowTilesetImage.src}`);
-      }
-    }
-    // --- DEBUG LOGGING END ---
 
     // Handle shadow tiles with tileset
     if (type === 'shadow' && tileId !== undefined && shadowTilesetImage) {
-      console.log(`[drawTile] Conditions met for drawing shadow tile ${tileId}`); // Add log here
       // Calculate coordinates based on actual columns in the sheet
       const col = tileId % actualColumns;
       const row = Math.floor(tileId / actualColumns);
@@ -278,6 +265,11 @@ const MapCanvas = ({
         ctx.fillStyle = '#1e293b'; // Slate-800
         ctx.fillRect(x, y, size, size);
         break;
+      case 'shadow':
+        // Default floor if no tileId or image failed to load
+        ctx.fillStyle = '#BF40BF'; // Slate-800
+        ctx.fillRect(x, y, size, size);
+        break;
       case 'door':
         // For doors, apply rotation to the whole door element
         if (rotation !== 0) {
@@ -313,7 +305,6 @@ const MapCanvas = ({
       // Add more tile types as needed
       default:
         // Unknown tile type, draw placeholder
-        console.log(`[drawTile] Falling back to default red tile for type: ${type} at (${cell.x}, ${cell.y})`); // Add log here
         ctx.fillStyle = '#ef4444'; // Red-500
         ctx.fillRect(x, y, size, size);
     }
@@ -369,12 +360,12 @@ const MapCanvas = ({
   const rotation = parseInt(selectedRotation, 10) || 0;
   console.log("Using prop selectedRotation for placement:", rotation);
   
-  // Pass rotation as the fourth parameter with additional debugging
-  console.log(`Calling onEdit with rotation value: ${rotation} (${typeof rotation})`);
-  onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation);
+  // Pass rotation and selectedTileId
+  console.log(`Calling onEdit with rotation: ${rotation}, tileId: ${selectedTileId}`);
+  onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation, selectedTileId);
   
   // This log should help us verify the call was made
-  console.log("onEdit called with rotation:", rotation);
+  console.log("onEdit called with rotation:", rotation, "and tileId:", selectedTileId);
   console.log("=================================================");
       return;
     }
@@ -402,8 +393,8 @@ const MapCanvas = ({
         // Edit this cell with the current rotation value from props
         const rotation = parseInt(selectedRotation, 10) || 0;
         
-        console.log(`Placing brushed tile at (${cellX}, ${cellY}) with rotation: ${rotation}°`);
-        onEdit(cellX, cellY, toolToUse, rotation);
+        console.log(`Placing brushed tile at (${cellX}, ${cellY}) with rotation: ${rotation}°, tileId: ${selectedTileId}`);
+        onEdit(cellX, cellY, toolToUse, rotation, selectedTileId);
       }
     }
   };
