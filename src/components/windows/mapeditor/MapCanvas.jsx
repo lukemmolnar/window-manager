@@ -202,6 +202,7 @@ const MapCanvas = ({
     }
 
     // Handle shadow tiles with tileset
+    console.log('Drawing tile:', { type, tileId, shadowTilesetImage: !!shadowTilesetImage });
     if (type === 'shadow' && tileId !== undefined && shadowTilesetImage) {
       // Calculate coordinates based on actual columns in the sheet
       const col = tileId % actualColumns;

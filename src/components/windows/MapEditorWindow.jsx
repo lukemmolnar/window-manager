@@ -185,7 +185,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   };
 
   // Handler for map edits
-  const handleEdit = (x, y, tool, rotation = 0) => {
+  const handleEdit = (x, y, tool, rotation = 0, selectedTileId) => {
     if (!mapData || !mapData.layers || !mapData.layers[currentLayer]) return;
     
     // Log that we're receiving the rotation value
@@ -256,6 +256,10 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   // Handle tile type change
   const handleChangeTileType = (tileType) => {
     setSelectedTileType(tileType);
+
+    if (tileType === 'shadow' && selectedTileId === undefined) {
+      onSelectTile(0); // Set a default shadow tile ID
+    }
     // When changing tile type, also change the current tool
     if (currentTool !== 'select' && currentTool !== 'erase') {
       setCurrentTool(tileType);
