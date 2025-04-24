@@ -200,9 +200,22 @@ const MapCanvas = ({
       }
       return;
     }
+    
+    // --- DEBUG LOGGING START ---
+    if (type === 'shadow') {
+      console.log(`[drawTile] Attempting to draw shadow tile at (${cell.x}, ${cell.y})`);
+      console.log(`  - type: ${type}`);
+      console.log(`  - tileId: ${tileId} (type: ${typeof tileId})`);
+      console.log(`  - shadowTilesetImage exists: ${!!shadowTilesetImage}`);
+      if (shadowTilesetImage) {
+        console.log(`  - shadowTilesetImage src: ${shadowTilesetImage.src}`);
+      }
+    }
+    // --- DEBUG LOGGING END ---
 
     // Handle shadow tiles with tileset
     if (type === 'shadow' && tileId !== undefined && shadowTilesetImage) {
+      console.log(`[drawTile] Conditions met for drawing shadow tile ${tileId}`); // Add log here
       // Calculate coordinates based on actual columns in the sheet
       const col = tileId % actualColumns;
       const row = Math.floor(tileId / actualColumns);
@@ -300,6 +313,7 @@ const MapCanvas = ({
       // Add more tile types as needed
       default:
         // Unknown tile type, draw placeholder
+        console.log(`[drawTile] Falling back to default red tile for type: ${type} at (${cell.x}, ${cell.y})`); // Add log here
         ctx.fillStyle = '#ef4444'; // Red-500
         ctx.fillRect(x, y, size, size);
     }
