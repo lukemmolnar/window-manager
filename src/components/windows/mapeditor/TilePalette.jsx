@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { 
   FLOOR_TILESET_PATH,
   WALL_TILESET_PATH,
-  TILE_SIZE, 
+  SHADOW_TILESET_PATH, // Import the shadow path
+  TILE_SIZE,
   TILESET_COLS,
   getTileCoordinates, 
   getTileName, 
@@ -51,6 +52,7 @@ const TilePalette = ({
   const [currentShadowSection, setCurrentShadowSection] = useState(null);
   const [totalFloorTiles, setTotalFloorTiles] = useState(0);
   const [totalWallTiles, setTotalWallTiles] = useState(0);
+  const [totalShadowTiles, setTotalShadowTiles] = useState(0); // Add state for shadow tiles count
   const [isInitialized, setIsInitialized] = useState(false);
   const initialTileTypeRef = useRef(tileType);
   const [showFavoritesSection, setShowFavoritesSection] = useState(true);
@@ -244,6 +246,17 @@ const removeFromFavorites = async () => {
   
   // Load the tileset images
   useEffect(() => {
+    let floorLoaded = false;
+    let wallLoaded = false;
+    let shadowLoaded = false;
+
+    const checkAllLoaded = () => {
+      if (floorLoaded && wallLoaded && shadowLoaded) {
+        setLoading(false);
+        setIsInitialized(true);
+      }
+    };
+
     // Load floor tileset
     const floorImg = new Image();
     floorImg.onload = () => {
@@ -257,18 +270,13 @@ const removeFromFavorites = async () => {
       console.log(`Detected ${total} floor tiles (${cols}x${rows}) in the sprite sheet`);
       setActualColumns(cols); // Store the actual number of columns
       setTotalFloorTiles(total);
-      
-      if (wallTilesetImage || tileType !== 'wall') {
-        setLoading(false);
-        setIsInitialized(true); // Mark as initialized after image loads
-      }
+      floorLoaded = true;
+      checkAllLoaded();
     };
     floorImg.onerror = () => {
       console.error('Failed to load floor tileset image');
-      if (wallTilesetImage || tileType !== 'wall') {
-        setLoading(false);
-        setIsInitialized(true);
-      }
+      floorLoaded = true; // Still mark as loaded to prevent blocking
+      checkAllLoaded();
     };
     floorImg.src = FLOOR_TILESET_PATH;
     
@@ -284,29 +292,42 @@ const removeFromFavorites = async () => {
       
       console.log(`Detected ${total} wall tiles (${cols}x${rows}) in the sprite sheet`);
       setTotalWallTiles(total);
-      
-      if (floorTilesetImage || tileType !== 'floor') {
-        setLoading(false);
-        setIsInitialized(true); // Mark as initialized after image loads
-      }
+      wallLoaded = true;
+      checkAllLoaded();
     };
     wallImg.onerror = () => {
       console.error('Failed to load wall tileset image');
-      if (floorTilesetImage || tileType !== 'floor') {
-        setLoading(false);
-        setIsInitialized(true);
-      }
+      wallLoaded = true; // Still mark as loaded
+      checkAllLoaded();
     };
     wallImg.src = WALL_TILESET_PATH;
-  }, []);
 
-  // Force a re-render when the component first mounts
-  useEffect(() => {
-    const currentImage = tileType === 'floor' ? floorTilesetImage : wallTilesetImage;
-    if (currentImage && !isInitialized) {
-      setIsInitialized(true);
-    }
-  }, [tileType, floorTilesetImage, wallTilesetImage, isInitialized]);
+    // Load shadow tileset
+    const shadowImg = new Image();
+    shadowImg.onload = () => {
+      setShadowTilesetImage(shadowImg);
+
+      // Calculate total available tiles based on image dimensions
+      const cols = Math.floor(shadowImg.width / TILE_SIZE);
+      const rows = Math.floor(shadowImg.height / TILE_SIZE);
+      const total = cols * rows;
+
+      console.log(`Detected ${total} shadow tiles (${cols}x${rows}) in the sprite sheet`);
+      setTotalShadowTiles(total);
+      shadowLoaded = true;
+      checkAllLoaded();
+    };
+    shadowImg.onerror = () => {
+      console.error('Failed to load shadow tileset image');
+      shadowLoaded = true; // Still mark as loaded
+      checkAllLoaded();
+    };
+    shadowImg.src = SHADOW_TILESET_PATH;
+
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  // Force a re-render when the component first mounts (removed, handled by checkAllLoaded)
+  // useEffect(() => { ... });
   
   // Get floor tiles to display based on current section filter
   const displayFloorTiles = useMemo(() => {
@@ -339,6 +360,27 @@ const removeFromFavorites = async () => {
       return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
     }
   }, [currentWallSection, totalWallTiles]);
+
+  // Get shadow tiles to display based on current section filter
+  const displayShadowTiles = useMemo(() => {
+    if (currentShadowSection === null) {
+      // Show all tiles from the tileset
+      if (totalShadowTiles > 0) {
+        return Array.from({ length: totalShadowTiles }, (_, i) => i);
+      }
+      return [];
+    } else {
+      // Show only tiles from the selected section
+      const section = SHADOW_TILE_SECTIONS[currentShadowSection];
+      // Ensure the section exists and has properties before accessing them
+      if (section && typeof section.startIndex === 'number' && typeof section.count === 'number') {
+        return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
+      }
+      console.warn(`Shadow section ${currentShadowSection} not found or invalid.`);
+      return []; // Return empty array if section is invalid
+    }
+  }, [currentShadowSection, totalShadowTiles]);
+
 
   return (
     <div className="bg-stone-800 border-t border-stone-700 p-2 max-h-64 overflow-y-auto">
@@ -567,10 +609,11 @@ const removeFromFavorites = async () => {
           ) : !shadowTilesetImage ? (
             <div className="text-center p-4 text-red-400">Failed to load shadow tile set</div>
           ) : (
-            <div key={`shadow-grid-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
+            <div key={`shadow-grid-${currentShadowSection}-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
+              {/* Use the defined displayShadowTiles */}
               {displayShadowTiles.map(tileIndex => (
                 <div
-                  key={tileIndex}
+                  key={`shadow-${tileIndex}`}
                   className={`rounded cursor-pointer border ${
                     selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
                   }`}
