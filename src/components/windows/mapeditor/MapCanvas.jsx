@@ -203,10 +203,11 @@ const MapCanvas = ({
 
     // Handle shadow tiles with tileset
     console.log('Drawing tile:', { type, tileId, shadowTilesetImage: !!shadowTilesetImage });
-    if (type === 'shadow' && tileId !== undefined && shadowTilesetImage) {
+    if (type === 'shadow' && shadowTilesetImage) {
       // Calculate coordinates based on actual columns in the sheet
-      const col = tileId % actualColumns;
-      const row = Math.floor(tileId / actualColumns);
+      const effectiveTileId = tileId !== undefined ? tileId : 0;
+      const col = effectiveTileId  % actualColumns;
+      const row = Math.floor(effectiveTileId  / actualColumns);
       const sourceX = col * TILE_SIZE;
       const sourceY = row * TILE_SIZE;
       
