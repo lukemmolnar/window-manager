@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
-import { getTileCoordinates, FLOOR_TILESET_PATH, WALL_TILESET_PATH, TILE_SIZE, TILESET_COLS } from './utils/tileRegistry';
+import { getTileCoordinates, FLOOR_TILESET_PATH, WALL_TILESET_PATH, SHADOW_TILESET_PATH, TILE_SIZE, TILESET_COLS } from './utils/tileRegistry';
 
 /**
  * The main canvas component for the Grid Map Editor
@@ -30,6 +30,7 @@ const MapCanvas = ({
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [floorTilesetImage, setFloorTilesetImage] = useState(null);
   const [wallTilesetImage, setWallTilesetImage] = useState(null);
+  const [shadowTilesetImage, setShadowTilesetImage] = useState(null);
   const [actualColumns, setActualColumns] = useState(TILESET_COLS);
   
   // Reset view to origin (0,0) function
@@ -68,6 +69,14 @@ const MapCanvas = ({
     };
     wallImg.onerror = () => console.error('Failed to load wall tileset');
     wallImg.src = WALL_TILESET_PATH;
+
+    const shadowImg = new Image();
+    shadowImg.onload = () => {
+      setShadowTilesetImage(shadowImg);
+      console.log('MapCanvas: Shadow tileset loaded successfully');
+    };
+    shadowImg.onerror = () => console.error('Failed to load shadow tileset');
+    shadowImg.src = SHADOW_TILESET_PATH;
   }, []);
 
   /**
@@ -179,6 +188,57 @@ const MapCanvas = ({
         // No rotation, draw normally
         ctx.drawImage(
           wallTilesetImage,
+          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+          x, y, size, size
+        );
+        
+        // Draw grid lines on top only if showGrid is true
+        if (showGrid) {
+          ctx.strokeStyle = '#44403c'; // Stone-700
+          ctx.strokeRect(x, y, size, size);
+        }
+      }
+      return;
+    }
+
+    if (type === 'wall' && tileId !== undefined && shadowTilesetImage) {
+      // Calculate coordinates based on actual columns in the sheet
+      const col = tileId % actualColumns;
+      const row = Math.floor(tileId / actualColumns);
+      const sourceX = col * TILE_SIZE;
+      const sourceY = row * TILE_SIZE;
+      
+      // Handle rotation
+      if (rotation !== 0) {
+        // Save the current context state
+        ctx.save();
+        
+        // Move to the center of the tile position
+        ctx.translate(x + size/2, y + size/2);
+        
+        // Rotate the context by the specified angle (convert degrees to radians)
+        const angleInRadians = (rotation * Math.PI) / 180;
+        ctx.rotate(angleInRadians);
+        
+        // Draw the tile, but with coordinates adjusted to draw centered around origin
+        ctx.drawImage(
+          shadowTilesetImage,
+          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+          -size/2, -size/2, size, size
+        );
+        
+        // Restore the context to its original state
+        ctx.restore();
+        
+        // Draw grid lines on top only if showGrid is true
+        if (showGrid) {
+          ctx.strokeStyle = '#44403c'; // Stone-700
+          ctx.strokeRect(x, y, size, size);
+        }
+      } else {
+        // No rotation, draw normally
+        ctx.drawImage(
+          shadowTilesetImage,
           sourceX, sourceY, TILE_SIZE, TILE_SIZE,
           x, y, size, size
         );
@@ -620,6 +680,7 @@ const MapCanvas = ({
     showGrid, 
     floorTilesetImage,
     wallTilesetImage,
+    shadowTilesetImage,
     actualColumns,
     // selectedRotation, // Removed: Toolbar rotation shouldn't trigger full canvas redraw
     brushSize  // Add brushSize as a dependency too for completeness
@@ -642,11 +703,11 @@ const MapCanvas = ({
   // Manually trigger a redraw whenever tileset images are loaded
   // Breaking the circular dependency by removing drawCanvas from dependencies
   useEffect(() => {
-    if ((floorTilesetImage || wallTilesetImage) && canvasRef.current && mapData) {
+    if ((floorTilesetImage || wallTilesetImage || shadowTilesetImage) && canvasRef.current && mapData) {
       // Call drawCanvas without adding it to dependency array
       drawCanvas();
     }
-  }, [floorTilesetImage, wallTilesetImage, mapData]); // Removed drawCanvas dependency
+  }, [floorTilesetImage, wallTilesetImage, shadowTilesetImage, mapData]); // Removed drawCanvas dependency
 
   // Handle canvas mouse events
   const handleMouseDown = (e) => {

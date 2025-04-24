@@ -7,7 +7,8 @@ import {
   getTileCoordinates, 
   getTileName, 
   TILE_SECTIONS,
-  WALL_TILE_SECTIONS
+  WALL_TILE_SECTIONS,
+  SHADOW_TILE_SECTIONS
 } from './utils/tileRegistry';
 import { Heart, RotateCw, CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
@@ -43,9 +44,11 @@ const TilePalette = ({
   const [isFavorited, setIsFavorited] = useState(false);
   const [floorTilesetImage, setFloorTilesetImage] = useState(null);
   const [wallTilesetImage, setWallTilesetImage] = useState(null);
+  const [shadowTilesetImage, setShadowTilesetImage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentSection, setCurrentSection] = useState(null); // Filter by section for floor
   const [currentWallSection, setCurrentWallSection] = useState(null); // Filter by section for wall
+  const [currentShadowSection, setCurrentShadowSection] = useState(null);
   const [totalFloorTiles, setTotalFloorTiles] = useState(0);
   const [totalWallTiles, setTotalWallTiles] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -56,6 +59,7 @@ const TilePalette = ({
   const tileTypes = [
     { id: 'floor', name: 'Floor' },
     { id: 'wall', name: 'Wall' },
+    { id: 'shadow', name: 'Shadow' },
     { id: 'door', name: 'Door' }
   ];
   
@@ -184,7 +188,9 @@ const removeFromFavorites = async () => {
 
   // Render a tile canvas
   const renderTileCanvas = (tileIndex, tileType, size = 40, rotation = 0) => {
-    const image = tileType === 'floor' ? floorTilesetImage : wallTilesetImage;
+    const image = tileType === 'floor' ? floorTilesetImage : 
+    tileType === 'wall' ? wallTilesetImage : 
+    shadowTilesetImage;
     
     if (!image) return null;
     
@@ -459,7 +465,8 @@ const removeFromFavorites = async () => {
                 >
                   <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
                     {(tile.tile_type === 'floor' && floorTilesetImage) || 
-                     (tile.tile_type === 'wall' && wallTilesetImage) 
+                     (tile.tile_type === 'wall' && wallTilesetImage) ||
+                     (tile.tile_type === 'shadow' && shadowTilesetImage)
                       ? renderTileCanvas(tile.tile_index, tile.tile_type, 40, selectedTileId === tile.tile_index && tileType === tile.tile_type ? selectedRotation : 0)
                       : <div className="w-full h-full flex items-center justify-center text-xs text-stone-500">Loading</div>
                     }
@@ -528,6 +535,50 @@ const removeFromFavorites = async () => {
                 >
                   <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
                     {renderTileCanvas(tileIndex, 'wall', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Shadow tile palette - shown when shadow type is selected */}
+      {tileType === 'shadow' && (
+        <>
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-mono text-teal-400">SHADOWS</h3>
+            
+            {/* Section filter dropdown */}
+            <select 
+              className="bg-stone-700 text-teal-300 text-xs rounded p-1 border-none"
+              value={currentShadowSection || ""}
+              onChange={(e) => setCurrentShadowSection(e.target.value || null)}
+            >
+              <option value="">All Shadow Tiles</option>
+              {Object.entries(SHADOW_TILE_SECTIONS).map(([key, section]) => (
+                <option key={key} value={key}>{section.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          {loading ? (
+            <div className="text-center p-4 text-stone-400">Loading shadow tiles...</div>
+          ) : !shadowTilesetImage ? (
+            <div className="text-center p-4 text-red-400">Failed to load shadow tile set</div>
+          ) : (
+            <div key={`shadow-grid-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
+              {displayShadowTiles.map(tileIndex => (
+                <div
+                  key={tileIndex}
+                  className={`rounded cursor-pointer border ${
+                    selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
+                  }`}
+                  onClick={() => onSelectTile(tileIndex)}
+                  title={getTileName(tileIndex, 'shadow')}
+                >
+                  <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
+                    {renderTileCanvas(tileIndex, 'shadow', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
                   </div>
                 </div>
               ))}

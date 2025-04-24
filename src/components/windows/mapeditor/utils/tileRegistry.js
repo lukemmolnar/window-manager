@@ -5,6 +5,7 @@
 // Import the tilesets directly
 import terrainTilesetImage from '../../../../assets/sheets/floors/uf_terrain_sheet.png';
 import wallTilesetImage from '/sheets/walls/uf_terrain_sheet_walls.png'; // Using absolute path from public folder
+import shadowTilesetImage from '/sheets/shadows/uf_terrain_shadows.png'
 
 // Tile dimensions and sprite sheet configuration
 export const TILE_SIZE = 48; // Size of each tile in pixels
@@ -13,6 +14,7 @@ export const TILESET_COLS = 16; // Number of columns in the sprite sheet (adjust
 // Path to the tilesets (using imported images)
 export const FLOOR_TILESET_PATH = terrainTilesetImage;
 export const WALL_TILESET_PATH = wallTilesetImage;
+export const SHADOW_TILESET_PATH = shadowTilesetImage;
 
 // Named sections for better organization
 export const TILE_SECTIONS = {
@@ -33,6 +35,10 @@ export const WALL_TILE_SECTIONS = {
   BRICK_WALLS: { startIndex: 16, count: 8, name: "Brick Walls" },
   WOOD_WALLS: { startIndex: 32, count: 4, name: "Wooden Walls" },
   // Add more wall sections as needed
+};
+
+export const SHADOW_TILE_SECTIONS = {
+  SHADOWS: { startIndex: 0, count: 4, name: "Shadows" }
 };
 
 /**
