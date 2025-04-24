@@ -370,14 +370,8 @@ const removeFromFavorites = async () => {
       }
       return [];
     } else {
-      // Show only tiles from the selected section
       const section = SHADOW_TILE_SECTIONS[currentShadowSection];
-      // Ensure the section exists and has properties before accessing them
-      if (section && typeof section.startIndex === 'number' && typeof section.count === 'number') {
-        return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
-      }
-      console.warn(`Shadow section ${currentShadowSection} not found or invalid.`);
-      return []; // Return empty array if section is invalid
+      return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
     }
   }, [currentShadowSection, totalShadowTiles]);
 
@@ -617,13 +611,21 @@ const removeFromFavorites = async () => {
                   className={`rounded cursor-pointer border ${
                     selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
                   }`}
-                  onClick={() => onSelectTile(tileIndex)}
-                  title={getTileName(tileIndex, 'shadow')}
-                >
-                  <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                    {renderTileCanvas(tileIndex, 'shadow', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
-                  </div>
+                  onClick={() => {
+                    console.log(`Shadow tile ${tileIndex} clicked`);
+                    // Ensure both the tile ID and type are propagated
+                    onSelectTile(tileIndex);
+                    // This shouldn't be necessary if tileType is already 'shadow', but just to be sure
+                    if (tileType !== 'shadow') {
+                      onChangeTileType('shadow');
+                    }
+                }}
+                title={getTileName(tileIndex, 'shadow')}
+              >
+                <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
+                  {renderTileCanvas(tileIndex, 'shadow', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
                 </div>
+              </div>
               ))}
             </div>
           )}

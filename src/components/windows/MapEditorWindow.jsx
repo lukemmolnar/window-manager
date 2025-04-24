@@ -247,11 +247,21 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   
   // Handle tile selection
   const handleSelectTile = (tileId) => {
+    console.log(`handleSelectTile called with: ${tileId} (previous: ${selectedTileId}), tileType: ${selectedTileType}`);
+    
+    // Update state
     setSelectedTileId(tileId);
+    
     // When selecting a tile, switch to the corresponding tool
     if (currentTool === 'select' || currentTool === 'erase') {
+      console.log(`Switching tool from ${currentTool} to ${selectedTileType}`);
       setCurrentTool(selectedTileType);
     }
+    
+    // Debug - check state immediately after update
+    setTimeout(() => {
+      console.log(`After update: selectedTileId: ${selectedTileId}, tileType: ${selectedTileType}`);
+    }, 0);
   };
   
   // Handle tile type change

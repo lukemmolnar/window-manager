@@ -75,6 +75,7 @@ export const getTileName = (tileIndex, tileType = 'floor') => {
         return `${section.name} ${tileNumber}`;
       }
     }
+    return `Floor Tile ${tileIndex}`;
   } else if (tileType === 'wall') {
     for (const [sectionKey, section] of Object.entries(WALL_TILE_SECTIONS)) {
       if (tileIndex >= section.startIndex && tileIndex < section.startIndex + section.count) {
@@ -83,8 +84,18 @@ export const getTileName = (tileIndex, tileType = 'floor') => {
       }
     }
     return `Wall Tile ${tileIndex}`;
+  } else if (tileType === 'shadow') {
+    for (const [sectionKey, section] of Object.entries(SHADOW_TILE_SECTIONS)) {
+      if (tileIndex >= section.startIndex && tileIndex < section.startIndex + section.count) {
+        const tileNumber = tileIndex - section.startIndex + 1;
+        return `${section.name} ${tileNumber}`;
+      }
+    }
+    return `Shadow Tile ${tileIndex}`;
+  } else if (tileType === 'door') {
+    return `Door`;
   }
   
-  // Fallback if not in a named section
+  // Fallback if not in a named section or unknown type
   return `Tile ${tileIndex}`;
 };

@@ -514,7 +514,8 @@ const MapCanvas = ({
         if (screenX > -gridSize && screenX < width && 
             screenY > -gridSize && screenY < height) {
           // Draw a subtle background for all cells
-          ctx.fillStyle = '#0f172a'; // Very dark slate blue
+          // ctx.fillStyle = '#0f172a'; // Very dark slate blue
+          ctx.fillStyle = '#fff'; // Very dark slate blue
           ctx.fillRect(screenX, screenY, gridSize, gridSize);
         }
       }
