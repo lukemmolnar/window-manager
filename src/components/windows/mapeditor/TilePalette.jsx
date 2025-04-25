@@ -112,6 +112,34 @@ const loadFavoriteTiles = async () => {
   }
 };
 
+const debugTileIndexes = () => {
+  if (!shadowTilesetImage) return;
+  
+  const cols = Math.floor(shadowTilesetImage.width / TILE_SIZE);
+  const rows = Math.floor(shadowTilesetImage.height / TILE_SIZE);
+  
+  console.log('==== SHADOW TILE INDEX MAP ====');
+  let output = '';
+  for (let row = 0; row < rows; row++) {
+    let rowOutput = '';
+    for (let col = 0; col < cols; col++) {
+      const index = row * cols + col;
+      // Format to ensure alignment
+      rowOutput += index.toString().padStart(3, ' ') + ' ';
+    }
+    output += rowOutput + '\n';
+  }
+  console.log(output);
+  console.log('===============================');
+};
+
+// Call this in useEffect after loading
+useEffect(() => {
+  if (shadowTilesetImage) {
+    debugTileIndexes();
+  }
+}, [shadowTilesetImage]);
+
 // Function to check if selected tile is a favorite
 const checkIsFavorite = async () => {
   try {
@@ -306,20 +334,20 @@ const removeFromFavorites = async () => {
     const shadowImg = new Image();
     shadowImg.onload = () => {
       setShadowTilesetImage(shadowImg);
-
+    
       // Calculate total available tiles based on image dimensions
       const cols = Math.floor(shadowImg.width / TILE_SIZE);
       const rows = Math.floor(shadowImg.height / TILE_SIZE);
       const total = cols * rows;
-
-      console.log(`Detected ${total} shadow tiles (${cols}x${rows}) in the sprite sheet`);
+    
+      // Purple console logs for better visibility
+      console.log("%c 🟣 SHADOW TILESET: Detected " + total + " shadow tiles (" + cols + "×" + rows + ")", 
+        "color: #9c27b0; font-weight: bold; background-color: #f3e5f5; padding: 5px; border-radius: 3px;");
+      console.log("%c 🟣 SHADOW Image dimensions: " + shadowImg.width + "×" + shadowImg.height + "px", 
+        "color: #9c27b0; font-weight: bold; background-color: #f3e5f5; padding: 5px; border-radius: 3px;");
+      
       setTotalShadowTiles(total);
       shadowLoaded = true;
-      checkAllLoaded();
-    };
-    shadowImg.onerror = () => {
-      console.error('Failed to load shadow tileset image');
-      shadowLoaded = true; // Still mark as loaded
       checkAllLoaded();
     };
     shadowImg.src = SHADOW_TILESET_PATH;

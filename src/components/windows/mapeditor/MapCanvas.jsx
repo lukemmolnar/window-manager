@@ -515,7 +515,7 @@ const MapCanvas = ({
             screenY > -gridSize && screenY < height) {
           // Draw a subtle background for all cells
           // ctx.fillStyle = '#0f172a'; // Very dark slate blue
-          ctx.fillStyle = '#fff'; // Very dark slate blue
+          ctx.fillStyle = '#042f2e'; // Very dark slate blue
           ctx.fillRect(screenX, screenY, gridSize, gridSize);
         }
       }
@@ -528,13 +528,13 @@ const MapCanvas = ({
     const mapStartY = offsetY;
     
     // Draw boundary with more visible color
-    ctx.strokeStyle = '#9c27b0'; // Orange-500
+    ctx.strokeStyle = '#5eead4'; // Orange-500
     ctx.lineWidth = 2;
     ctx.strokeRect(mapStartX, mapStartY, mapWidthPx, mapHeightPx);
     
     // Add small corner markers for extra visibility
     const cornerSize = 8;
-    ctx.fillStyle = '#9c27b0'; // Orange-500
+    ctx.fillStyle = '#5eead4'; // Orange-500
     
     // Top-left corner
     ctx.fillRect(mapStartX - 1, mapStartY - 1, cornerSize, cornerSize);
