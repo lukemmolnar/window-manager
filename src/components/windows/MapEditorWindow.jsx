@@ -205,7 +205,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       console.log("Cell erased successfully");
     } else {
       // For tile placement tools (floor, wall, etc.), use the selected tile and rotation
-      console.log(`Setting cell in layer ${currentLayer} with tileId: ${selectedTileId}, rotation: ${numRotation}`);
+      console.log(`Setting cell in layer ${currentLayer} with tileId: ${tileId}, rotation: ${numRotation}`);
       
       newMapData = setCellInLayer(
         mapData, 
@@ -213,8 +213,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         x, 
         y, 
         tool,
-        tileId,
-        selectedTileId, 
+        tileId, // Use the tileId passed from the component
         numRotation // Use the numeric rotation value
       );
       
