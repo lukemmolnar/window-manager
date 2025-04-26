@@ -7,7 +7,6 @@ import AudioWindow from './AudioWindow';
 import ChatWindow from './ChatWindow';
 import AdminWindow from './AdminWindow';
 import CanvasWindow from './CanvasWindow';
-import DiceWindow from './DiceWindow';
 import { WINDOW_TYPES } from '../../utils/constants';
 
 // Create enhanced versions of each window component by wrapping them with HOCs
@@ -20,7 +19,6 @@ export const EnhancedAudioWindow = withWindowState(withCommandHandling(withComma
 export const EnhancedChatWindow = withWindowState(withCommandHandling(withCommandInput(ChatWindow)), WINDOW_TYPES.CHAT);
 export const EnhancedAdminWindow = withWindowState(withCommandHandling(withCommandInput(AdminWindow)), WINDOW_TYPES.ADMIN);
 export const EnhancedCanvasWindow = withWindowState(withCommandHandling(CanvasWindow), WINDOW_TYPES.CANVAS);
-export const EnhancedDiceWindow = withWindowState(withCommandHandling(DiceWindow), WINDOW_TYPES.DICE);
 
 // Also export the base components in case they're needed
-export { TerminalWindow, ExplorerWindow, ChatWindow, AdminWindow, CanvasWindow, DiceWindow };
+export { TerminalWindow, ExplorerWindow, ChatWindow, AdminWindow, CanvasWindow };

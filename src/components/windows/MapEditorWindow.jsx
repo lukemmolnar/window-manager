@@ -267,9 +267,12 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   const handleChangeTileType = (tileType) => {
     setSelectedTileType(tileType);
 
-    // if (tileType === 'shadow' && selectedTileId === undefined) {
-    //   onSelectTile(0); // Set a default shadow tile ID
-    // }
+    // When changing to shadow type, always set a default shadow tile ID
+    if (tileType === 'shadow') {
+      console.log("Switching to shadow type, setting default tile ID 0");
+      onSelectTile(0); // Set a default shadow tile ID
+    }
+    
     // When changing tile type, also change the current tool
     if (currentTool !== 'select' && currentTool !== 'erase') {
       setCurrentTool(tileType);

@@ -8,8 +8,7 @@ import {
   EnhancedExplorerWindow,
   EnhancedAudioWindow,
   EnhancedChatWindow,
-  EnhancedAdminWindow,
-  EnhancedDiceWindow
+  EnhancedAdminWindow
 } from '../components/windows';
 
 export { WINDOW_TYPES };
