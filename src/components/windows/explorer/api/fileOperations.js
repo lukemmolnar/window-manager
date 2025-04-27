@@ -52,18 +52,15 @@ export const fetchPublicDirectoryContents = async (publicPath = '/', refreshAll 
 
 // Function to fetch public file content
 export const fetchPublicFileContent = async (filePath) => {
-  console.log(`[DEBUG] fetchPublicFileContent called with path: ${filePath}`);
   try {
     // Get the authentication token
     const token = localStorage.getItem('auth_token');
     if (!token) {
-      console.log('[DEBUG] Public file fetch - No auth token found');
       throw new Error('Authentication required. Please log in.');
     }
     
     // Fetch public file content from the server
     const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_FILE_CONTENT}?path=${encodeURIComponent(filePath)}`;
-    console.log(`[DEBUG] Public file fetch - Requesting URL: ${url}`);
     
     const response = await fetch(
       url,
@@ -73,14 +70,6 @@ export const fetchPublicFileContent = async (filePath) => {
         }
       }
     );
-    
-    console.log(`[DEBUG] Public file fetch - Response status: ${response.status}`);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log(`[DEBUG] Public file fetch - Error response: ${errorText}`);
-      throw new Error(`Failed to load file content: ${response.statusText}`);
-    }
     
     const data = await response.json();
     console.log(`[DEBUG] Public file fetch - Content received length: ${data.content?.length || 0} characters`);
@@ -144,7 +133,6 @@ export const fetchDirectoryContents = async (path = '/', refreshAll = false) => 
       error: null
     };
   } catch (error) {
-    console.error('Error fetching directory contents:', error);
     return {
       files: [],
       error: error.message || 'Failed to load files. Please try again.'
@@ -159,13 +147,11 @@ export const fetchFileContent = async (filePath) => {
     // Get the authentication token
     const token = localStorage.getItem('auth_token');
     if (!token) {
-      console.log('[DEBUG] Private file fetch - No auth token found');
       throw new Error('Authentication required. Please log in.');
     }
     
     // Fetch file content from the server
     const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_CONTENT}?path=${encodeURIComponent(filePath)}`;
-    console.log(`[DEBUG] Private file fetch - Requesting URL: ${url}`);
     
     const response = await fetch(
       url,
@@ -176,29 +162,24 @@ export const fetchFileContent = async (filePath) => {
       }
     );
     
-    console.log(`[DEBUG] Private file fetch - Response status: ${response.status}`);
     
     if (!response.ok) {
       // If response is 403, it means the user doesn't have admin access
       if (response.status === 403) {
-        console.log('[DEBUG] Private file fetch - Access denied (403)');
         throw new Error('Admin access required to view file content.');
       } else {
         const errorText = await response.text();
-        console.log(`[DEBUG] Private file fetch - Error response: ${errorText}`);
         throw new Error(`Failed to load file content: ${response.statusText}`);
       }
     }
     
     const data = await response.json();
-    console.log(`[DEBUG] Private file fetch - Content received length: ${data.content?.length || 0} characters`);
     
     return {
       content: data.content,
       error: null
     };
   } catch (error) {
-    console.error('[DEBUG] Error fetching private file content:', error);
     return {
       content: '',
       error: error.message || 'Error loading file'
@@ -208,18 +189,11 @@ export const fetchFileContent = async (filePath) => {
 
 // Function to save file content
 export const saveFileContent = async (filePath, content) => {
-  console.log(`[DEBUG] saveFileContent called:`, {
-    filePath,
-    contentType: typeof content,
-    contentLength: content?.length || 0,
-    isMapFile: filePath?.endsWith('.map'),
-    contentPreview: typeof content === 'string' ? content.substring(0, 100) + '...' : 'not a string'
-  });
+
   
   try {
     // Check if filePath is valid
     if (!filePath || filePath.trim() === '') {
-      console.error('[DEBUG] saveFileContent - Invalid file path');
       throw new Error('No file selected. Please select a file first.');
     }
     
@@ -257,9 +231,7 @@ export const saveFileContent = async (filePath, content) => {
           return value;
         }, 2);
         
-        console.log('[DEBUG] saveFileContent - Map file processed to ensure rotation values');
       } catch (parseError) {
-        console.error('[DEBUG] saveFileContent - Error processing map data:', parseError);
         // If we can't parse, just use the original content
         contentToSave = content;
       }
@@ -271,10 +243,8 @@ export const saveFileContent = async (filePath, content) => {
       content: contentToSave
     });
     
-    console.log(`[DEBUG] saveFileContent - Request body size: ${requestBody.length} bytes`);
     
     // Make the API request
-    console.log(`[DEBUG] saveFileContent - Sending request to: ${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_SAVE}`);
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FILE_SAVE}`, {
       method: 'POST',
       headers: {
@@ -284,10 +254,8 @@ export const saveFileContent = async (filePath, content) => {
       body: requestBody
     });
     
-    console.log(`[DEBUG] saveFileContent - Response status: ${response.status}`);
     
     const responseData = await response.json();
-    console.log(`[DEBUG] saveFileContent - Response data:`, responseData);
     
     if (!response.ok) {
       throw new Error(responseData.message || `Failed to save file: ${response.statusText}`);

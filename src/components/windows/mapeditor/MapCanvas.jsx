@@ -202,7 +202,6 @@ const MapCanvas = ({
     }
 
     // Handle shadow tiles with tileset
-    console.log('Drawing tile:', { type, tileId, shadowTilesetImage: !!shadowTilesetImage });
     if (type === 'shadow' && shadowTilesetImage) {
       // Calculate coordinates based on actual columns in the sheet
       const effectiveTileId = tileId !== undefined ? tileId : 0;
@@ -331,15 +330,11 @@ const MapCanvas = ({
     
     // Convert to grid coordinates
     const gridCoords = screenToGridCoordinates(mouseX, mouseY, gridSize, viewportOffset);
-    
-    console.log("Editing cell at", gridCoords, "with tool:", overrideTool || currentTool);
-    console.log("Current selectedRotation value:", selectedRotation);
-    
+        
     // Basic validation if the center point is outside map boundaries
     if (gridCoords.x < 0 || gridCoords.x >= mapData.width || 
         gridCoords.y < 0 || gridCoords.y >= mapData.height) {
       // Coordinates outside map boundary - do nothing
-      console.log(`Cell at (${gridCoords.x}, ${gridCoords.y}) is outside map boundaries (${mapData.width}x${mapData.height})`);
       return;
     }
     
@@ -351,24 +346,13 @@ const MapCanvas = ({
     
     // For brush size of 1, just edit the single cell
     if (brushSize === 1) {
-  // Add more detailed logs about rotation
-  console.log("=================== PLACING TILE ===================");
-  console.log("About to call onEdit with rotation:", selectedRotation);
-  console.log("Tool being used:", toolToUse);
-  console.log("Current selected rotation value:", selectedRotation);
-  console.log("At coordinates:", gridCoords);
   
   // Use the selectedRotation prop directly
   const rotation = parseInt(selectedRotation, 10) || 0;
-  console.log("Using prop selectedRotation for placement:", rotation);
   
   // Pass rotation and selectedTileId
-  console.log(`Calling onEdit with rotation: ${rotation}, tileId: ${selectedTileId}`);
   onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation, selectedTileId);
   
-  // This log should help us verify the call was made
-  console.log("onEdit called with rotation:", rotation, "and tileId:", selectedTileId);
-  console.log("=================================================");
       return;
     }
     
@@ -395,7 +379,6 @@ const MapCanvas = ({
         // Edit this cell with the current rotation value from props
         const rotation = parseInt(selectedRotation, 10) || 0;
         
-        console.log(`Placing brushed tile at (${cellX}, ${cellY}) with rotation: ${rotation}°, tileId: ${selectedTileId}`);
         onEdit(cellX, cellY, toolToUse, rotation, selectedTileId);
       }
     }
@@ -484,9 +467,6 @@ const MapCanvas = ({
     const canvas = canvasRef.current;
     if (!canvas || !mapData) return;
     
-    // Log current rotation when drawing canvas for debugging
-    console.log("Drawing canvas with selectedRotation:", selectedRotation);
-
     const ctx = canvas.getContext('2d');
     ctxRef.current = ctx;
     

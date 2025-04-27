@@ -23,39 +23,18 @@ const FileContent = ({
   handleExportFile
 }) => {
   // Debug logging
-  console.log('[DEBUG] FileContent rendered with props:', {
-    selectedFile,
-    isContentLoading,
-    fileContentLength: fileContent?.length || 0,
-    hasContent: !!fileContent,
-    showPreview,
-    editMode,
-    saveStatus
-  });
 
   // Add an effect to log when file content changes
   useEffect(() => {
-    console.log('[DEBUG] FileContent - fileContent changed:', {
-      length: fileContent?.length || 0,
-      preview: fileContent?.substring(0, 50),
-      hasContent: !!fileContent
-    });
   }, [fileContent]);
 
   // Add an effect to log when selected file changes
   useEffect(() => {
-    console.log('[DEBUG] FileContent - selectedFile changed:', selectedFile);
   }, [selectedFile]);
   
   // Add debugging for save file content function
   const wrappedHandleSaveFileContent = (content) => {
-    console.log('[DEBUG] FileContent - handleSaveFileContent called with:', {
-      contentType: typeof content,
-      contentLength: content?.length || 0,
-      contentPreview: typeof content === 'string' ? content.substring(0, 100) + '...' : 'not a string',
-      selectedFilePath: selectedFile?.path,
-      selectedFileName: selectedFile?.name
-    });
+
     
     // Call the original function
     handleSaveFileContent(content);

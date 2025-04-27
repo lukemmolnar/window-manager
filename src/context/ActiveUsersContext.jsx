@@ -86,7 +86,6 @@ export function ActiveUsersProvider({ children }) {
     
     // Listen for active user count updates
     socket.on('active_users_update', (data) => {
-      console.log('Received active users update:', data);
       setActiveUserCount(data.count);
     });
     
