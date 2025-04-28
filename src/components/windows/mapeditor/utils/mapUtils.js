@@ -26,12 +26,42 @@ export const createEmptyMap = (name = 'New Map', width = 20, height = 15, gridSi
       }
     ],
     tokenPositions: [],
+    // Add viewport property with default values
+    viewport: {
+      x: 0,
+      y: 0,
+      scale: 1 // For zoom level
+    },
     metadata: {
       author: 'user',
       created: new Date().toISOString(),
       modified: new Date().toISOString()
     }
   };
+};
+
+/**
+ * Updates the viewport data in the map
+ * @param {Object} mapData - The map data
+ * @param {number} x - The viewport x position
+ * @param {number} y - The viewport y position
+ * @param {number} scale - The viewport scale/zoom level
+ * @returns {Object} The updated map data
+ */
+export const updateViewport = (mapData, x, y, scale) => {
+  if (!mapData) return mapData;
+  
+  // Clone the map data to avoid direct state mutation
+  const newMapData = { ...mapData };
+  
+  // Create or update viewport property
+  newMapData.viewport = {
+    x: x !== undefined ? x : (mapData.viewport?.x || 0),
+    y: y !== undefined ? y : (mapData.viewport?.y || 0),
+    scale: scale !== undefined ? scale : (mapData.viewport?.scale || 1)
+  };
+  
+  return newMapData;
 };
 
 /**
@@ -47,6 +77,12 @@ export const parseMapFile = (mapContent) => {
     // Validate the map structure
     if (!mapData.version || !mapData.layers || !Array.isArray(mapData.layers)) {
       throw new Error('Invalid map file format');
+    }
+    
+    // Ensure viewport property exists
+    if (!mapData.viewport) {
+      console.log("Adding missing viewport data during loading");
+      mapData.viewport = { x: 0, y: 0, scale: 1 };
     }
     
     // Ensure all cells have a rotation property and shadow cells have tileId
@@ -191,6 +227,35 @@ export const serializeMap = (mapData) => {
     console.error('Error serializing map:', err);
     throw new Error('Failed to serialize map data.');
   }
+};
+
+/**
+ * Applies the saved viewport position to the canvas
+ * @param {Object} mapData - The map data containing viewport information
+ * @param {Object} canvas - The canvas element or rendering context
+ * @param {Function} setViewportState - Optional callback to update viewport state in React/Vue
+ * @returns {void}
+ */
+export const applyViewport = (mapData, canvas, setViewportState = null) => {
+  if (!mapData || !mapData.viewport) return;
+  
+  const { x, y, scale } = mapData.viewport;
+  
+  // If you're using a canvas directly
+  if (canvas && canvas.getContext) {
+    const ctx = canvas.getContext('2d');
+    // Reset any existing transformations
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Apply the saved viewport transformation
+    ctx.setTransform(scale, 0, 0, scale, x, y);
+  }
+  
+  // If you're using a state-based approach (React/Vue)
+  if (setViewportState) {
+    setViewportState({ x, y, scale });
+  }
+  
+  console.log(`Applied viewport from map: x=${x}, y=${y}, scale=${scale}`);
 };
 
 /**

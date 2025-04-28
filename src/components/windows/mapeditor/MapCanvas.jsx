@@ -16,10 +16,13 @@ const MapCanvas = ({
   onEdit, 
   showGrid = true, 
   resetViewRef,
-  brushSize = 1
+  brushSize = 1,
+  // Add the onViewportChange prop to save viewport changes
+  onViewportChange = null
 }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  // Initialize with default values, will be overridden if mapData contains viewport info
   const [gridSize, setGridSize] = useState(32);
   const [viewportOffset, setViewportOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -32,6 +35,19 @@ const MapCanvas = ({
   const [wallTilesetImage, setWallTilesetImage] = useState(null);
   const [shadowTilesetImage, setShadowTilesetImage] = useState(null);
   const [actualColumns, setActualColumns] = useState(TILESET_COLS);
+
+  const [initialViewportLoaded, setInitialViewportLoaded] = useState(false);
+
+    // Function to save viewport changes
+    const saveViewport = useCallback(() => {
+      if (onViewportChange) {
+        onViewportChange({
+          x: viewportOffset.x,
+          y: viewportOffset.y,
+          scale: gridSize / 32 // Store scale as a ratio of the default grid size
+        });
+      }
+    }, [viewportOffset, gridSize, onViewportChange]);
   
   // Reset view to origin (0,0) function
   const resetViewToOrigin = useCallback(() => {
