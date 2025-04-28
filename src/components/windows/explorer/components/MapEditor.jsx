@@ -150,9 +150,14 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       // Include the received rotation value
       let cellData = { x, y, type: tool, rotation: rotation || 0 }; // Default to 0 if rotation is undefined/falsy
       
-      // Include the selected tile ID for both floor and wall tools
-      if (tool === 'floor' || tool === 'wall') {
+      // CRITICAL FIX: Include the selected tile ID for shadow tiles as well!
+      if (tool === 'floor' || tool === 'wall' || tool === 'shadow') {
         cellData.tileId = selectedTileId;
+        
+        // For shadow tiles, add extra debug logging
+        if (tool === 'shadow') {
+          console.log(`MapEditor CRITICAL: Creating shadow tile at (${x}, ${y}) with tileId=${selectedTileId}`);
+        }
       }
       
       // If a cell already exists at this position, update it immutably

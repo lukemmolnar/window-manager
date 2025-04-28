@@ -347,11 +347,19 @@ const MapCanvas = ({
     // For brush size of 1, just edit the single cell
     if (brushSize === 1) {
   
-  // Use the selectedRotation prop directly
-  const rotation = parseInt(selectedRotation, 10) || 0;
-  
-  // Pass rotation and selectedTileId
-  onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation, selectedTileId);
+      // Use the selectedRotation prop directly
+      const rotation = parseInt(selectedRotation, 10) || 0;
+      
+      // CRITICAL DEBUG: Log the exact tileId being sent from MapCanvas
+      console.log(`MapCanvas EDIT: At (${gridCoords.x}, ${gridCoords.y}) using tool=${toolToUse}, passing tileId=${selectedTileId}, rotation=${rotation}`);
+      
+      // This is especially important for shadow tiles
+      if (toolToUse === 'shadow') {
+        console.log(`SHADOW TILE EDIT: At (${gridCoords.x}, ${gridCoords.y}) tileId=${selectedTileId} - IMPORTANT! Verify this ID is preserved!`);
+      }
+      
+      // Pass rotation and selectedTileId
+      onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation, selectedTileId);
   
       return;
     }
@@ -378,6 +386,11 @@ const MapCanvas = ({
         
         // Edit this cell with the current rotation value from props
         const rotation = parseInt(selectedRotation, 10) || 0;
+        
+        // CRITICAL: For brush operations, also add logging for shadow tiles
+        if (toolToUse === 'shadow') {
+          console.log(`BRUSH: Shadow tile at (${cellX}, ${cellY}) with tileId=${selectedTileId}`);
+        }
         
         onEdit(cellX, cellY, toolToUse, rotation, selectedTileId);
       }

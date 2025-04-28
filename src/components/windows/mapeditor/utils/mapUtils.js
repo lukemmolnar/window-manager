@@ -49,7 +49,7 @@ export const parseMapFile = (mapContent) => {
       throw new Error('Invalid map file format');
     }
     
-    // Ensure all cells have a rotation property
+    // Ensure all cells have a rotation property and shadow cells have tileId
     mapData.layers.forEach(layer => {
       if (layer.cells && Array.isArray(layer.cells)) {
         layer.cells.forEach(cell => {
@@ -59,6 +59,12 @@ export const parseMapFile = (mapContent) => {
           } else {
             // Ensure rotation is a number
             cell.rotation = Number(cell.rotation);
+          }
+          
+          // If it's a shadow type but missing tileId, add default tileId
+          if (cell.type === 'shadow' && cell.tileId === undefined) {
+            cell.tileId = 0;
+            console.log("Added missing tileId to shadow cell during loading:", cell);
           }
         });
       }
@@ -88,45 +94,99 @@ export const serializeMap = (mapData) => {
       }
     };
     
-      // CRITICAL FIX: Process all cells to ensure they have rotation property
+      // CRITICAL FIX: Process all cells to ensure they have rotation property and shadow cells have tileId
       if (updatedMapData.layers && Array.isArray(updatedMapData.layers)) {
         updatedMapData.layers = updatedMapData.layers.map(layer => {
           if (layer.cells && Array.isArray(layer.cells)) {
             layer.cells = layer.cells.map(cell => {
+              let updatedCell = { ...cell };
+              
               // Get the most current rotation value - prioritize global state
               const globalRotation = window.currentMapRotation;
               
               // If rotation doesn't exist, add it with current global value or default to 0
-              if (cell.rotation === undefined) {
-                return { ...cell, rotation: globalRotation !== undefined ? Number(globalRotation) : 0 };
+              if (updatedCell.rotation === undefined) {
+                updatedCell.rotation = globalRotation !== undefined ? Number(globalRotation) : 0;
               }
-              
               // If global rotation is set, use it to update existing cells
-              if (globalRotation !== undefined) {
-                return { ...cell, rotation: Number(globalRotation) };
+              else if (globalRotation !== undefined) {
+                updatedCell.rotation = Number(globalRotation);
               }
-              
               // Otherwise ensure rotation is a number (not string)
-              if (typeof cell.rotation !== 'number') {
-                return { ...cell, rotation: Number(cell.rotation) };
+              else if (typeof updatedCell.rotation !== 'number') {
+                updatedCell.rotation = Number(updatedCell.rotation);
               }
               
-              return cell;
+              // Debug shadow tile tileId values before serialization
+              if (updatedCell.type === 'shadow') {
+                console.log(`SERIALIZE: Shadow cell at (${updatedCell.x}, ${updatedCell.y}) has tileId: ${updatedCell.tileId}`);
+                
+                // Ensure shadow tiles always have a tileId property
+                if (updatedCell.tileId === undefined) {
+                  updatedCell.tileId = 0;
+                  console.log(`WARNING: Missing tileId for shadow tile at (${updatedCell.x}, ${updatedCell.y}), defaulting to 0`);
+                }
+              }
+              
+              return updatedCell;
             });
           }
           return layer;
         });
       }
     
-    // Use custom replacer function to ensure rotation values are preserved
-    return JSON.stringify(updatedMapData, (key, value) => {
-      // Always include rotation in the output
+    // Ensure all shadow tiles have a valid tileId before serialization
+    console.log("=== ENSURING SHADOW TILES HAVE TILEID BEFORE SERIALIZATION ===");
+    let shadowTileCount = 0;
+    updatedMapData.layers.forEach(layer => {
+      if (layer.cells && Array.isArray(layer.cells)) {
+        layer.cells.forEach(cell => {
+          if (cell.type === 'shadow') {
+            shadowTileCount++;
+            // Make sure tileId is present and is a number
+            if (cell.tileId === undefined || cell.tileId === null) {
+              console.log(`FIXING: Shadow Cell (${cell.x}, ${cell.y}) missing tileId, setting to 0`);
+              cell.tileId = 0;
+            } else if (typeof cell.tileId !== 'number') {
+              console.log(`FIXING: Shadow Cell (${cell.x}, ${cell.y}) has non-number tileId: ${cell.tileId}, converting to number`);
+              cell.tileId = Number(cell.tileId);
+            } else {
+              console.log(`OK: Shadow Cell (${cell.x}, ${cell.y}) has tileId=${cell.tileId}`);
+            }
+          }
+        });
+      }
+    });
+    console.log(`Total shadow tiles processed: ${shadowTileCount}`);
+    
+    // Use a replacer function to ensure values are properly serialized
+    const serialized = JSON.stringify(updatedMapData, (key, value) => {
+      // Handle rotation to ensure it's always saved as a number
       if (key === 'rotation') {
-        // If value is undefined, return 0
         return value === undefined ? 0 : Number(value);
       }
+      
+      // No need for special tileId handling here since we've already 
+      // ensured all shadow cells have a proper tileId value above
       return value;
     }, 2);
+    
+    // Debug the serialized output for shadow cells
+    try {
+      const parsed = JSON.parse(serialized);
+      console.log("=== SHADOW CELLS AFTER SERIALIZATION (parsed back) ===");
+      parsed.layers.forEach(layer => {
+        layer.cells.forEach(cell => {
+          if (cell.type === 'shadow') {
+            console.log(`Serialized Shadow Cell (${cell.x}, ${cell.y}): tileId=${cell.tileId}, type=${typeof cell.tileId}`);
+          }
+        });
+      });
+    } catch (err) {
+      console.error("Failed to parse serialized map for debug:", err);
+    }
+    
+    return serialized;
   } catch (err) {
     console.error('Error serializing map:', err);
     throw new Error('Failed to serialize map data.');
@@ -184,8 +244,20 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation
   // Create cell data with required properties
   const cellData = { x, y, type };
   
-  // Add tileId if provided
-  if (tileId !== undefined) {
+  // For shadow tiles, always include tileId (using the provided tileId or defaulting to 0)
+  // For other types, include tileId only if explicitly provided
+  if (type === 'shadow') {
+    // DEBUG: Log the incoming tileId value to track exactly what's being passed
+    console.log(`EDIT: Shadow tile at (${x}, ${y}) - Incoming tileId: ${tileId}, type: ${typeof tileId}`);
+    
+    // CRITICAL FIX: Always explicitly set tileId for shadow tiles
+    // Never default to 0 if tileId is provided
+    cellData.tileId = tileId;
+    
+    // Debug the actual tileId value that was set
+    console.log(`EDIT: Shadow tile tileId set to: ${cellData.tileId}`);
+  } else if (tileId !== undefined) {
+    // For non-shadow tiles, only include tileId if explicitly provided
     cellData.tileId = tileId;
   }
   
@@ -196,12 +268,21 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation
   if (existingCellIndex !== -1) {
     console.log(`Updating existing cell at (${x}, ${y}) with rotation=${rotation}`);
     // Update existing cell, preserving any properties not explicitly changed
-    layerData.cells[existingCellIndex] = { 
+    let updatedCell = { 
       ...layerData.cells[existingCellIndex], 
       ...cellData 
     };
     
-    // Log the updated cell to verify rotation was properly set
+    // CRITICAL FIX: Double-check if this is a shadow cell and ensure tileId is defined
+    if (updatedCell.type === 'shadow' && updatedCell.tileId === undefined) {
+      updatedCell.tileId = tileId;
+      console.log(`FIX: Shadow cell at (${x}, ${y}) missing tileId in update operation, explicitly setting to ${tileId}`);
+    }
+    
+    // Update the cell in the array
+    layerData.cells[existingCellIndex] = updatedCell;
+    
+    // Log the updated cell to verify all properties are properly set
     console.log("Updated cell:", layerData.cells[existingCellIndex]);
   } else {
     console.log(`Adding new cell at (${x}, ${y}) with rotation=${rotation}`);

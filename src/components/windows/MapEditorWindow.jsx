@@ -130,43 +130,95 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         }
       };
       
-      // CRITICAL FIX: Ensure every cell has a rotation property BEFORE serialization
-      // This guarantees rotation is always in the JSON output
-      updatedMapData.layers.forEach(layer => {
-        if (layer.cells && Array.isArray(layer.cells)) {
-          layer.cells = layer.cells.map(cell => {
-            // If rotation doesn't exist, add it with default value of 0
-            if (cell.rotation === undefined) {
-              return { ...cell, rotation: 0 };
-            }
-            // Ensure rotation is a number (not string)
-            if (typeof cell.rotation !== 'number') {
-              return { ...cell, rotation: Number(cell.rotation) };
-            }
-            return cell;
-          });
+  // CRITICAL FIX: Ensure every cell has rotation property and shadow cells have tileId BEFORE serialization
+  // This guarantees these properties are always in the JSON output
+  updatedMapData.layers.forEach(layer => {
+    if (layer.cells && Array.isArray(layer.cells)) {
+      layer.cells = layer.cells.map(cell => {
+        let updatedCell = { ...cell };
+        
+        // If rotation doesn't exist, add it with default value of 0
+        if (updatedCell.rotation === undefined) {
+          updatedCell.rotation = 0;
         }
+        // Ensure rotation is a number (not string)
+        else if (typeof updatedCell.rotation !== 'number') {
+          updatedCell.rotation = Number(updatedCell.rotation);
+        }
+        
+        // Special case for shadow tiles - debug the current tileId
+        if (updatedCell.type === 'shadow') {
+          console.log(`SAVE: Shadow cell at (${updatedCell.x}, ${updatedCell.y}) has tileId: ${updatedCell.tileId}`);
+        }
+        
+        return updatedCell;
       });
+    }
+  });
       
-      // Debug: Check if any cells have rotation values
+      // Debug: Check shadow tile values before we pass to the serializer
+      let shadowCount = 0;
       let rotationCount = 0;
+      console.log("=== SHADOW TILES BEFORE SERIALIZATION (MapEditorWindow) ===");
       updatedMapData.layers.forEach(layer => {
         layer.cells.forEach(cell => {
+          // Log all cell rotation values
           console.log(`Cell at (${cell.x}, ${cell.y}) has rotation: ${cell.rotation}`);
           rotationCount++;
+          
+          // Specifically log shadow tile values
+          if (cell.type === 'shadow') {
+            shadowCount++;
+            console.log(`SAVE CHECK: Shadow Cell (${cell.x}, ${cell.y}): tileId=${cell.tileId}, type=${typeof cell.tileId}`);
+          }
         });
       });
       
-      console.log(`Total cells with rotation property: ${rotationCount}`);
+      console.log(`Total cells: ${rotationCount}, Shadow tiles: ${shadowCount}`);
       
-      // Use a custom replacer function to ensure rotation is always included in the JSON
+      // Use a custom replacer function for critical special case properties
       const serializedMap = JSON.stringify(updatedMapData, (key, value) => {
-        // Always include rotation in the output
+        // Handle rotation values (all cell types)
         if (key === 'rotation') {
           return value === undefined ? 0 : Number(value);
         }
+        
+        // Special handling for tileId in shadow cells
+        if (key === 'tileId' && value === undefined && this && this.type === 'shadow') {
+          console.log(`JSON.stringify: Missing tileId for shadow tile, adding default`);
+          return 0;
+        }
+        
         return value;
       }, 2);
+      
+      // Check the localStorage copy to ensure shadow tiles have tileId
+      try {
+        // First check the map data BEFORE serialization
+        console.log("==== SHADOW TILES IN PRE-SERIALIZED MAPDATA ====");
+        updatedMapData.layers.forEach(layer => {
+          layer.cells.forEach(cell => {
+            if (cell.type === 'shadow') {
+              console.log(`PRE-SAVE: Shadow Cell at (${cell.x}, ${cell.y}): tileId=${cell.tileId}, type=${typeof cell.tileId}`);
+            }
+          });
+        });
+        
+        // Then check the final serialized version
+        const parsed = JSON.parse(serializedMap);
+        const shadowTiles = [];
+        parsed.layers.forEach(layer => {
+          layer.cells.forEach(cell => {
+            if (cell.type === 'shadow') {
+              shadowTiles.push(`(${cell.x},${cell.y}): tileId=${cell.tileId}`);
+            }
+          });
+        });
+        console.log("==== SHADOW TILES IN FINAL SERIALIZED MAP ====");
+        console.log(shadowTiles.join(', '));
+      } catch (err) {
+        console.error("Error checking serialized map:", err);
+      }
       
       console.log('Saving map with explicit rotation values included');
       
@@ -191,7 +243,18 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     // Log that we're receiving the rotation value
     console.log("============== EDIT CELL ==============");
     console.log("MapEditorWindow received edit with rotation:", rotation);
-    console.log(`Cell coordinates: (${x}, ${y}), Tool: ${tool}`);
+    console.log(`Cell coordinates: (${x}, ${y}), Tool: ${tool}, tileId: ${tileId}`);
+    
+    // CRITICAL: Make sure the tileId is set explicitly for shadow tiles
+    let effectiveTileId = tileId;
+    if (tool === 'shadow') {
+      // Force shadow tiles to use the selected tileId
+      if (effectiveTileId === undefined) {
+        effectiveTileId = selectedTileId;
+        console.log(`Shadow tile tileId was undefined, using selectedTileId: ${selectedTileId}`);
+      }
+      console.log(`Using tileId: ${effectiveTileId} for shadow tile at (${x}, ${y})`);
+    }
     
     // Ensure rotation is a number
     const numRotation = Number(rotation);
@@ -205,7 +268,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       console.log("Cell erased successfully");
     } else {
       // For tile placement tools (floor, wall, etc.), use the selected tile and rotation
-      console.log(`Setting cell in layer ${currentLayer} with tileId: ${tileId}, rotation: ${numRotation}`);
+      console.log(`Setting cell in layer ${currentLayer} with tileId: ${effectiveTileId}, rotation: ${numRotation}`);
       
       newMapData = setCellInLayer(
         mapData, 
@@ -213,7 +276,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         x, 
         y, 
         tool,
-        tileId, // Use the tileId passed from the component
+        effectiveTileId, // Use our locally validated tileId value
         numRotation // Use the numeric rotation value
       );
       
@@ -267,11 +330,9 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   const handleChangeTileType = (tileType) => {
     setSelectedTileType(tileType);
 
-    // When changing to shadow type, always set a default shadow tile ID
-    if (tileType === 'shadow') {
-      console.log("Switching to shadow type, setting default tile ID 0");
-      onSelectTile(0); // Set a default shadow tile ID
-    }
+    // When changing to shadow type, we no longer force tileId=0
+    // This allows users to select any shadow tile and have it properly saved
+    console.log(`Changed tile type to: ${tileType}, keeping current selectedTileId: ${selectedTileId}`);
     
     // When changing tile type, also change the current tool
     if (currentTool !== 'select' && currentTool !== 'erase') {
