@@ -49,7 +49,6 @@
       }
     });
 
-    // Add button to the page
     document.body.appendChild(resetButton);
   });
 })();
