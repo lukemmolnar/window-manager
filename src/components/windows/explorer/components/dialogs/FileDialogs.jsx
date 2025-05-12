@@ -1,4 +1,5 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { AVAILABLE_FILE_TYPES } from '../../utils/fileUtils';
 import { X } from 'lucide-react';
 
 // Dialog for creating a new file or folder
@@ -13,6 +14,9 @@ export const CreateFileDialog = ({
   createNewItem
 }) => {
   const createInputRef = useRef(null);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [filteredTypes, setFilteredTypes] = useState([]);
+  const [selectedTypeIndex, setSelectedTypeIndex] = useState(0);
   
   // Focus the input field when the dialog is shown
   useEffect(() => {
@@ -21,9 +25,67 @@ export const CreateFileDialog = ({
     }
   }, [showCreateDialog]);
   
+  // Handle input change to detect periods and filter file types
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setNewItemName(value);
+    
+    // Only show autocomplete for files, not folders
+    if (createType === 'file') {
+      // Check if we should show autocomplete
+      const lastPeriodIndex = value.lastIndexOf('.');
+      if (lastPeriodIndex !== -1 && lastPeriodIndex < value.length) {
+        const suffix = value.substring(lastPeriodIndex + 1);
+        
+        // Filter available types based on what user has typed after the period
+        const filtered = AVAILABLE_FILE_TYPES.filter(type => 
+          type.startsWith(suffix.toLowerCase())
+        );
+        
+        setFilteredTypes(filtered);
+        setShowAutocomplete(filtered.length > 0);
+        setSelectedTypeIndex(0);
+      } else {
+        setShowAutocomplete(false);
+      }
+    }
+  };
+  
+  // Function to select and apply a file type
+  const selectFileType = (type) => {
+    const lastPeriodIndex = newItemName.lastIndexOf('.');
+    if (lastPeriodIndex !== -1) {
+      // Replace everything after the period with the selected file type
+      setNewItemName(newItemName.substring(0, lastPeriodIndex + 1) + type);
+    }
+    setShowAutocomplete(false);
+  };
+  
   // Handle key press in the create dialog
   const handleCreateKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (showAutocomplete) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedTypeIndex(prev => 
+          (prev + 1) % filteredTypes.length
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedTypeIndex(prev => 
+          (prev - 1 + filteredTypes.length) % filteredTypes.length
+        );
+      } else if (e.key === 'Tab' || e.key === 'Enter') {
+        e.preventDefault();
+        selectFileType(filteredTypes[selectedTypeIndex]);
+        if (e.key === 'Enter') {
+          // If Enter was pressed and a type was selected, also create the item
+          setTimeout(() => createNewItem(), 10);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowAutocomplete(false);
+      }
+    } else if (e.key === 'Enter') {
       e.preventDefault();
       createNewItem();
     } else if (e.key === 'Escape') {
@@ -46,17 +108,36 @@ export const CreateFileDialog = ({
           <X size={14} />
         </button>
       </div>
-      <div className="flex gap-2">
-        <input
-          ref={createInputRef}
-          type="text"
-          value={newItemName}
-          onChange={(e) => setNewItemName(e.target.value)}
-          onKeyDown={handleCreateKeyPress}
-          placeholder={createType === 'file' ? 'filename.ext' : 'folder name'}
-          className="flex-1 bg-stone-700 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
-          disabled={isCreating}
-        />
+      <div className="flex gap-2 relative">
+        <div className="flex-1 relative">
+          <input
+            ref={createInputRef}
+            type="text"
+            value={newItemName}
+            onChange={handleInputChange}
+            onKeyDown={handleCreateKeyPress}
+            placeholder={createType === 'file' ? 'filename.ext' : 'folder name'}
+            className="w-full bg-stone-700 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+            disabled={isCreating}
+          />
+          {showAutocomplete && (
+            <div className="absolute mt-1 w-full bg-stone-800 border border-stone-600 rounded shadow-lg z-10 max-h-32 overflow-y-auto">
+              {filteredTypes.map((type, index) => (
+                <div 
+                  key={type}
+                  onClick={() => selectFileType(type)}
+                  className={`px-2 py-1 cursor-pointer text-sm ${
+                    index === selectedTypeIndex 
+                      ? 'bg-teal-700 text-white' 
+                      : 'hover:bg-stone-700 text-teal-400'
+                  }`}
+                >
+                  {type}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onClick={createNewItem}
           disabled={isCreating || !newItemName.trim()}

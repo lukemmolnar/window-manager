@@ -1,3 +1,10 @@
+// List of available file types for autocomplete
+export const AVAILABLE_FILE_TYPES = [
+  'md',
+  'canvas',
+  'map'
+];
+
 // Helper function to get parent directory path from a file path
 export const getParentDirectoryPath = (filePath) => {
   // Remove trailing slash if present
