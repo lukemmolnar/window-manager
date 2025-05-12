@@ -121,7 +121,7 @@ export const CreateFileDialog = ({
             disabled={isCreating}
           />
           {showAutocomplete && (
-            <div className="absolute mt-1 w-full bg-stone-800 border border-stone-600 rounded shadow-lg z-10 max-h-32 overflow-y-auto">
+            <div className="absolute bottom-full mb-1 w-full bg-stone-800 border border-stone-600 rounded shadow-lg z-50 max-h-32 overflow-y-auto">
               {filteredTypes.map((type, index) => (
                 <div 
                   key={type}
