@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { AVAILABLE_FILE_TYPES } from '../../utils/fileUtils';
-import { X } from 'lucide-react';
+import { 
+  X, FileText, Code, Coffee, BookOpen, Globe, File, 
+  Music, Image, Figma, Map 
+} from 'lucide-react';
 
 // Dialog for creating a new file or folder
 export const CreateFileDialog = ({
@@ -17,6 +20,18 @@ export const CreateFileDialog = ({
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [filteredTypes, setFilteredTypes] = useState([]);
   const [selectedTypeIndex, setSelectedTypeIndex] = useState(0);
+  
+  // Get file type icon for autocomplete menu
+  const getFileTypeIcon = (fileType) => {
+    const iconProps = { size: 16, className: "mr-2" };
+    
+    switch (fileType) {
+      case 'md': return <FileText {...iconProps} />;
+      case 'canvas': return <Figma {...iconProps} />;
+      case 'map': return <Map {...iconProps} />;
+      default: return <File {...iconProps} />;
+    }
+  };
   
   // Focus the input field when the dialog is shown
   useEffect(() => {
@@ -126,12 +141,13 @@ export const CreateFileDialog = ({
                 <div 
                   key={type}
                   onClick={() => selectFileType(type)}
-                  className={`px-2 py-1 cursor-pointer text-sm ${
+                  className={`px-2 py-1 cursor-pointer text-sm flex items-center ${
                     index === selectedTypeIndex 
                       ? 'bg-teal-700 text-white' 
                       : 'hover:bg-stone-700 text-teal-400'
                   }`}
                 >
+                  {getFileTypeIcon(type)}
                   {type}
                 </div>
               ))}
