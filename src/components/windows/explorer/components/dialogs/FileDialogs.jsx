@@ -143,7 +143,7 @@ export const CreateFileDialog = ({
                   onClick={() => selectFileType(type)}
                   className={`px-2 py-1 cursor-pointer text-sm flex items-center ${
                     index === selectedTypeIndex 
-                      ? 'bg-teal-700 text-white' 
+                      ? 'bg-stone-600 text-white' 
                       : 'hover:bg-stone-700 text-teal-400'
                   }`}
                 >
