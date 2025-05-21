@@ -16,7 +16,7 @@ import { AnnouncementProvider } from './context/AnnouncementContext'
 import PartyProvider from './context/PartyContext'
 import DebugLogger from './utils/debugLogger'
 
-// Initialize debug logger (disables logs by default)
+// debug logger (disables logs by default)
 DebugLogger.init();
 
 // Check for application updates and clear cache if needed
@@ -24,7 +24,6 @@ const cacheCleared = cacheManager.checkAndUpdateVersion();
 if (cacheCleared) {
   console.log('Cache cleared due to application update');
   // We don't force reload here to avoid infinite reload loops
-  // The new version will be used naturally
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
