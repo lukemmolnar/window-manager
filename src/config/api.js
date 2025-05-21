@@ -44,7 +44,19 @@ const API_CONFIG = {
     PARTIES: '/parties',
     PARTIES_CURRENT: '/parties/current',
     PARTY_JOIN: '/parties/:id/join',
-    PARTY_LEAVE: '/parties/:id/leave'
+    PARTY_LEAVE: '/parties/:id/leave',
+    // Tileset and marketplace endpoints
+    TILESETS: '/tilesets',
+    TILESET_BY_ID: '/tilesets/:id',
+    TILESET_SELECT: '/tilesets/user/select/:id',
+    TILESET_DESELECT: '/tilesets/user/select/:id',
+    TILESET_SELECTED: '/tilesets/user/selected',
+    TILESET_CHECK: '/tilesets/check/:id',
+    TILESET_BY_CATEGORY: '/tilesets/category/:category',
+    // Favorite tiles endpoints
+    FAVORITE_TILES: '/favorite-tiles',
+    FAVORITE_TILE_CHECK: '/favorite-tiles/check/:tileIndex/:tileType',
+    FAVORITE_TILE_DELETE: '/favorite-tiles/:tileIndex/:tileType'
   }
 };
 

@@ -15,6 +15,7 @@ import { WindowCommand } from './commands/window/WindowCommand.js';
 import { TerminalCommand } from './commands/window/TerminalCommand.js';
 import { ExplorerCommand } from './commands/window/ExplorerCommand.js';
 import { ChatCommand } from './commands/window/ChatCommand.js';
+import { MarketplaceCommand } from './commands/window/MarketplaceCommand.js';
 
 // Import admin commands
 import { AdminCommand } from './commands/admin/AdminCommand.js';
@@ -47,6 +48,7 @@ export function registerCommands() {
     new TerminalCommand(),
     new ExplorerCommand(),
     new ChatCommand(),
+    new MarketplaceCommand(),
     
     // Admin commands
     new AdminCommand(),

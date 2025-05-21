@@ -3,7 +3,7 @@ import { Map } from 'lucide-react';
 import MapCanvas from './mapeditor/MapCanvas';
 import MapToolbar from './mapeditor/MapToolbar';
 import LayerPanel from './mapeditor/LayerPanel';
-import TilePalette from './mapeditor/TilePalette';
+import TilePaletteWithMarketplace from './mapeditor/TilePaletteWithMarketplace';
 import { setCellInLayer, removeCellFromLayer } from './mapeditor/utils/mapUtils';
 
 /**
@@ -577,14 +577,15 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
           />
         </div>
         
-        {/* Tile Palette */}
-        <TilePalette 
+        {/* Tile Palette with Marketplace Integration */}
+        <TilePaletteWithMarketplace 
           onSelectTile={handleSelectTile}
           selectedTileId={selectedTileId}
           tileType={selectedTileType}
           onChangeTileType={handleChangeTileType}
           selectedRotation={selectedRotation}
           onRotateTile={handleRotateTile}
+          createWindow={transformWindow}
         />
       </div>
     </div>
