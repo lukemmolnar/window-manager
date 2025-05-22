@@ -146,7 +146,7 @@ const MarketplaceWindow = ({ windowId }) => {
     return (
       <div className="w-full h-32 bg-stone-900 overflow-hidden relative">
         <img 
-          src={`${API_CONFIG.BASE_URL}${tileset.image_path}`} 
+          src={tileset.image_path} 
           alt={`Preview of ${tileset.name}`}
           className="object-cover w-full h-full"
           onError={(e) => {

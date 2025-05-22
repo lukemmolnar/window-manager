@@ -1,0 +1,10 @@
+PLACEHOLDER IMAGE NEEDED
+
+To complete the marketplace functionality:
+
+1. Add a placeholder image file named "tileset-placeholder.png" in this directory
+2. The image should be a simple grid pattern representing a tileset
+3. Recommended size: 256x256 pixels
+4. The file should be a PNG image
+
+When a tileset image fails to load, the application will try to use this placeholder image instead.
