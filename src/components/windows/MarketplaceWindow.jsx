@@ -161,22 +161,20 @@ const MarketplaceWindow = ({ windowId }) => {
   return (
     <div className="flex flex-col h-full bg-stone-800 text-stone-200">
       {/* Header */}
-      <div className="p-4 border-b border-stone-700 flex justify-between items-center">
+      <div className="p-2 border-b bg-stone-900 border-stone-700 flex justify-between items-center">
         <div>
-          <h2 className="text-xl text-teal-400 font-bold">Tileset Marketplace</h2>
-          <p className="text-sm text-stone-400 mt-1">
-            Browse and select tilesets to use in your map editor.
-          </p>
+          <h2 className="mr-2 text-teal-400">Tileset Marketplace</h2>
         </div>
         
-        <button 
-          className="px-3 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded text-sm flex items-center"
-          onClick={fetchTilesets}
-          disabled={loading}
-        >
-          <RotateCw size={16} className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+          <button 
+              className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-teal-300 rounded text-xs flex items-center gap-1"
+              onClick={fetchTilesets}
+              disabled={loading}
+              title="Refresh tilesets"
+            >
+              <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
+              Refresh
+          </button>
       </div>
 
       {/* Main content */}
