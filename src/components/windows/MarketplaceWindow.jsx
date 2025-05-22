@@ -29,7 +29,7 @@ const MarketplaceWindow = ({ windowId }) => {
       tilesetsEndpoint: `${API_CONFIG.BASE_URL}/tilesets`,
       auth: authToken ? 'Token exists' : 'No token',
       tokenLength: authToken ? authToken.length : 0,
-      userInfo: user ? `User: ${user.username}, Admin: ${user.isAdmin}` : 'No user'
+      userInfo: user ? `User: ${user.username}, Admin: ${user.is_admin}` : 'No user'
     };
     
     console.log('Marketplace API Config:', debugData);
@@ -196,7 +196,7 @@ const MarketplaceWindow = ({ windowId }) => {
                 <p>API URL: {debugInfo.tilesetsEndpoint}</p>
                 <p>Auth Status: {debugInfo.auth}</p>
                 <p>Token Length: {debugInfo.tokenLength} characters</p>
-                <p>Admin Status: {user?.isAdmin ? 'Admin' : 'Not admin'}</p>
+                <p>Admin Status: {user?.is_admin ? 'Admin' : 'Not admin'}</p>
                 {debugInfo.error && (
                   <>
                     <p className="mt-1 font-semibold">Error Details:</p>
@@ -249,7 +249,7 @@ const MarketplaceWindow = ({ windowId }) => {
           <div className="text-center py-10">
             <Info size={48} className="mx-auto text-stone-500 mb-4" />
             <p className="text-stone-400">No tilesets available yet.</p>
-            {user?.isAdmin && (
+            {user?.is_admin && (
               <button
                 className="mt-4 px-4 py-2 bg-teal-700 hover:bg-teal-600 rounded text-sm"
                 onClick={() => setShowUploadForm(true)}
@@ -320,7 +320,7 @@ const MarketplaceWindow = ({ windowId }) => {
       </div>
 
       {/* Admin upload section, conditionally shown */}
-      {user?.isAdmin && (
+      {user?.is_admin && (
         <div className="border-t border-stone-700 p-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg text-teal-400 font-bold">Admin: Tileset Manager</h3>
