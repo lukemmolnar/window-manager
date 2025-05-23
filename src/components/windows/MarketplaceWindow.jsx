@@ -3,6 +3,7 @@ import axios from 'axios';
 import { X, Check, Upload, Info, AlertTriangle, RotateCw } from 'lucide-react';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import placeholderImage from '../../assets/images/tileset-placeholder.png';
 
 /**
  * Marketplace window component for browsing and selecting tilesets
@@ -140,9 +141,6 @@ const MarketplaceWindow = ({ windowId }) => {
   const isTilesetSelected = (tilesetId) => {
     return selectedTilesets.some(t => t.id === tilesetId);
   };
-
-  // Simple placeholder image as base64 (gray grid)
-  const placeholderImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAABlBMVEUzMzP///8jKCbTAAAANklEQVR4nO3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8GwdnAABijGQFQAAAABJRU5ErkJggg==';
 
   // Render the tileset preview image
   const renderTilesetPreview = (tileset) => {
