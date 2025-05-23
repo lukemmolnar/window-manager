@@ -1,19 +1,15 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { 
-  FLOOR_TILESET_PATH,
-  WALL_TILESET_PATH,
-  SHADOW_TILESET_PATH, // Import the shadow path
-  TILE_SIZE,
-  TILESET_COLS,
-  getTileCoordinates, 
-  getTileName, 
-  TILE_SECTIONS,
-  WALL_TILE_SECTIONS,
-  SHADOW_TILE_SECTIONS
-} from './utils/tileRegistry';
-import { Heart, RotateCw, CheckCircle, XCircle } from 'lucide-react';
+import { Heart, RotateCw, CheckCircle, XCircle, Store } from 'lucide-react';
 import axios from 'axios';
 import API_CONFIG from '../../../config/api';
+import { 
+  TILE_SIZE,
+  getTileName,
+  getTileCoordinates
+} from './utils/tileRegistry';
+
+// Import the dynamic tile registry
+import dynamicTileRegistry from './utils/dynamicTileRegistry';
 
 // Debug helper to log API requests and responses
 const logApiCall = (method, url, status, data) => {
@@ -22,7 +18,7 @@ const logApiCall = (method, url, status, data) => {
 };
 
 /**
- * Component for displaying and selecting tiles from a tileset
+ * Enhanced TilePalette component with marketplace integration
  */
 const TilePalette = ({ 
   onSelectTile, 
@@ -30,7 +26,8 @@ const TilePalette = ({
   tileType = 'floor',
   onChangeTileType,
   selectedRotation = 0,
-  onRotateTile
+  onRotateTile,
+  createWindow
 }) => {
   // Local state to track rotation, will sync back to parent
   const [localRotation, setLocalRotation] = useState(selectedRotation);
@@ -39,23 +36,21 @@ const TilePalette = ({
   useEffect(() => {
     setLocalRotation(selectedRotation);
   }, [selectedRotation]);
+  
   const [favoriteTiles, setFavoriteTiles] = useState([]);
   const [isAddingToFavorites, setIsAddingToFavorites] = useState(false);
   const [addFavoriteError, setAddFavoriteError] = useState(null);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [floorTilesetImage, setFloorTilesetImage] = useState(null);
-  const [wallTilesetImage, setWallTilesetImage] = useState(null);
-  const [shadowTilesetImage, setShadowTilesetImage] = useState(null);
+  const [tilesetImages, setTilesetImages] = useState({});
   const [loading, setLoading] = useState(true);
   const [currentSection, setCurrentSection] = useState(null); // Filter by section for floor
   const [currentWallSection, setCurrentWallSection] = useState(null); // Filter by section for wall
   const [currentShadowSection, setCurrentShadowSection] = useState(null);
-  const [totalFloorTiles, setTotalFloorTiles] = useState(0);
-  const [totalWallTiles, setTotalWallTiles] = useState(0);
-  const [totalShadowTiles, setTotalShadowTiles] = useState(0); // Add state for shadow tiles count
+  const [sections, setSections] = useState({});
   const [isInitialized, setIsInitialized] = useState(false);
   const initialTileTypeRef = useRef(tileType);
   const [showFavoritesSection, setShowFavoritesSection] = useState(true);
+  const [marketplaceStatus, setMarketplaceStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'
   
   // Available tile types
   const tileTypes = [
@@ -70,8 +65,35 @@ const TilePalette = ({
     initialTileTypeRef.current = tileType;
   }, []);
 
-  // Track the actual columns detected in the image
-  const [actualColumns, setActualColumns] = useState(TILESET_COLS);
+  // Initialize dynamic tile registry
+  useEffect(() => {
+    const initRegistry = async () => {
+      setLoading(true);
+      try {
+        await dynamicTileRegistry.initializeTileRegistry();
+        
+        // Get all sections
+        const allSections = dynamicTileRegistry.getAllSections();
+        setSections(allSections);
+        
+        // Get images for each category
+        const images = {
+          floor: dynamicTileRegistry.getTilesetImageForCategory('floor'),
+          wall: dynamicTileRegistry.getTilesetImageForCategory('wall'),
+          shadow: dynamicTileRegistry.getTilesetImageForCategory('shadow')
+        };
+        setTilesetImages(images);
+        
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Error initializing dynamic tile registry:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initRegistry();
+  }, []);
 
   // Load favorite tiles when component mounts
   useEffect(() => {
@@ -83,144 +105,166 @@ const TilePalette = ({
     checkIsFavorite();
   }, [selectedTileId, tileType]);
 
-// Function to load favorite tiles
-const loadFavoriteTiles = async () => {
-  try {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
+  // Function to load favorite tiles
+  const loadFavoriteTiles = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
 
-    console.log('Fetching favorite tiles from:', `${API_CONFIG.BASE_URL}/favorite-tiles`);
-    const response = await axios.get(
-      `${API_CONFIG.BASE_URL}/favorite-tiles`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+      console.log('Fetching favorite tiles from:', `${API_CONFIG.BASE_URL}/favorite-tiles`);
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}/favorite-tiles`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    logApiCall('GET', '/favorite-tiles', response.status, response.data);
-    
-    // Ensure we have an array, even if the response is unexpected
-    if (Array.isArray(response.data)) {
-      setFavoriteTiles(response.data);
-    } else if (response.data && Array.isArray(response.data.favorites)) {
-      setFavoriteTiles(response.data.favorites);
-    } else {
-      console.error('Unexpected response format for favorite tiles:', response.data);
+      logApiCall('GET', '/favorite-tiles', response.status, response.data);
+      
+      // Ensure we have an array, even if the response is unexpected
+      if (Array.isArray(response.data)) {
+        setFavoriteTiles(response.data);
+      } else if (response.data && Array.isArray(response.data.favorites)) {
+        setFavoriteTiles(response.data.favorites);
+      } else {
+        console.error('Unexpected response format for favorite tiles:', response.data);
+        setFavoriteTiles([]);
+      }
+    } catch (error) {
+      console.error('Error loading favorite tiles from server:', error);
       setFavoriteTiles([]);
     }
-  } catch (error) {
-    console.error('Error loading favorite tiles from server:', error);
-    setFavoriteTiles([]);
-  }
-};
+  };
 
-const debugTileIndexes = () => {
-  if (!shadowTilesetImage) return;
-  
-  const cols = Math.floor(shadowTilesetImage.width / TILE_SIZE);
-  const rows = Math.floor(shadowTilesetImage.height / TILE_SIZE);
-  
-  console.log('==== SHADOW TILE INDEX MAP ====');
-  let output = '';
-  for (let row = 0; row < rows; row++) {
-    let rowOutput = '';
-    for (let col = 0; col < cols; col++) {
-      const index = row * cols + col;
-      // Format to ensure alignment
-      rowOutput += index.toString().padStart(3, ' ') + ' ';
+  // Function to check if selected tile is a favorite
+  const checkIsFavorite = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}/favorite-tiles/check/${selectedTileId}/${tileType}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      logApiCall('GET', `/favorite-tiles/check/${selectedTileId}/${tileType}`, response.status, response.data);
+      setIsFavorited(response.data.isFavorite);
+    } catch (error) {
+      console.error('Error checking favorite status from server:', error);
+      setIsFavorited(false);
     }
-    output += rowOutput + '\n';
-  }
-  console.log(output);
-  console.log('===============================');
-};
+  };
 
-// Call this in useEffect after loading
-useEffect(() => {
-  if (shadowTilesetImage) {
-    debugTileIndexes();
-  }
-}, [shadowTilesetImage]);
-
-// Function to check if selected tile is a favorite
-const checkIsFavorite = async () => {
-  try {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-
-    const response = await axios.get(
-      `${API_CONFIG.BASE_URL}/favorite-tiles/check/${selectedTileId}/${tileType}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    logApiCall('GET', `/favorite-tiles/check/${selectedTileId}/${tileType}`, response.status, response.data);
-    setIsFavorited(response.data.isFavorite);
-  } catch (error) {
-    console.error('Error checking favorite status from server:', error);
-    setIsFavorited(false);
-  }
-};
-
-// Function to add a tile to favorites
-const addToFavorites = async () => {
-  setIsAddingToFavorites(true);
-  setAddFavoriteError(null);
-  
-  try {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      setAddFavoriteError('Authentication required');
-      setIsAddingToFavorites(false);
-      return;
-    }
-
-    const response = await axios.post(
-      `${API_CONFIG.BASE_URL}/favorite-tiles`,
-      { tileIndex: selectedTileId, tileType },
-      { headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        } 
+  // Function to add a tile to favorites
+  const addToFavorites = async () => {
+    setIsAddingToFavorites(true);
+    setAddFavoriteError(null);
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setAddFavoriteError('Authentication required');
+        setIsAddingToFavorites(false);
+        return;
       }
-    );
-    
-    logApiCall('POST', '/favorite-tiles', response.status, response.data);
-    
-    // Reload favorite tiles
-    await loadFavoriteTiles();
-    setIsFavorited(true);
-  } catch (error) {
-    console.error('Error adding tile to favorites:', error);
-    setAddFavoriteError(error.response?.data?.message || 'Failed to add to favorites');
-  } finally {
-    setIsAddingToFavorites(false);
-  }
-};
 
-// Function to remove a tile from favorites
-const removeFromFavorites = async () => {
-  try {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
+      const response = await axios.post(
+        `${API_CONFIG.BASE_URL}/favorite-tiles`,
+        { tileIndex: selectedTileId, tileType },
+        { headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}` 
+          } 
+        }
+      );
+      
+      logApiCall('POST', '/favorite-tiles', response.status, response.data);
+      
+      // Reload favorite tiles
+      await loadFavoriteTiles();
+      setIsFavorited(true);
+    } catch (error) {
+      console.error('Error adding tile to favorites:', error);
+      setAddFavoriteError(error.response?.data?.message || 'Failed to add to favorites');
+    } finally {
+      setIsAddingToFavorites(false);
+    }
+  };
 
-    const response = await axios.delete(
-      `${API_CONFIG.BASE_URL}/favorite-tiles/${selectedTileId}/${tileType}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    
-    logApiCall('DELETE', `/favorite-tiles/${selectedTileId}/${tileType}`, response.status, response.data);
-    
-    // Reload favorite tiles
-    await loadFavoriteTiles();
-    setIsFavorited(false);
-  } catch (error) {
-    console.error('Error removing tile from favorites:', error);
-  }
-};
+  // Function to remove a tile from favorites
+  const removeFromFavorites = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await axios.delete(
+        `${API_CONFIG.BASE_URL}/favorite-tiles/${selectedTileId}/${tileType}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      logApiCall('DELETE', `/favorite-tiles/${selectedTileId}/${tileType}`, response.status, response.data);
+      
+      // Reload favorite tiles
+      await loadFavoriteTiles();
+      setIsFavorited(false);
+    } catch (error) {
+      console.error('Error removing tile from favorites:', error);
+    }
+  };
+
+  // Function to open the marketplace window
+  const openMarketplace = () => {
+    if (createWindow) {
+      setMarketplaceStatus('loading');
+      
+      try {
+        // Create the marketplace window
+        createWindow({
+          type: 'marketplace',
+          title: 'Tileset Marketplace',
+          width: 900,
+          height: 700
+        });
+        
+        setMarketplaceStatus('success');
+      } catch (error) {
+        console.error('Error opening marketplace window:', error);
+        setMarketplaceStatus('error');
+      }
+    } else {
+      console.warn('createWindow function not provided');
+      setMarketplaceStatus('error');
+    }
+  };
+
+  // Function to refresh tilesets after marketplace changes
+  const refreshTilesets = async () => {
+    setLoading(true);
+    try {
+      await dynamicTileRegistry.refreshTileRegistry();
+      
+      // Get all sections
+      const allSections = dynamicTileRegistry.getAllSections();
+      setSections(allSections);
+      
+      // Get images for each category
+      const images = {
+        floor: dynamicTileRegistry.getTilesetImageForCategory('floor'),
+        wall: dynamicTileRegistry.getTilesetImageForCategory('wall'),
+        shadow: dynamicTileRegistry.getTilesetImageForCategory('shadow')
+      };
+      setTilesetImages(images);
+      
+      setMarketplaceStatus('success');
+    } catch (error) {
+      console.error('Error refreshing tilesets:', error);
+      setMarketplaceStatus('error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Render a tile canvas
   const renderTileCanvas = (tileIndex, tileType, size = 40, rotation = 0) => {
-    const image = tileType === 'floor' ? floorTilesetImage : 
-    tileType === 'wall' ? wallTilesetImage : 
-    shadowTilesetImage;
+    const image = tilesetImages[tileType];
     
     if (!image) return null;
     
@@ -231,11 +275,8 @@ const removeFromFavorites = async () => {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, size, size);
             
-            // Calculate coordinates based on actual columns in the sheet
-            const col = tileIndex % actualColumns;
-            const row = Math.floor(tileIndex / actualColumns);
-            const sourceX = col * TILE_SIZE;
-            const sourceY = row * TILE_SIZE;
+            // Calculate coordinates
+            const { sourceX, sourceY } = getTileCoordinates(tileIndex);
             
             // Save the context state before transformations
             ctx.save();
@@ -271,184 +312,100 @@ const removeFromFavorites = async () => {
       />
     );
   };
-  
-  // Load the tileset images
-  useEffect(() => {
-    let floorLoaded = false;
-    let wallLoaded = false;
-    let shadowLoaded = false;
 
-    const checkAllLoaded = () => {
-      if (floorLoaded && wallLoaded && shadowLoaded) {
-        setLoading(false);
-        setIsInitialized(true);
+  // Get tiles to display based on current section filter and tile type
+  const displayTiles = useMemo(() => {
+    if (!isInitialized) return [];
+    
+    const categorySections = sections[tileType] || {};
+    
+    let sectionFilter = null;
+    if (tileType === 'floor') sectionFilter = currentSection;
+    else if (tileType === 'wall') sectionFilter = currentWallSection;
+    else if (tileType === 'shadow') sectionFilter = currentShadowSection;
+    
+    let result = [];
+    
+    // If no section filter, show all tiles for this category
+    if (!sectionFilter) {
+      // Collect all tiles from all sections
+      for (const section of Object.values(categorySections)) {
+        const { startIndex, count } = section;
+        for (let i = 0; i < count; i++) {
+          result.push(startIndex + i);
+        }
       }
-    };
-
-    // Load floor tileset
-    const floorImg = new Image();
-    floorImg.onload = () => {
-      setFloorTilesetImage(floorImg);
-      
-      // Calculate total available tiles based on image dimensions
-      const cols = Math.floor(floorImg.width / TILE_SIZE);
-      const rows = Math.floor(floorImg.height / TILE_SIZE);
-      const total = cols * rows;
-      
-      console.log(`Detected ${total} floor tiles (${cols}x${rows}) in the sprite sheet`);
-      setActualColumns(cols); // Store the actual number of columns
-      setTotalFloorTiles(total);
-      floorLoaded = true;
-      checkAllLoaded();
-    };
-    floorImg.onerror = () => {
-      console.error('Failed to load floor tileset image');
-      floorLoaded = true; // Still mark as loaded to prevent blocking
-      checkAllLoaded();
-    };
-    floorImg.src = FLOOR_TILESET_PATH;
-    
-    // Load wall tileset
-    const wallImg = new Image();
-    wallImg.onload = () => {
-      setWallTilesetImage(wallImg);
-      
-      // Calculate total available tiles based on image dimensions
-      const cols = Math.floor(wallImg.width / TILE_SIZE);
-      const rows = Math.floor(wallImg.height / TILE_SIZE);
-      const total = cols * rows;
-      
-      console.log(`Detected ${total} wall tiles (${cols}x${rows}) in the sprite sheet`);
-      setTotalWallTiles(total);
-      wallLoaded = true;
-      checkAllLoaded();
-    };
-    wallImg.onerror = () => {
-      console.error('Failed to load wall tileset image');
-      wallLoaded = true; // Still mark as loaded
-      checkAllLoaded();
-    };
-    wallImg.src = WALL_TILESET_PATH;
-
-    // Load shadow tileset
-    const shadowImg = new Image();
-    shadowImg.onload = () => {
-      setShadowTilesetImage(shadowImg);
-    
-      // Calculate total available tiles based on image dimensions
-      const cols = Math.floor(shadowImg.width / TILE_SIZE);
-      const rows = Math.floor(shadowImg.height / TILE_SIZE);
-      const total = cols * rows;
-    
-      // Purple console logs for better visibility
-      console.log("%c 🟣 SHADOW TILESET: Detected " + total + " shadow tiles (" + cols + "×" + rows + ")", 
-        "color: #9c27b0; font-weight: bold; background-color: #f3e5f5; padding: 5px; border-radius: 3px;");
-      console.log("%c 🟣 SHADOW Image dimensions: " + shadowImg.width + "×" + shadowImg.height + "px", 
-        "color: #9c27b0; font-weight: bold; background-color: #f3e5f5; padding: 5px; border-radius: 3px;");
-      
-      setTotalShadowTiles(total);
-      shadowLoaded = true;
-      checkAllLoaded();
-    };
-    shadowImg.src = SHADOW_TILESET_PATH;
-
-  }, []); // Empty dependency array ensures this runs only once on mount
-
-  // Force a re-render when the component first mounts (removed, handled by checkAllLoaded)
-  // useEffect(() => { ... });
-  
-  // Get floor tiles to display based on current section filter
-  const displayFloorTiles = useMemo(() => {
-    if (currentSection === null) {
-      // Show all tiles from the tileset - all positions are valid
-      if (totalFloorTiles > 0) {
-        // Simply create an array of indices from 0 to totalFloorTiles-1
-        return Array.from({ length: totalFloorTiles }, (_, i) => i);
-      }
-      return [];
     } else {
       // Show only tiles from the selected section
-      const section = TILE_SECTIONS[currentSection];
-      return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
-    }
-  }, [currentSection, totalFloorTiles]);
-  
-  // Get wall tiles to display based on current section filter
-  const displayWallTiles = useMemo(() => {
-    if (currentWallSection === null) {
-      // Show all tiles from the tileset - all positions are valid
-      if (totalWallTiles > 0) {
-        // Simply create an array of indices from 0 to totalWallTiles-1
-        return Array.from({ length: totalWallTiles }, (_, i) => i);
+      const section = categorySections[sectionFilter];
+      if (section) {
+        const { startIndex, count } = section;
+        result = Array.from({ length: count }, (_, i) => startIndex + i);
       }
-      return [];
-    } else {
-      // Show only tiles from the selected section
-      const section = WALL_TILE_SECTIONS[currentWallSection];
-      return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
     }
-  }, [currentWallSection, totalWallTiles]);
+    
+    return result;
+  }, [isInitialized, sections, tileType, currentSection, currentWallSection, currentShadowSection]);
 
-  // Get shadow tiles to display based on current section filter
-  const displayShadowTiles = useMemo(() => {
-    if (currentShadowSection === null) {
-      // Show all tiles from the tileset
-      if (totalShadowTiles > 0) {
-        return Array.from({ length: totalShadowTiles }, (_, i) => i);
-      }
-      return [];
-    } else {
-      const section = SHADOW_TILE_SECTIONS[currentShadowSection];
-      return Array.from({ length: section.count }, (_, i) => section.startIndex + i);
-    }
-  }, [currentShadowSection, totalShadowTiles]);
-
+  // Get section options for the dropdown
+  const sectionOptions = useMemo(() => {
+    if (!isInitialized) return [];
+    
+    const categorySections = sections[tileType] || {};
+    
+    return Object.entries(categorySections).map(([key, section]) => ({
+      value: key,
+      label: `${section.name} (${section.tilesetName})`
+    }));
+  }, [isInitialized, sections, tileType]);
 
   return (
     <div className="bg-stone-800 border-t border-stone-700 p-2 max-h-64 overflow-y-auto">
-      {/* Tile Type Selector */}
+      {/* Tile Type Selector with Marketplace Button */}
       <div className="flex flex-col space-y-2 mb-4">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-mono text-teal-400">TILE TYPE</h3>
           
           {/* Buttons for Selected Tile */}
           <div className="flex items-center">
+            {/* Marketplace Button */}
+            <button 
+              className="text-blue-400 hover:text-blue-300 flex items-center mr-2"
+              onClick={() => {
+                if (marketplaceStatus !== 'loading') {
+                  openMarketplace();
+                }
+              }}
+              title="Open Tileset Marketplace"
+            >
+              <Store size={16} className="mr-1" />
+              <span className="text-xs">Marketplace</span>
+            </button>
+            
+            {/* Refresh Button */}
+            <button 
+              className="text-green-400 hover:text-green-300 flex items-center mr-2"
+              onClick={refreshTilesets}
+              disabled={loading}
+              title="Refresh Tilesets"
+            >
+              <RotateCw size={16} className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
+              <span className="text-xs">{loading ? 'Loading...' : 'Refresh'}</span>
+            </button>
+            
             {/* Rotate Button */}
             <button 
               className="text-blue-400 hover:text-blue-300 flex items-center mr-2"
               onClick={() => {
-                console.log("Rotate button clicked!");
-                // Keep track of the previous value for debugging
-                console.log("Previous rotation value (local):", localRotation);
-                console.log("Previous rotation value (props):", selectedRotation);
-                
                 // Calculate the new rotation value
                 const newRotation = (localRotation + 90) % 360;
-                console.log("New rotation value:", newRotation);
                 
                 // Update local state immediately for visual feedback
                 setLocalRotation(newRotation);
                 
-                // Force update of the DOM display (safely)
-                const debugElement = document.getElementById('debug-rotation-value');
-                if (debugElement) {
-                  debugElement.textContent = `Rotation set to: ${newRotation}°`;
-                }
-                
-                // Update the local rotation display
-                const tileRotationDisplay = document.getElementById('tile-rotation-display');
-                if (tileRotationDisplay) {
-                  tileRotationDisplay.textContent = `${newRotation}°`;
-                }
-                
                 // Then notify parent (if callback exists) 
                 if (typeof onRotateTile === 'function') {
-                  console.log("Calling parent onRotateTile with:", newRotation);
-                  // Pass the value explicitly (not relying on state)
                   onRotateTile(newRotation);
-                } else {
-                  console.warn("onRotateTile is not a function");
-                  // If no callback, the local state update handles the visual feedback
                 }
               }}
               title="Rotate tile"
@@ -485,6 +442,7 @@ const removeFromFavorites = async () => {
           <div className="text-red-500 text-xs mb-2">{addFavoriteError}</div>
         )}
         
+        {/* Tile Type Select */}
         <select
           className="bg-stone-700 text-teal-300 text-sm rounded p-2 w-full border-none"
           value={tileType}
@@ -528,9 +486,7 @@ const removeFromFavorites = async () => {
                   title={getTileName(tile.tile_index, tile.tile_type)}
                 >
                   <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                    {(tile.tile_type === 'floor' && floorTilesetImage) || 
-                     (tile.tile_type === 'wall' && wallTilesetImage) ||
-                     (tile.tile_type === 'shadow' && shadowTilesetImage)
+                    {tilesetImages[tile.tile_type] 
                       ? renderTileCanvas(tile.tile_index, tile.tile_type, 40, selectedTileId === tile.tile_index && tileType === tile.tile_type ? selectedRotation : 0)
                       : <div className="w-full h-full flex items-center justify-center text-xs text-stone-500">Loading</div>
                     }
@@ -542,128 +498,42 @@ const removeFromFavorites = async () => {
         </div>
       )}
       
-      {/* Always include the floor section headings when floor type is selected */}
-      {tileType === 'floor' && (
-        <>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-mono text-teal-400">FLOORS</h3>
-            
-            {/* Section filter dropdown */}
-            <select 
-              className="bg-stone-700 text-teal-300 text-xs rounded p-1 border-none"
-              value={currentSection || ""}
-              onChange={(e) => setCurrentSection(e.target.value || null)}
-            >
-              <option value="">All Tiles</option>
-              {Object.entries(TILE_SECTIONS).map(([key, section]) => (
-                <option key={key} value={key}>{section.name}</option>
-              ))}
-            </select>
-          </div>
-        </>
-      )}
+      {/* Section filter dropdown */}
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-sm font-mono text-teal-400">
+          {tileType === 'floor' ? 'FLOORS' : 
+          tileType === 'wall' ? 'WALLS' : 
+          tileType === 'shadow' ? 'SHADOWS' : 
+          tileType === 'door' ? 'DOORS' : 'TILES'}
+        </h3>
+        
+        {/* Section filter dropdown */}
+        {tileType !== 'door' && (
+          <select 
+            className="bg-stone-700 text-teal-300 text-xs rounded p-1 border-none"
+            value={
+              tileType === 'floor' ? currentSection || "" : 
+              tileType === 'wall' ? currentWallSection || "" : 
+              tileType === 'shadow' ? currentShadowSection || "" : ""
+            }
+            onChange={(e) => {
+              const value = e.target.value || null;
+              if (tileType === 'floor') setCurrentSection(value);
+              else if (tileType === 'wall') setCurrentWallSection(value);
+              else if (tileType === 'shadow') setCurrentShadowSection(value);
+            }}
+          >
+            <option value="">All Tiles</option>
+            {sectionOptions.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        )}
+      </div>
       
-      {/* Wall tile palette - shown when wall type is selected */}
-      {tileType === 'wall' && (
-        <>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-mono text-teal-400">WALLS</h3>
-            
-            {/* Section filter dropdown */}
-            <select 
-              className="bg-stone-700 text-teal-300 text-xs rounded p-1 border-none"
-              value={currentWallSection || ""}
-              onChange={(e) => setCurrentWallSection(e.target.value || null)}
-            >
-              <option value="">All Wall Tiles</option>
-              {Object.entries(WALL_TILE_SECTIONS).map(([key, section]) => (
-                <option key={key} value={key}>{section.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          {loading ? (
-            <div className="text-center p-4 text-stone-400">Loading wall tiles...</div>
-          ) : !wallTilesetImage ? (
-            <div className="text-center p-4 text-red-400">Failed to load wall tile set</div>
-          ) : (
-            <div key={`wall-grid-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
-              {displayWallTiles.map(tileIndex => (
-                <div
-                  key={tileIndex}
-                  className={`rounded cursor-pointer border ${
-                    selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
-                  }`}
-                  onClick={() => onSelectTile(tileIndex)}
-                  title={getTileName(tileIndex, 'wall')}
-                >
-                  <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                    {renderTileCanvas(tileIndex, 'wall', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Shadow tile palette - shown when shadow type is selected */}
-      {tileType === 'shadow' && (
-        <>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-mono text-teal-400">SHADOWS</h3>
-            
-            {/* Section filter dropdown */}
-            <select 
-              className="bg-stone-700 text-teal-300 text-xs rounded p-1 border-none"
-              value={currentShadowSection || ""}
-              onChange={(e) => setCurrentShadowSection(e.target.value || null)}
-            >
-              <option value="">All Shadow Tiles</option>
-              {Object.entries(SHADOW_TILE_SECTIONS).map(([key, section]) => (
-                <option key={key} value={key}>{section.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          {loading ? (
-            <div className="text-center p-4 text-stone-400">Loading shadow tiles...</div>
-          ) : !shadowTilesetImage ? (
-            <div className="text-center p-4 text-red-400">Failed to load shadow tile set</div>
-          ) : (
-            <div key={`shadow-grid-${currentShadowSection}-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
-              {/* Use the defined displayShadowTiles */}
-              {displayShadowTiles.map(tileIndex => (
-                <div
-                  key={`shadow-${tileIndex}`}
-                  className={`rounded cursor-pointer border ${
-                    selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
-                  }`}
-                  onClick={() => {
-                    console.log(`Shadow tile ${tileIndex} clicked`);
-                    // Ensure both the tile ID and type are propagated
-                    onSelectTile(tileIndex);
-                    // This shouldn't be necessary if tileType is already 'shadow', but just to be sure
-                    if (tileType !== 'shadow') {
-                      onChangeTileType('shadow');
-                    }
-                }}
-                title={getTileName(tileIndex, 'shadow')}
-              >
-                <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                  {renderTileCanvas(tileIndex, 'shadow', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
-                </div>
-              </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-      
-      {/* Door tile simple selector - shown when door type is selected */}
+      {/* Door tile simple selector */}
       {tileType === 'door' && (
         <div className="mb-2">
-          <h3 className="text-sm font-mono text-teal-400 mb-2">DOOR STYLE</h3>
           <div className="grid grid-cols-2 gap-2">
             <div 
               className="bg-stone-700 p-3 rounded cursor-pointer border-2 border-teal-500 text-center"
@@ -678,26 +548,60 @@ const removeFromFavorites = async () => {
         </div>
       )}
       
-      {/* Floor tile palette - shown when floor type is selected 
-          The key addition forces a re-render when initialized changes */}
-      {tileType === 'floor' && (
+      {/* Tiles grid - shown for all tile types except door */}
+      {tileType !== 'door' && (
         loading ? (
           <div className="text-center p-4 text-stone-400">Loading tile set...</div>
-        ) : !floorTilesetImage ? (
-          <div className="text-center p-4 text-red-400">Failed to load tile set</div>
+        ) : !tilesetImages[tileType] ? (
+          <div className="text-center p-6 text-stone-400 bg-stone-900 rounded-lg border border-stone-700">
+            <div className="mb-4">
+              <Store size={48} className="mx-auto text-stone-500 mb-3" />
+              <h3 className="text-lg font-semibold text-teal-400 mb-2">No Tilesets Available</h3>
+              <p className="text-sm mb-4">
+                You haven't selected any tilesets for {tileType} tiles yet. 
+                Visit the marketplace to browse and select tilesets to use in your maps.
+              </p>
+              <button 
+                className="bg-teal-700 hover:bg-teal-600 text-white px-4 py-2 rounded flex items-center mx-auto transition-colors"
+                onClick={() => {
+                  if (marketplaceStatus !== 'loading') {
+                    openMarketplace();
+                  }
+                }}
+                disabled={marketplaceStatus === 'loading'}
+              >
+                <Store size={16} className="mr-2" />
+                {marketplaceStatus === 'loading' ? 'Opening Marketplace...' : 'Open Marketplace'}
+              </button>
+            </div>
+          </div>
+        ) : displayTiles.length === 0 ? (
+          <div className="text-center p-4 text-stone-400">
+            <p className="text-sm">No tiles available in the selected tilesets for {tileType} category.</p>
+            <button 
+              className="mt-2 text-teal-400 hover:text-teal-300 text-sm underline"
+              onClick={() => {
+                if (marketplaceStatus !== 'loading') {
+                  openMarketplace();
+                }
+              }}
+            >
+              Browse more tilesets in the marketplace
+            </button>
+          </div>
         ) : (
-          <div key={`floor-grid-${isInitialized ? 'ready' : 'loading'}`} className="grid grid-cols-5 gap-1 justify-items-center">
-            {displayFloorTiles.map(tileIndex => (
+          <div className="grid grid-cols-5 gap-1 justify-items-center">
+            {displayTiles.map(tileIndex => (
               <div
                 key={tileIndex}
                 className={`rounded cursor-pointer border ${
                   selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
                 }`}
                 onClick={() => onSelectTile(tileIndex)}
-                title={getTileName(tileIndex)}
+                title={dynamicTileRegistry.getTileName(tileIndex, tileType)}
               >
                 <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                  {renderTileCanvas(tileIndex, 'floor', 40, selectedTileId === tileIndex ? selectedRotation : 0)}
+                  {renderTileCanvas(tileIndex, tileType, 40, selectedTileId === tileIndex ? selectedRotation : 0)}
                 </div>
               </div>
             ))}
