@@ -167,19 +167,39 @@ const MarketplaceWindow = ({ windowId }) => {
           <h2 className="mr-2 text-teal-400">Tileset Marketplace</h2>
         </div>
         
+        <div className="flex gap-2">
           <button 
-              className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-teal-300 rounded text-xs flex items-center gap-1"
-              onClick={fetchTilesets}
-              disabled={loading}
-              title="Refresh tilesets"
-            >
-              <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
-              Refresh
+            className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-teal-300 rounded text-xs flex items-center gap-1"
+            onClick={fetchTilesets}
+            disabled={loading}
+            title="Refresh tilesets"
+          >
+            <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
           </button>
+          
+          {user?.is_admin && (
+            <button
+              className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-teal-300 rounded text-xs flex items-center gap-1"
+              onClick={() => setShowUploadForm(!showUploadForm)}
+              title={showUploadForm ? 'Hide upload form' : 'Upload new tileset'}
+            >
+              <Upload size={14} />
+              {showUploadForm ? 'Hide Form' : 'Upload New'}
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Upload form section - shown at top when active */}
+      {user?.is_admin && showUploadForm && (
+        <div className="p-4 bg-stone-900 border-b border-stone-700">
+          <TilesetUploadForm onUploadComplete={fetchTilesets} />
+        </div>
+      )}
+
       {/* Main content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4 bg-stone-900">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-pulse text-stone-400">Loading tilesets...</div>
@@ -264,7 +284,7 @@ const MarketplaceWindow = ({ windowId }) => {
             {tilesets.map(tileset => (
               <div 
                 key={tileset.id} 
-                className={`rounded-lg overflow-hidden border ${
+                className={`bg-stone-800 rounded-sm overflow-hidden border ${
                   isTilesetSelected(tileset.id)
                     ? 'border-teal-500'
                     : 'border-stone-700'
@@ -319,24 +339,6 @@ const MarketplaceWindow = ({ windowId }) => {
           </div>
         )}
       </div>
-
-      {/* Admin upload section, conditionally shown */}
-      {user?.is_admin && (
-        <div className="border-t border-stone-700 p-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg text-teal-400 font-bold">Admin: Tileset Manager</h3>
-            <button
-              className="px-3 py-1 bg-teal-700 hover:bg-teal-600 rounded text-sm flex items-center"
-              onClick={() => setShowUploadForm(!showUploadForm)}
-            >
-              <Upload size={16} className="mr-1" />
-              {showUploadForm ? 'Hide Form' : 'Upload New Tileset'}
-            </button>
-          </div>
-
-          {showUploadForm && <TilesetUploadForm onUploadComplete={fetchTilesets} />}
-        </div>
-      )}
     </div>
   );
 };
