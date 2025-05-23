@@ -141,6 +141,9 @@ const MarketplaceWindow = ({ windowId }) => {
     return selectedTilesets.some(t => t.id === tilesetId);
   };
 
+  // Simple placeholder image as base64 (gray grid)
+  const placeholderImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAABlBMVEUzMzP///8jKCbTAAAANklEQVR4nO3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8GwdnAABijGQFQAAAABJRU5ErkJggg==';
+
   // Render the tileset preview image
   const renderTilesetPreview = (tileset) => {
     return (
@@ -151,7 +154,7 @@ const MarketplaceWindow = ({ windowId }) => {
           className="object-cover w-full h-full"
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = '/images/tileset-placeholder.png';
+            e.target.src = placeholderImage;
           }}
         />
       </div>
