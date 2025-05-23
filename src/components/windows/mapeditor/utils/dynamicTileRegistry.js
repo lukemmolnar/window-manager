@@ -59,8 +59,10 @@ export const initializeTileRegistry = async () => {
   try {
     const token = localStorage.getItem('auth_token');
     if (!token) {
-      console.log('No auth token found, using default tilesets');
-      initializeWithDefaults();
+      console.log('No auth token found, initializing with empty state');
+      selectedTilesets = [];
+      tilesets = [];
+      initialized = true;
       return true;
     }
     
@@ -72,8 +74,10 @@ export const initializeTileRegistry = async () => {
     );
     
     if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-      console.log('No selected tilesets found, using defaults');
-      initializeWithDefaults();
+      console.log('No selected tilesets found, initializing with empty state');
+      selectedTilesets = [];
+      tilesets = [];
+      initialized = true;
       return true;
     }
     
@@ -124,17 +128,13 @@ export const initializeTileRegistry = async () => {
     console.log('Tile registry initialized with user tilesets');
     initialized = true;
     
-    // If no tilesets were loaded successfully, fall back to defaults
-    if (Object.keys(tilesetImages).length === 0) {
-      console.warn('No tileset images were loaded, using defaults');
-      initializeWithDefaults();
-    }
-    
     return true;
   } catch (error) {
     console.error('Failed to initialize tile registry:', error);
-    // Fall back to default tilesets
-    initializeWithDefaults();
+    // Initialize with empty state instead of falling back to defaults
+    selectedTilesets = [];
+    tilesets = [];
+    initialized = true;
     return false;
   }
 };
@@ -208,13 +208,8 @@ export const getTilesetImageForCategory = (category, tilesetId = null) => {
     }
   }
   
-  // Fall back to default images
-  if (category === 'floor') return tilesetImages['default_floor'] || defaultFloorTilesetImage;
-  if (category === 'wall') return tilesetImages['default_wall'] || defaultWallTilesetImage;
-  if (category === 'shadow') return tilesetImages['default_shadow'] || defaultShadowTilesetImage;
-  
-  // If no appropriate tileset found, return the default floor tileset as a last resort
-  return tilesetImages['default_floor'] || defaultFloorTilesetImage;
+  // Return null if no user-selected tileset is available for this category
+  return null;
 };
 
 /**
