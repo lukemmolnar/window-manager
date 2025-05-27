@@ -369,18 +369,6 @@ const TilePalette = ({
           {/* Buttons for Selected Tile */}
           <div className="flex items-center">
             {/* Marketplace Button */}
-            <button 
-              className="text-blue-400 hover:text-blue-300 flex items-center mr-2"
-              onClick={() => {
-                if (marketplaceStatus !== 'loading') {
-                  openMarketplace();
-                }
-              }}
-              title="Open Tileset Marketplace"
-            >
-              <Store size={16} className="mr-1" />
-              <span className="text-xs">Marketplace</span>
-            </button>
             
             {/* Refresh Button */}
             <button 
@@ -390,7 +378,7 @@ const TilePalette = ({
               title="Refresh Tilesets"
             >
               <RotateCw size={16} className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
-              <span className="text-xs">{loading ? 'Loading...' : 'Refresh'}</span>
+              <span className="text-xs">{loading ? 'Loading...' : ''}</span>
             </button>
             
             {/* Rotate Button */}
@@ -422,7 +410,7 @@ const TilePalette = ({
                 title="Remove from favorites"
               >
                 <Heart size={16} fill="currentColor" className="mr-1" />
-                <span className="text-xs">Unfavorite</span>
+                <span className="text-xs"></span>
               </button>
             ) : (
               <button 
@@ -432,7 +420,7 @@ const TilePalette = ({
                 disabled={isAddingToFavorites}
               >
                 <Heart size={16} className="mr-1" />
-                <span className="text-xs">{isAddingToFavorites ? 'Adding...' : 'Favorite'}</span>
+                <span className="text-xs">{isAddingToFavorites ? '' : ''}</span>
               </button>
             )}
           </div>
@@ -561,18 +549,6 @@ const TilePalette = ({
                 You haven't selected any tilesets for {tileType} tiles yet. 
                 Visit the marketplace to browse and select tilesets to use in your maps.
               </p>
-              <button 
-                className="bg-teal-700 hover:bg-teal-600 text-white px-4 py-2 rounded flex items-center mx-auto transition-colors"
-                onClick={() => {
-                  if (marketplaceStatus !== 'loading') {
-                    openMarketplace();
-                  }
-                }}
-                disabled={marketplaceStatus === 'loading'}
-              >
-                <Store size={16} className="mr-2" />
-                {marketplaceStatus === 'loading' ? 'Opening Marketplace...' : 'Open Marketplace'}
-              </button>
             </div>
           </div>
         ) : displayTiles.length === 0 ? (
