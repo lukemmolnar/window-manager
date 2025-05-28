@@ -140,7 +140,7 @@ const MarketplaceWindow = ({ windowId }) => {
   // Delete a tileset (admin only)
   const deleteTileset = async (tilesetId, tilesetName) => {
     // Show confirmation dialog
-    const confirmed = true;
+    const confirmed = window.confirm(`Are you sure you want to delete the tileset "${tilesetName}"? This action cannot be undone.`);
     
     if (!confirmed) {
       return;
@@ -217,15 +217,38 @@ const MarketplaceWindow = ({ windowId }) => {
         </div>
       </div>
 
-      {/* Upload form section - shown at top when active */}
-      {user?.is_admin && showUploadForm && (
-        <div className="p-4 bg-stone-900 border-b border-stone-700">
-          <TilesetUploadForm onUploadComplete={fetchTilesets} />
+      {/* Show either the upload form OR the marketplace content */}
+      {user?.is_admin && showUploadForm ? (
+        // Full-window upload form
+        <div className="flex-1 flex flex-col bg-stone-900">
+          {/* Form header with close button */}
+          <div className="p-4 border-b border-stone-700 flex justify-between items-center bg-stone-800">
+            <h3 className="text-lg font-semibold text-teal-400">Upload New Tileset</h3>
+            <button
+              className="px-3 py-1 bg-stone-700 hover:bg-stone-600 text-stone-200 rounded text-sm flex items-center gap-1"
+              onClick={() => setShowUploadForm(false)}
+              title="Close upload form"
+            >
+              <X size={16} />
+              Close
+            </button>
+          </div>
+          
+          {/* Scrollable form content */}
+          <div className="flex-1 overflow-auto">
+            <div className="p-4">
+              <TilesetUploadForm 
+                onUploadComplete={() => {
+                  fetchTilesets();
+                  setShowUploadForm(false); // Close form after successful upload
+                }}
+              />
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* Main content */}
-      <div className="flex-1 overflow-auto p-4 bg-stone-900">
+      ) : (
+        // Marketplace content
+        <div className="flex-1 overflow-auto p-4 bg-stone-900">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-pulse text-stone-400">Loading tilesets...</div>
@@ -376,6 +399,7 @@ const MarketplaceWindow = ({ windowId }) => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };
