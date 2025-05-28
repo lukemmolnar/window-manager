@@ -378,7 +378,7 @@ const TilePalette = ({
               title="Refresh Tilesets"
             >
               <RotateCw size={16} className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
-              <span className="text-xs">{loading ? 'Loading...' : ''}</span>
+              <span className="text-xs">{loading ? '' : ''}</span>
             </button>
             
             {/* Rotate Button */}
@@ -539,7 +539,7 @@ const TilePalette = ({
       {/* Tiles grid - shown for all tile types except door */}
       {tileType !== 'door' && (
         loading ? (
-          <div className="text-center p-4 text-stone-400">Loading tile set...</div>
+          <div className="text-center p-4 text-stone-400">Loading...</div>
         ) : !tilesetImages[tileType] ? (
           <div className="text-center p-6 text-stone-400 bg-stone-900 rounded-lg border border-stone-700">
             <div className="mb-4">

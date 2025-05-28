@@ -83,7 +83,7 @@ const TilesetSelector = ({
       )}
       
       {loading ? (
-        <div className="p-4 text-center text-stone-400">Loading available tilesets...</div>
+        <div className="p-4 text-center text-stone-400">wuh available tilesets...</div>
       ) : (
         <div className="grid grid-cols-2 gap-4 mb-4">
           {tilesets.map(tileset => (

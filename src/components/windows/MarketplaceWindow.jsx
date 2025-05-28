@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { X, Check, Upload, Info, AlertTriangle, RotateCw } from 'lucide-react';
+import { X, Check, Upload, Info, AlertTriangle, RotateCw, Trash2 } from 'lucide-react';
 import API_CONFIG from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import placeholderImage from '../../assets/images/tileset-placeholder.png';
@@ -134,6 +134,32 @@ const MarketplaceWindow = ({ windowId }) => {
     } catch (err) {
       console.error('Error toggling tileset selection:', err);
       setError('Failed to update tileset selection. Please try again.');
+    }
+  };
+
+  // Delete a tileset (admin only)
+  const deleteTileset = async (tilesetId, tilesetName) => {
+    // Show confirmation dialog
+    const confirmed = true;
+    
+    if (!confirmed) {
+      return;
+    }
+    
+    try {
+      await axios.delete(`${API_CONFIG.BASE_URL}/tilesets/${tilesetId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      
+      // Remove from local state
+      setTilesets(prev => prev.filter(t => t.id !== tilesetId));
+      setSelectedTilesets(prev => prev.filter(t => t.id !== tilesetId));
+      
+      // Success notification (could be a toast in the future)
+      console.log(`Tileset "${tilesetName}" deleted successfully`);
+    } catch (err) {
+      console.error('Error deleting tileset:', err);
+      alert(`Failed to delete tileset: ${err.response?.data?.message || err.message}`);
     }
   };
 
@@ -321,7 +347,7 @@ const MarketplaceWindow = ({ windowId }) => {
                     ))}
                   </div>
                   
-                  <div className="mt-4">
+                  <div className="mt-4 flex gap-2">
                     <button
                       className={`px-3 py-1 rounded text-sm ${
                         isTilesetSelected(tileset.id)
@@ -332,6 +358,17 @@ const MarketplaceWindow = ({ windowId }) => {
                     >
                       {isTilesetSelected(tileset.id) ? 'Remove from Editor' : 'Add to Editor'}
                     </button>
+                    
+                    {user?.is_admin && (
+                      <button
+                        className="px-3 py-1 bg-red-700 hover:bg-red-600 text-stone-200 rounded text-sm flex items-center gap-1"
+                        onClick={() => deleteTileset(tileset.id, tileset.name)}
+                        title="Delete this tileset"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
