@@ -91,9 +91,9 @@ export const initializeTileRegistry = async () => {
         continue;
       }
       
-      // Preload tileset image
+      // Preload tileset image using the API endpoint
       const tilesetImage = new Image();
-      tilesetImage.src = `${API_CONFIG.BASE_URL}${tileset.image_path}`;
+      tilesetImage.src = `${API_CONFIG.BASE_URL}/tilesets/${tileset.id}/image`;
       
       // Wait for image to load
       await new Promise((resolve) => {
