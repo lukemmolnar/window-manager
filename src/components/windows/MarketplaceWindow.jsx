@@ -186,7 +186,7 @@ const MarketplaceWindow = ({ windowId }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-stone-800 text-stone-200">
+    <div className="flex flex-col h-full bg-stone-800 text-stone-200 overflow-hidden">
       {/* Header */}
       <div className="p-2 border-b bg-stone-900 border-stone-700 flex justify-between items-center">
         <div>
@@ -220,29 +220,20 @@ const MarketplaceWindow = ({ windowId }) => {
       {/* Show either the upload form OR the marketplace content */}
       {user?.is_admin && showUploadForm ? (
         // Full-window upload form
-        <div className="flex-1 flex flex-col bg-stone-900">
+        <div className="flex-1 bg-stone-900 flex flex-col min-h-0">
           {/* Form header with close button */}
-          <div className="p-4 border-b border-stone-700 flex justify-between items-center bg-stone-800">
-            <h3 className="text-lg font-semibold text-teal-400">Upload New Tileset</h3>
-            <button
-              className="px-3 py-1 bg-stone-700 hover:bg-stone-600 text-stone-200 rounded text-sm flex items-center gap-1"
-              onClick={() => setShowUploadForm(false)}
-              title="Close upload form"
-            >
-              <X size={16} />
-              Close
-            </button>
-          </div>
           
-          {/* Scrollable form content */}
-          <div className="flex-1 overflow-auto">
-            <div className="p-4">
-              <TilesetUploadForm 
-                onUploadComplete={() => {
-                  fetchTilesets();
-                  setShowUploadForm(false); // Close form after successful upload
-                }}
-              />
+          {/* Scrollable form content - using absolute positioning */}
+          <div className="flex-1 relative min-h-0">
+            <div className="absolute inset-0 overflow-y-auto">
+              <div className="p-4">
+                <TilesetUploadForm 
+                  onUploadComplete={() => {
+                    fetchTilesets();
+                    setShowUploadForm(false); // Close form after successful upload
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -384,7 +375,7 @@ const MarketplaceWindow = ({ windowId }) => {
                     
                     {user?.is_admin && (
                       <button
-                        className="px-3 py-1 bg-red-700 hover:bg-red-600 text-stone-200 rounded text-sm flex items-center gap-1"
+                        className="px-3 py-1 bg-red-900 hover:bg-red-800 text-stone-200 rounded text-sm flex items-center gap-1"
                         onClick={() => deleteTileset(tileset.id, tileset.name)}
                         title="Delete this tileset"
                       >
@@ -585,7 +576,7 @@ const TilesetUploadForm = ({ onUploadComplete }) => {
   };
   
   return (
-    <div className="mt-4 bg-stone-900 rounded-lg p-4">
+    <div className="bg-stone-900">
       {uploadSuccess && (
         <div className="mb-4 bg-green-900/30 text-green-300 p-3 rounded flex items-center">
           <Check size={20} className="mr-2" />
@@ -630,20 +621,6 @@ const TilesetUploadForm = ({ onUploadComplete }) => {
             
             <div className="mb-3">
               <label className="block text-sm font-medium text-stone-300 mb-1">
-                Author
-              </label>
-              <input
-                type="text"
-                name="author"
-                value={formData.author}
-                onChange={handleInputChange}
-                className="w-full bg-stone-800 border border-stone-700 rounded p-2 text-stone-200"
-                placeholder="(Optional) Override author name"
-              />
-            </div>
-            
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-stone-300 mb-1">
                 Description
               </label>
               <textarea
@@ -651,7 +628,7 @@ const TilesetUploadForm = ({ onUploadComplete }) => {
                 value={formData.description}
                 onChange={handleInputChange}
                 className="w-full bg-stone-800 border border-stone-700 rounded p-2 text-stone-200 min-h-[80px]"
-                placeholder="Describe this tileset..."
+                placeholder=""
               />
             </div>
             
@@ -677,13 +654,18 @@ const TilesetUploadForm = ({ onUploadComplete }) => {
               <label className="block text-sm font-medium text-stone-300 mb-1">
                 Tileset Image*
               </label>
-              <input
-                type="file"
-                accept="image/png,image/jpeg"
-                onChange={handleImageChange}
-                className="w-full bg-stone-800 border border-stone-700 rounded p-2 text-stone-200"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={handleImageChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  required
+                />
+                <div className="w-full bg-stone-800 border border-stone-700 rounded p-2 text-stone-200 cursor-pointer hover:bg-stone-700 transition-colors">
+                  Choose File
+                </div>
+              </div>
               <p className="text-xs text-stone-500 mt-1">
                 Upload a PNG or JPG image (max 10MB)
               </p>
@@ -711,7 +693,7 @@ const TilesetUploadForm = ({ onUploadComplete }) => {
               </div>
             )}
             
-            <div>
+            <div className="flex flex-col">
               <label className="block text-sm font-medium text-stone-300 mb-1">
                 Tileset Sections*
               </label>
@@ -719,6 +701,7 @@ const TilesetUploadForm = ({ onUploadComplete }) => {
                 Define sections for different types of tiles (floors, walls, etc.)
               </p>
               
+              <div className="max-h-64 overflow-y-auto pr-2">
               {sections.map((section, index) => (
                 <div key={index} className="mb-2 p-3 bg-stone-800 rounded border border-stone-700">
                   <div className="flex justify-between mb-2">
@@ -794,6 +777,7 @@ const TilesetUploadForm = ({ onUploadComplete }) => {
                   </div>
                 </div>
               ))}
+              </div>
               
               <button
                 type="button"
