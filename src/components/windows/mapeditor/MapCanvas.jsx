@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
-import { getTileCoordinates, FLOOR_TILESET_PATH, WALL_TILESET_PATH, SHADOW_TILESET_PATH, TILE_SIZE, TILESET_COLS } from './utils/tileRegistry';
+import dynamicTileRegistry from './utils/dynamicTileRegistry';
 
 /**
  * The main canvas component for the Grid Map Editor
@@ -31,12 +31,10 @@ const MapCanvas = ({
   const [hoverCell, setHoverCell] = useState(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
-  const [floorTilesetImage, setFloorTilesetImage] = useState(null);
-  const [wallTilesetImage, setWallTilesetImage] = useState(null);
-  const [shadowTilesetImage, setShadowTilesetImage] = useState(null);
-  const [actualColumns, setActualColumns] = useState(TILESET_COLS);
-
-  const [initialViewportLoaded, setInitialViewportLoaded] = useState(false);
+  const [tilesetImages, setTilesetImages] = useState({});
+  const [tilesetColumns, setTilesetColumns] = useState({});
+  const [isRegistryInitialized, setIsRegistryInitialized] = useState(false);
+  const [selectedTilesetId, setSelectedTilesetId] = useState(null);
 
     // Function to save viewport changes
     const saveViewport = useCallback(() => {
@@ -61,38 +59,60 @@ const MapCanvas = ({
     }
   }, [resetViewToOrigin, resetViewRef]);
   
-  // Load the tileset images on component mount
+  // Initialize dynamic tile registry on component mount
   useEffect(() => {
-    // Load floor tileset
-    const floorImg = new Image();
-    floorImg.onload = () => {
-      // Calculate columns based on the image width
-      const cols = Math.floor(floorImg.width / TILE_SIZE);
-      console.log(`MapCanvas: Detected ${cols} columns in the floor sprite sheet`);
+    const initializeTilesets = async () => {
+      console.log('MapCanvas: Initializing dynamic tile registry...');
       
-      // Batch state updates to avoid multiple re-renders
-      setActualColumns(cols);
-      setFloorTilesetImage(floorImg);
+      // Initialize the registry
+      const success = await dynamicTileRegistry.initializeTileRegistry();
+      
+      if (success) {
+        // Get selected tilesets
+        const selectedTilesets = dynamicTileRegistry.getSelectedTilesets();
+        console.log('MapCanvas: Selected tilesets:', selectedTilesets);
+        
+        // Load tileset images by category
+        const loadedImages = {};
+        const loadedColumns = {};
+        
+        for (const tileset of selectedTilesets) {
+          if (tileset.sections && tileset.sections.length > 0) {
+            // Load the tileset image
+            const img = new Image();
+            
+            await new Promise((resolve) => {
+              img.onload = () => {
+                // Calculate columns based on image width
+                const cols = Math.floor(img.width / dynamicTileRegistry.TILE_SIZE);
+                loadedColumns[tileset.id] = cols;
+                console.log(`MapCanvas: Loaded tileset ${tileset.name} with ${cols} columns`);
+                resolve();
+              };
+              
+              img.onerror = () => {
+                console.error(`Failed to load tileset image for ${tileset.name}`);
+                resolve();
+              };
+              
+              // Use the API endpoint to load the image
+              img.src = `${require('../../../config/api').default.BASE_URL}/tilesets/${tileset.id}/image`;
+            });
+            
+            loadedImages[tileset.id] = img;
+          }
+        }
+        
+        setTilesetImages(loadedImages);
+        setTilesetColumns(loadedColumns);
+        setIsRegistryInitialized(true);
+      } else {
+        console.log('MapCanvas: No tilesets available or initialization failed');
+        setIsRegistryInitialized(true);
+      }
     };
-    floorImg.onerror = () => console.error('Failed to load floor tileset');
-    floorImg.src = FLOOR_TILESET_PATH;
     
-    // Load wall tileset
-    const wallImg = new Image();
-    wallImg.onload = () => {
-      setWallTilesetImage(wallImg);
-      console.log('MapCanvas: Wall tileset loaded successfully');
-    };
-    wallImg.onerror = () => console.error('Failed to load wall tileset');
-    wallImg.src = WALL_TILESET_PATH;
-
-    const shadowImg = new Image();
-    shadowImg.onload = () => {
-      setShadowTilesetImage(shadowImg);
-      console.log('MapCanvas: Shadow tileset loaded successfully');
-    };
-    shadowImg.onerror = () => console.error('Failed to load shadow tileset');
-    shadowImg.src = SHADOW_TILESET_PATH;
+    initializeTilesets();
   }, []);
 
   /**
@@ -103,169 +123,111 @@ const MapCanvas = ({
    * @param {number} size - Size of the tile
    * @param {Object} cell - The cell data including type and tileId
    */
-  // Pass showGrid to the drawTile function
   const drawTile = (ctx, x, y, size, cell) => {
-    const { type, tileId, rotation = 0 } = cell;
+    const { type, tileId, rotation = 0, tilesetId } = cell;
     
-    // Add debugging for rotation values
-    if (rotation !== 0) {
-      console.log(`Drawing cell at (${cell.x}, ${cell.y}) with rotation: ${rotation}°`);
-    }
-    
-    // Handle floor tiles with tileset
-    if (type === 'floor' && tileId !== undefined && floorTilesetImage) {
-      // Calculate coordinates based on actual columns in the sheet
-      // instead of using getTileCoordinates which might use the wrong column count
-      const col = tileId % actualColumns;
-      const row = Math.floor(tileId / actualColumns);
-      const sourceX = col * TILE_SIZE;
-      const sourceY = row * TILE_SIZE;
+    // If registry is not initialized or no tilesets are loaded, use fallback rendering
+    if (!isRegistryInitialized || Object.keys(tilesetImages).length === 0) {
+      // Fall back to color-based rendering
+      switch(type) {
+        case 'wall':
+          ctx.fillStyle = '#6b7280'; // Gray
+          ctx.fillRect(x, y, size, size);
+          break;
+        case 'floor':
+          ctx.fillStyle = '#1e293b'; // Slate-800
+          ctx.fillRect(x, y, size, size);
+          break;
+        case 'shadow':
+          ctx.fillStyle = '#BF40BF'; // Purple
+          ctx.fillRect(x, y, size, size);
+          break;
+        case 'door':
+          if (rotation !== 0) {
+            ctx.save();
+            ctx.translate(x + size/2, y + size/2);
+            const angleInRadians = (rotation * Math.PI) / 180;
+            ctx.rotate(angleInRadians);
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(-size/2, -size/2, size, size);
+            ctx.fillStyle = '#b45309';
+            ctx.fillRect(-size/4, -size/4, size/2, size/2);
+            ctx.restore();
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(x, y, size, size);
+            ctx.fillStyle = '#b45309';
+            ctx.fillRect(x + size/4, y + size/4, size/2, size/2);
+          }
+          break;
+        default:
+          ctx.fillStyle = '#ef4444'; // Red-500
+          ctx.fillRect(x, y, size, size);
+      }
       
-      // Handle rotation
-      if (rotation !== 0) {
-        // Save the current context state
-        ctx.save();
-        
-        // Move to the center of the tile position
-        ctx.translate(x + size/2, y + size/2);
-        
-        // Rotate the context by the specified angle (convert degrees to radians)
-        const angleInRadians = (rotation * Math.PI) / 180;
-        ctx.rotate(angleInRadians);
-        
-        // Draw the tile, but with coordinates adjusted to draw centered around origin
-        ctx.drawImage(
-          floorTilesetImage,
-          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
-          -size/2, -size/2, size, size
-        );
-        
-        // Restore the context to its original state
-        ctx.restore();
-        
-        // Draw grid lines on top only if showGrid is true
-        if (showGrid) {
-          ctx.strokeStyle = '#44403c'; // Stone-700
-          ctx.strokeRect(x, y, size, size);
-        }
-      } else {
-        // No rotation, draw normally
-        ctx.drawImage(
-          floorTilesetImage,
-          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
-          x, y, size, size
-        );
-        
-        // Draw grid lines on top only if showGrid is true
-        if (showGrid) {
-          ctx.strokeStyle = '#44403c'; // Stone-700
-          ctx.strokeRect(x, y, size, size);
-        }
+      if (showGrid) {
+        ctx.strokeStyle = '#44403c';
+        ctx.strokeRect(x, y, size, size);
       }
       return;
     }
     
-    // Handle wall tiles with tileset
-    if (type === 'wall' && tileId !== undefined && wallTilesetImage) {
-      // Calculate coordinates based on actual columns in the sheet
-      const col = tileId % actualColumns;
-      const row = Math.floor(tileId / actualColumns);
-      const sourceX = col * TILE_SIZE;
-      const sourceY = row * TILE_SIZE;
-      
-      // Handle rotation
-      if (rotation !== 0) {
-        // Save the current context state
-        ctx.save();
-        
-        // Move to the center of the tile position
-        ctx.translate(x + size/2, y + size/2);
-        
-        // Rotate the context by the specified angle (convert degrees to radians)
-        const angleInRadians = (rotation * Math.PI) / 180;
-        ctx.rotate(angleInRadians);
-        
-        // Draw the tile, but with coordinates adjusted to draw centered around origin
-        ctx.drawImage(
-          wallTilesetImage,
-          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
-          -size/2, -size/2, size, size
-        );
-        
-        // Restore the context to its original state
-        ctx.restore();
-        
-        // Draw grid lines on top only if showGrid is true
-        if (showGrid) {
-          ctx.strokeStyle = '#44403c'; // Stone-700
-          ctx.strokeRect(x, y, size, size);
-        }
-      } else {
-        // No rotation, draw normally
-        ctx.drawImage(
-          wallTilesetImage,
-          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
-          x, y, size, size
-        );
-        
-        // Draw grid lines on top only if showGrid is true
-        if (showGrid) {
-          ctx.strokeStyle = '#44403c'; // Stone-700
-          ctx.strokeRect(x, y, size, size);
+    // Get the appropriate tileset image for this tile
+    let tilesetImage = null;
+    let columns = dynamicTileRegistry.DEFAULT_TILESET_COLS;
+    
+    // First try to use the specific tileset ID if provided
+    if (tilesetId && tilesetImages[tilesetId]) {
+      tilesetImage = tilesetImages[tilesetId];
+      columns = tilesetColumns[tilesetId] || columns;
+    } else {
+      // Otherwise, find the first tileset that has sections for this category
+      const selectedTilesets = dynamicTileRegistry.getSelectedTilesets();
+      for (const tileset of selectedTilesets) {
+        if (tileset.sections && tileset.sections.some(s => s.category === type)) {
+          if (tilesetImages[tileset.id]) {
+            tilesetImage = tilesetImages[tileset.id];
+            columns = tilesetColumns[tileset.id] || columns;
+            break;
+          }
         }
       }
-      return;
     }
-
-    // Handle shadow tiles with tileset
-    if (type === 'shadow' && shadowTilesetImage) {
-      // Calculate coordinates based on actual columns in the sheet
-      const effectiveTileId = tileId !== undefined ? tileId : 0;
-      const col = effectiveTileId  % actualColumns;
-      const row = Math.floor(effectiveTileId  / actualColumns);
-      const sourceX = col * TILE_SIZE;
-      const sourceY = row * TILE_SIZE;
+    
+    // If we have a tileset image and a valid tile ID, draw from the tileset
+    if (tilesetImage && tileId !== undefined && ['floor', 'wall', 'shadow'].includes(type)) {
+      // Calculate coordinates based on the tileset's column count
+      const col = tileId % columns;
+      const row = Math.floor(tileId / columns);
+      const sourceX = col * dynamicTileRegistry.TILE_SIZE;
+      const sourceY = row * dynamicTileRegistry.TILE_SIZE;
       
       // Handle rotation
       if (rotation !== 0) {
-        // Save the current context state
         ctx.save();
-        
-        // Move to the center of the tile position
         ctx.translate(x + size/2, y + size/2);
-        
-        // Rotate the context by the specified angle (convert degrees to radians)
         const angleInRadians = (rotation * Math.PI) / 180;
         ctx.rotate(angleInRadians);
         
-        // Draw the tile, but with coordinates adjusted to draw centered around origin
         ctx.drawImage(
-          shadowTilesetImage,
-          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+          tilesetImage,
+          sourceX, sourceY, dynamicTileRegistry.TILE_SIZE, dynamicTileRegistry.TILE_SIZE,
           -size/2, -size/2, size, size
         );
         
-        // Restore the context to its original state
         ctx.restore();
-        
-        // Draw grid lines on top only if showGrid is true
-        if (showGrid) {
-          ctx.strokeStyle = '#44403c'; // Stone-700
-          ctx.strokeRect(x, y, size, size);
-        }
       } else {
-        // No rotation, draw normally
         ctx.drawImage(
-          shadowTilesetImage,
-          sourceX, sourceY, TILE_SIZE, TILE_SIZE,
+          tilesetImage,
+          sourceX, sourceY, dynamicTileRegistry.TILE_SIZE, dynamicTileRegistry.TILE_SIZE,
           x, y, size, size
         );
-        
-        // Draw grid lines on top only if showGrid is true
-        if (showGrid) {
-          ctx.strokeStyle = '#44403c'; // Stone-700
-          ctx.strokeRect(x, y, size, size);
-        }
+      }
+      
+      // Draw grid lines on top only if showGrid is true
+      if (showGrid) {
+        ctx.strokeStyle = '#44403c'; // Stone-700
+        ctx.strokeRect(x, y, size, size);
       }
       return;
     }
@@ -696,10 +658,9 @@ const MapCanvas = ({
     currentTool, 
     activeMouseButton, 
     showGrid, 
-    floorTilesetImage,
-    wallTilesetImage,
-    shadowTilesetImage,
-    actualColumns,
+    tilesetImages,
+    tilesetColumns,
+    isRegistryInitialized,
     // selectedRotation, // Removed: Toolbar rotation shouldn't trigger full canvas redraw
     brushSize  // Add brushSize as a dependency too for completeness
   ]);
@@ -719,13 +680,12 @@ const MapCanvas = ({
   }, [canvasSize, drawCanvas]);
 
   // Manually trigger a redraw whenever tileset images are loaded
-  // Breaking the circular dependency by removing drawCanvas from dependencies
   useEffect(() => {
-    if ((floorTilesetImage || wallTilesetImage || shadowTilesetImage) && canvasRef.current && mapData) {
+    if (isRegistryInitialized && Object.keys(tilesetImages).length > 0 && canvasRef.current && mapData) {
       // Call drawCanvas without adding it to dependency array
       drawCanvas();
     }
-  }, [floorTilesetImage, wallTilesetImage, shadowTilesetImage, mapData]); // Removed drawCanvas dependency
+  }, [isRegistryInitialized, tilesetImages, mapData]); // Trigger redraw when tilesets are loaded
 
   // Handle canvas mouse events
   const handleMouseDown = (e) => {
