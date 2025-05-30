@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from
 import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
 import dynamicTileRegistry from './utils/dynamicTileRegistry';
+import API_CONFIG from '../../../config/api';
 
 /**
  * The main canvas component for the Grid Map Editor
@@ -96,7 +97,7 @@ const MapCanvas = ({
               };
               
               // Use the API endpoint to load the image
-              img.src = `${require('../../../config/api').default.BASE_URL}/tilesets/${tileset.id}/image`;
+              img.src = `${API_CONFIG.BASE_URL}/tilesets/${tileset.id}/image`;
             });
             
             loadedImages[tileset.id] = img;
