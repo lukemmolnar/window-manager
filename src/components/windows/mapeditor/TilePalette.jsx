@@ -23,6 +23,7 @@ const logApiCall = (method, url, status, data) => {
 const TilePalette = ({ 
   onSelectTile, 
   selectedTileId = 0, 
+  selectedTilesetId = null,
   tileType = 'floor',
   onChangeTileType,
   selectedRotation = 0,
@@ -76,14 +77,16 @@ const TilePalette = ({
         const allSections = dynamicTileRegistry.getAllSections();
         setSections(allSections);
         
-        // Get images for each category
-        const images = {
-          floor: dynamicTileRegistry.getTilesetImageForCategory('floor'),
-          wall: dynamicTileRegistry.getTilesetImageForCategory('wall'),
-          shadow: dynamicTileRegistry.getTilesetImageForCategory('shadow')
-        };
-        setTilesetImages(images);
+        // Get selected tilesets to load individual images
+        const selectedTilesets = dynamicTileRegistry.getSelectedTilesets();
+        const images = {};
         
+        // Load each tileset image individually by ID
+        for (const tileset of selectedTilesets) {
+          images[tileset.id] = dynamicTileRegistry.getTilesetImageForCategory(tileType, tileset.id);
+        }
+        
+        setTilesetImages(images);
         setIsInitialized(true);
       } catch (error) {
         console.error('Error initializing dynamic tile registry:', error);
@@ -103,7 +106,7 @@ const TilePalette = ({
   // Check if the currently selected tile is a favorite
   useEffect(() => {
     checkIsFavorite();
-  }, [selectedTileId, tileType]);
+  }, [selectedTileId, tileType, selectedTilesetId]);
 
   // Function to load favorite tiles
   const loadFavoriteTiles = async () => {
@@ -168,7 +171,11 @@ const TilePalette = ({
 
       const response = await axios.post(
         `${API_CONFIG.BASE_URL}/favorite-tiles`,
-        { tileIndex: selectedTileId, tileType },
+        { 
+          tileIndex: selectedTileId, 
+          tileType,
+          tilesetId: selectedTilesetId // Include tileset ID for favorites
+        },
         { headers: { 
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}` 
@@ -245,14 +252,16 @@ const TilePalette = ({
       const allSections = dynamicTileRegistry.getAllSections();
       setSections(allSections);
       
-      // Get images for each category
-      const images = {
-        floor: dynamicTileRegistry.getTilesetImageForCategory('floor'),
-        wall: dynamicTileRegistry.getTilesetImageForCategory('wall'),
-        shadow: dynamicTileRegistry.getTilesetImageForCategory('shadow')
-      };
-      setTilesetImages(images);
+      // Get selected tilesets to load individual images
+      const selectedTilesets = dynamicTileRegistry.getSelectedTilesets();
+      const images = {};
       
+      // Load each tileset image individually by ID
+      for (const tileset of selectedTilesets) {
+        images[tileset.id] = dynamicTileRegistry.getTilesetImageForCategory(tileType, tileset.id);
+      }
+      
+      setTilesetImages(images);
       setMarketplaceStatus('success');
     } catch (error) {
       console.error('Error refreshing tilesets:', error);
@@ -262,9 +271,9 @@ const TilePalette = ({
     }
   };
 
-  // Render a tile canvas
-  const renderTileCanvas = (tileIndex, tileType, size = 40, rotation = 0) => {
-    const image = tilesetImages[tileType];
+  // Render a tile canvas with specific tileset
+  const renderTileCanvas = (tileIndex, tilesetId, size = 40, rotation = 0) => {
+    const image = tilesetImages[tilesetId];
     
     if (!image) return null;
     
@@ -314,6 +323,7 @@ const TilePalette = ({
   };
 
   // Get tiles to display based on current section filter and tile type
+  // UPDATED: Now returns objects with both tilesetId and tileId
   const displayTiles = useMemo(() => {
     if (!isInitialized) return [];
     
@@ -328,19 +338,31 @@ const TilePalette = ({
     
     // If no section filter, show all tiles for this category
     if (!sectionFilter) {
-      // Collect all tiles from all sections
-      for (const section of Object.values(categorySections)) {
-        const { startIndex, count } = section;
+      // Collect all tiles from all sections with tileset information
+      for (const [sectionKey, section] of Object.entries(categorySections)) {
+        const { startIndex, count, tilesetId } = section;
         for (let i = 0; i < count; i++) {
-          result.push(startIndex + i);
+          result.push({
+            tileIndex: startIndex + i,
+            tilesetId: tilesetId,
+            sectionKey: sectionKey,
+            sectionName: section.name,
+            tilesetName: section.tilesetName
+          });
         }
       }
     } else {
       // Show only tiles from the selected section
       const section = categorySections[sectionFilter];
       if (section) {
-        const { startIndex, count } = section;
-        result = Array.from({ length: count }, (_, i) => startIndex + i);
+        const { startIndex, count, tilesetId } = section;
+        result = Array.from({ length: count }, (_, i) => ({
+          tileIndex: startIndex + i,
+          tilesetId: tilesetId,
+          sectionKey: sectionFilter,
+          sectionName: section.name,
+          tilesetName: section.tilesetName
+        }));
       }
     }
     
@@ -459,14 +481,17 @@ const TilePalette = ({
             <div className="grid grid-cols-5 gap-1 justify-items-center mb-3">
               {Array.isArray(favoriteTiles) && favoriteTiles.map((tile) => (
                 <div
-                  key={`fav-${tile.tile_type}-${tile.tile_index}`}
+                  key={`fav-${tile.tileset_id || 'unknown'}-${tile.tile_type}-${tile.tile_index}`}
                   className={`rounded cursor-pointer border ${
-                    selectedTileId === tile.tile_index && tileType === tile.tile_type 
+                    selectedTileId === tile.tile_index && 
+                    tileType === tile.tile_type &&
+                    selectedTilesetId === (tile.tileset_id || null)
                       ? 'bg-teal-900 border-teal-500' 
                       : 'hover:bg-stone-700 border-transparent'
                   }`}
                   onClick={() => {
-                    onSelectTile(tile.tile_index);
+                    // UPDATED: Pass both tile index and tileset ID
+                    onSelectTile(tile.tile_index, tile.tileset_id || null);
                     if (tile.tile_type !== tileType) {
                       onChangeTileType(tile.tile_type);
                     }
@@ -474,8 +499,15 @@ const TilePalette = ({
                   title={getTileName(tile.tile_index, tile.tile_type)}
                 >
                   <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                    {tilesetImages[tile.tile_type] 
-                      ? renderTileCanvas(tile.tile_index, tile.tile_type, 40, selectedTileId === tile.tile_index && tileType === tile.tile_type ? selectedRotation : 0)
+                    {tile.tileset_id && tilesetImages[tile.tileset_id]
+                      ? renderTileCanvas(
+                          tile.tile_index, 
+                          tile.tileset_id, 
+                          40, 
+                          selectedTileId === tile.tile_index && 
+                          tileType === tile.tile_type && 
+                          selectedTilesetId === tile.tileset_id ? selectedRotation : 0
+                        )
                       : <div className="w-full h-full flex items-center justify-center text-xs text-stone-500">Loading</div>
                     }
                   </div>
@@ -525,7 +557,7 @@ const TilePalette = ({
           <div className="grid grid-cols-2 gap-2">
             <div 
               className="bg-stone-700 p-3 rounded cursor-pointer border-2 border-teal-500 text-center"
-              onClick={() => onSelectTile(0)}
+              onClick={() => onSelectTile(0, null)} // No tileset for doors
             >
               <div className="bg-slate-900 h-10 w-full flex items-center justify-center">
                 <div className="bg-amber-700 h-5 w-8"></div>
@@ -540,7 +572,7 @@ const TilePalette = ({
       {tileType !== 'door' && (
         loading ? (
           <div className="text-center p-4 text-stone-400">Loading...</div>
-        ) : !tilesetImages[tileType] ? (
+        ) : displayTiles.length === 0 ? (
           <div className="text-center p-6 text-stone-400 bg-stone-900 rounded-lg border border-stone-700">
             <div className="mb-4">
               <Store size={48} className="mx-auto text-stone-500 mb-3" />
@@ -551,33 +583,26 @@ const TilePalette = ({
               </p>
             </div>
           </div>
-        ) : displayTiles.length === 0 ? (
-          <div className="text-center p-4 text-stone-400">
-            <p className="text-sm">No tiles available in the selected tilesets for {tileType} category.</p>
-            <button 
-              className="mt-2 text-teal-400 hover:text-teal-300 text-sm underline"
-              onClick={() => {
-                if (marketplaceStatus !== 'loading') {
-                  openMarketplace();
-                }
-              }}
-            >
-              Browse more tilesets in the marketplace
-            </button>
-          </div>
         ) : (
           <div className="grid grid-cols-5 gap-1 justify-items-center">
-            {displayTiles.map(tileIndex => (
+            {displayTiles.map(tile => (
               <div
-                key={tileIndex}
+                key={`${tile.tilesetId}-${tile.tileIndex}`} // FIXED: Unique keys using tileset + tile
                 className={`rounded cursor-pointer border ${
-                  selectedTileId === tileIndex ? 'bg-teal-900 border-teal-500' : 'hover:bg-stone-700 border-transparent'
+                  selectedTileId === tile.tileIndex && selectedTilesetId === tile.tilesetId
+                    ? 'bg-teal-900 border-teal-500' 
+                    : 'hover:bg-stone-700 border-transparent'
                 }`}
-                onClick={() => onSelectTile(tileIndex)}
-                title={dynamicTileRegistry.getTileName(tileIndex, tileType)}
+                onClick={() => onSelectTile(tile.tileIndex, tile.tilesetId)} // UPDATED: Pass tileset ID
+                title={`${tile.sectionName} - ${dynamicTileRegistry.getTileName(tile.tileIndex, tileType)} (${tile.tilesetName})`}
               >
                 <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
-                  {renderTileCanvas(tileIndex, tileType, 40, selectedTileId === tileIndex ? selectedRotation : 0)}
+                  {renderTileCanvas(
+                    tile.tileIndex, 
+                    tile.tilesetId, 
+                    40, 
+                    selectedTileId === tile.tileIndex && selectedTilesetId === tile.tilesetId ? selectedRotation : 0
+                  )}
                 </div>
               </div>
             ))}

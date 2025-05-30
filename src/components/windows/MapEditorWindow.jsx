@@ -18,6 +18,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState(null);
   const [selectedTileId, setSelectedTileId] = useState(0);
+  const [selectedTilesetId, setSelectedTilesetId] = useState(null); // NEW: Track tileset ID
   const [selectedTileType, setSelectedTileType] = useState('floor');
   const [selectedRotation, setSelectedRotation] = useState(0); // 0, 90, 180, 270 degrees
 
@@ -146,9 +147,14 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
           updatedCell.rotation = Number(updatedCell.rotation);
         }
         
+        // Ensure tilesetId is preserved
+        if (updatedCell.tilesetId === undefined && selectedTilesetId) {
+          updatedCell.tilesetId = selectedTilesetId;
+        }
+        
         // Special case for shadow tiles - debug the current tileId
         if (updatedCell.type === 'shadow') {
-          console.log(`SAVE: Shadow cell at (${updatedCell.x}, ${updatedCell.y}) has tileId: ${updatedCell.tileId}`);
+          console.log(`SAVE: Shadow cell at (${updatedCell.x}, ${updatedCell.y}) has tileId: ${updatedCell.tileId}, tilesetId: ${updatedCell.tilesetId}`);
         }
         
         return updatedCell;
@@ -163,13 +169,13 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       updatedMapData.layers.forEach(layer => {
         layer.cells.forEach(cell => {
           // Log all cell rotation values
-          console.log(`Cell at (${cell.x}, ${cell.y}) has rotation: ${cell.rotation}`);
+          console.log(`Cell at (${cell.x}, ${cell.y}) has rotation: ${cell.rotation}, tilesetId: ${cell.tilesetId}`);
           rotationCount++;
           
           // Specifically log shadow tile values
           if (cell.type === 'shadow') {
             shadowCount++;
-            console.log(`SAVE CHECK: Shadow Cell (${cell.x}, ${cell.y}): tileId=${cell.tileId}, type=${typeof cell.tileId}`);
+            console.log(`SAVE CHECK: Shadow Cell (${cell.x}, ${cell.y}): tileId=${cell.tileId}, tilesetId=${cell.tilesetId}, type=${typeof cell.tileId}`);
           }
         });
       });
@@ -199,7 +205,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         updatedMapData.layers.forEach(layer => {
           layer.cells.forEach(cell => {
             if (cell.type === 'shadow') {
-              console.log(`PRE-SAVE: Shadow Cell at (${cell.x}, ${cell.y}): tileId=${cell.tileId}, type=${typeof cell.tileId}`);
+              console.log(`PRE-SAVE: Shadow Cell at (${cell.x}, ${cell.y}): tileId=${cell.tileId}, tilesetId=${cell.tilesetId}, type=${typeof cell.tileId}`);
             }
           });
         });
@@ -210,7 +216,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         parsed.layers.forEach(layer => {
           layer.cells.forEach(cell => {
             if (cell.type === 'shadow') {
-              shadowTiles.push(`(${cell.x},${cell.y}): tileId=${cell.tileId}`);
+              shadowTiles.push(`(${cell.x},${cell.y}): tileId=${cell.tileId}, tilesetId=${cell.tilesetId}`);
             }
           });
         });
@@ -236,14 +242,14 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     }
   };
 
-  // Handler for map edits
-  const handleEdit = (x, y, tool, rotation = 0, tileId = selectedTileId) => {
+  // Handler for map edits - UPDATED to accept tilesetId
+  const handleEdit = (x, y, tool, rotation = 0, tileId = selectedTileId, tilesetId = selectedTilesetId) => {
     if (!mapData || !mapData.layers || !mapData.layers[currentLayer]) return;
     
     // Log that we're receiving the rotation value
     console.log("============== EDIT CELL ==============");
     console.log("MapEditorWindow received edit with rotation:", rotation);
-    console.log(`Cell coordinates: (${x}, ${y}), Tool: ${tool}, tileId: ${tileId}`);
+    console.log(`Cell coordinates: (${x}, ${y}), Tool: ${tool}, tileId: ${tileId}, tilesetId: ${tilesetId}`);
     
     // CRITICAL: Make sure the tileId is set explicitly for shadow tiles
     let effectiveTileId = tileId;
@@ -268,7 +274,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       console.log("Cell erased successfully");
     } else {
       // For tile placement tools (floor, wall, etc.), use the selected tile and rotation
-      console.log(`Setting cell in layer ${currentLayer} with tileId: ${effectiveTileId}, rotation: ${numRotation}`);
+      console.log(`Setting cell in layer ${currentLayer} with tileId: ${effectiveTileId}, tilesetId: ${tilesetId}, rotation: ${numRotation}`);
       
       newMapData = setCellInLayer(
         mapData, 
@@ -277,7 +283,8 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         y, 
         tool,
         effectiveTileId, // Use our locally validated tileId value
-        numRotation // Use the numeric rotation value
+        numRotation, // Use the numeric rotation value
+        tilesetId // Pass the tileset ID
       );
       
       // Check if the rotation was stored correctly
@@ -307,12 +314,13 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     console.log("=========================================");
   };
   
-  // Handle tile selection
-  const handleSelectTile = (tileId) => {
-    console.log(`handleSelectTile called with: ${tileId} (previous: ${selectedTileId}), tileType: ${selectedTileType}`);
+  // Handle tile selection - UPDATED to accept tilesetId
+  const handleSelectTile = (tileId, tilesetId = null) => {
+    console.log(`handleSelectTile called with: tileId=${tileId}, tilesetId=${tilesetId} (previous: tileId=${selectedTileId}, tilesetId=${selectedTilesetId}), tileType: ${selectedTileType}`);
     
     // Update state
     setSelectedTileId(tileId);
+    setSelectedTilesetId(tilesetId);
     
     // When selecting a tile, switch to the corresponding tool
     if (currentTool === 'select' || currentTool === 'erase') {
@@ -322,7 +330,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     
     // Debug - check state immediately after update
     setTimeout(() => {
-      console.log(`After update: selectedTileId: ${selectedTileId}, tileType: ${selectedTileType}`);
+      console.log(`After update: selectedTileId: ${selectedTileId}, selectedTilesetId: ${selectedTilesetId}, tileType: ${selectedTileType}`);
     }, 0);
   };
   
@@ -332,7 +340,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
 
     // When changing to shadow type, we no longer force tileId=0
     // This allows users to select any shadow tile and have it properly saved
-    console.log(`Changed tile type to: ${tileType}, keeping current selectedTileId: ${selectedTileId}`);
+    console.log(`Changed tile type to: ${tileType}, keeping current selectedTileId: ${selectedTileId}, selectedTilesetId: ${selectedTilesetId}`);
     
     // When changing tile type, also change the current tool
     if (currentTool !== 'select' && currentTool !== 'erase') {
@@ -547,7 +555,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       
       {/* For debugging - hidden in production */}
       <div id="debug-rotation-value" className="p-1 bg-red-800 text-white text-xs">
-        Rotation set to: {selectedRotation}°
+        Rotation set to: {selectedRotation}°, TilesetID: {selectedTilesetId || 'none'}
       </div>
       
       {/* Main content area */}
@@ -560,6 +568,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
             currentTool={currentTool}
             onEdit={handleEdit}
             selectedTileId={selectedTileId}
+            selectedTilesetId={selectedTilesetId}
             selectedRotation={selectedRotation}
           />
           
@@ -581,6 +590,7 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         <TilePaletteWithMarketplace 
           onSelectTile={handleSelectTile}
           selectedTileId={selectedTileId}
+          selectedTilesetId={selectedTilesetId}
           tileType={selectedTileType}
           onChangeTileType={handleChangeTileType}
           selectedRotation={selectedRotation}

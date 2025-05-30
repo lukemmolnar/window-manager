@@ -155,7 +155,7 @@ export const serializeMap = (mapData) => {
               
               // Debug shadow tile tileId values before serialization
               if (updatedCell.type === 'shadow') {
-                console.log(`SERIALIZE: Shadow cell at (${updatedCell.x}, ${updatedCell.y}) has tileId: ${updatedCell.tileId}`);
+                console.log(`SERIALIZE: Shadow cell at (${updatedCell.x}, ${updatedCell.y}) has tileId: ${updatedCell.tileId}, tilesetId: ${updatedCell.tilesetId}`);
                 
                 // Ensure shadow tiles always have a tileId property
                 if (updatedCell.tileId === undefined) {
@@ -187,7 +187,7 @@ export const serializeMap = (mapData) => {
               console.log(`FIXING: Shadow Cell (${cell.x}, ${cell.y}) has non-number tileId: ${cell.tileId}, converting to number`);
               cell.tileId = Number(cell.tileId);
             } else {
-              console.log(`OK: Shadow Cell (${cell.x}, ${cell.y}) has tileId=${cell.tileId}`);
+              console.log(`OK: Shadow Cell (${cell.x}, ${cell.y}) has tileId=${cell.tileId}, tilesetId=${cell.tilesetId}`);
             }
           }
         });
@@ -214,7 +214,7 @@ export const serializeMap = (mapData) => {
       parsed.layers.forEach(layer => {
         layer.cells.forEach(cell => {
           if (cell.type === 'shadow') {
-            console.log(`Serialized Shadow Cell (${cell.x}, ${cell.y}): tileId=${cell.tileId}, type=${typeof cell.tileId}`);
+            console.log(`Serialized Shadow Cell (${cell.x}, ${cell.y}): tileId=${cell.tileId}, tilesetId=${cell.tilesetId}, type=${typeof cell.tileId}`);
           }
         });
       });
@@ -282,9 +282,10 @@ export const findCellInLayer = (mapData, layerIndex, x, y) => {
  * @param {string} type - The type of the cell
  * @param {number} tileId - The ID of the tile (optional)
  * @param {number} rotation - The rotation angle in degrees (0, 90, 180, 270) (optional)
+ * @param {string} tilesetId - The ID of the tileset (optional)
  * @returns {Object} The updated map data
  */
-export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation = 0) => {
+export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation = 0, tilesetId = null) => {
   if (!mapData || !mapData.layers || !mapData.layers[layerIndex]) return mapData;
   
   // Use global rotation state as fallback if available
@@ -293,7 +294,7 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation
   // Ensure rotation is a number with explicit conversion
   const numRotation = parseInt(rotationValue, 10) || 0;
   
-  console.log(`setCellInLayer called with: x=${x}, y=${y}, type=${type}, tileId=${tileId}`);
+  console.log(`setCellInLayer called with: x=${x}, y=${y}, type=${type}, tileId=${tileId}, tilesetId=${tilesetId}`);
   console.log(`Using rotation: ${numRotation} (converted from ${rotation}, global=${window.currentMapRotation})`);
   
   // Clone the map data to avoid direct state mutation
@@ -313,7 +314,7 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation
   // For other types, include tileId only if explicitly provided
   if (type === 'shadow') {
     // DEBUG: Log the incoming tileId value to track exactly what's being passed
-    console.log(`EDIT: Shadow tile at (${x}, ${y}) - Incoming tileId: ${tileId}, type: ${typeof tileId}`);
+    console.log(`EDIT: Shadow tile at (${x}, ${y}) - Incoming tileId: ${tileId}, tilesetId: ${tilesetId}, type: ${typeof tileId}`);
     
     // CRITICAL FIX: Always explicitly set tileId for shadow tiles
     // Never default to 0 if tileId is provided
@@ -326,12 +327,17 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation
     cellData.tileId = tileId;
   }
   
+  // Include tilesetId if provided
+  if (tilesetId !== null && tilesetId !== undefined) {
+    cellData.tilesetId = tilesetId;
+  }
+  
   // Always include rotation in the cell data, even if it's 0
   // This ensures rotation is explicitly stored in the map file
   cellData.rotation = numRotation;
   
   if (existingCellIndex !== -1) {
-    console.log(`Updating existing cell at (${x}, ${y}) with rotation=${rotation}`);
+    console.log(`Updating existing cell at (${x}, ${y}) with rotation=${rotation}, tilesetId=${tilesetId}`);
     // Update existing cell, preserving any properties not explicitly changed
     let updatedCell = { 
       ...layerData.cells[existingCellIndex], 
@@ -350,7 +356,7 @@ export const setCellInLayer = (mapData, layerIndex, x, y, type, tileId, rotation
     // Log the updated cell to verify all properties are properly set
     console.log("Updated cell:", layerData.cells[existingCellIndex]);
   } else {
-    console.log(`Adding new cell at (${x}, ${y}) with rotation=${rotation}`);
+    console.log(`Adding new cell at (${x}, ${y}) with rotation=${rotation}, tilesetId=${tilesetId}`);
     // Add new cell
     layerData.cells.push(cellData);
     
