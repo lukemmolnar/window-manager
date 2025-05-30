@@ -13,6 +13,7 @@ const MapCanvas = ({
   currentLayer, 
   currentTool, 
   selectedTileId = 0,
+  selectedTilesetId = null,
   selectedRotation = 0,
   onEdit, 
   showGrid = true, 
@@ -35,7 +36,6 @@ const MapCanvas = ({
   const [tilesetImages, setTilesetImages] = useState({});
   const [tilesetColumns, setTilesetColumns] = useState({});
   const [isRegistryInitialized, setIsRegistryInitialized] = useState(false);
-  const [selectedTilesetId, setSelectedTilesetId] = useState(null);
 
     // Function to save viewport changes
     const saveViewport = useCallback(() => {
@@ -127,8 +127,19 @@ const MapCanvas = ({
   const drawTile = (ctx, x, y, size, cell) => {
     const { type, tileId, rotation = 0, tilesetId } = cell;
     
+    console.log('🎨 RENDERING TILE:', {
+      position: `(${cell.x}, ${cell.y})`,
+      type,
+      tileId,
+      tilesetId,
+      rotation,
+      hasRegistryInit: isRegistryInitialized,
+      availableTilesets: Object.keys(tilesetImages)
+    });
+    
     // If registry is not initialized or no tilesets are loaded, use fallback rendering
     if (!isRegistryInitialized || Object.keys(tilesetImages).length === 0) {
+      console.log('🔴 FALLBACK RENDERING: Registry not initialized or no tilesets loaded');
       // Fall back to color-based rendering
       switch(type) {
         case 'wall':
@@ -337,8 +348,8 @@ const MapCanvas = ({
         console.log(`SHADOW TILE EDIT: At (${gridCoords.x}, ${gridCoords.y}) tileId=${selectedTileId} - IMPORTANT! Verify this ID is preserved!`);
       }
       
-      // Pass rotation and selectedTileId
-      onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation, selectedTileId);
+      // Pass rotation, selectedTileId, and selectedTilesetId
+      onEdit(gridCoords.x, gridCoords.y, toolToUse, rotation, selectedTileId, selectedTilesetId);
   
       return;
     }
@@ -371,7 +382,7 @@ const MapCanvas = ({
           console.log(`BRUSH: Shadow tile at (${cellX}, ${cellY}) with tileId=${selectedTileId}`);
         }
         
-        onEdit(cellX, cellY, toolToUse, rotation, selectedTileId);
+        onEdit(cellX, cellY, toolToUse, rotation, selectedTileId, selectedTilesetId);
       }
     }
   };

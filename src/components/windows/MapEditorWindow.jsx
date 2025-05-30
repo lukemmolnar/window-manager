@@ -3,7 +3,7 @@ import { Map } from 'lucide-react';
 import MapCanvas from './mapeditor/MapCanvas';
 import MapToolbar from './mapeditor/MapToolbar';
 import LayerPanel from './mapeditor/LayerPanel';
-import TilePaletteWithMarketplace from './mapeditor/TilePaletteWithMarketplace';
+import TilePalette from './mapeditor/TilePalette';
 import { setCellInLayer, removeCellFromLayer } from './mapeditor/utils/mapUtils';
 
 /**
@@ -316,7 +316,13 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   
   // Handle tile selection - UPDATED to accept tilesetId
   const handleSelectTile = (tileId, tilesetId = null) => {
-    console.log(`handleSelectTile called with: tileId=${tileId}, tilesetId=${tilesetId} (previous: tileId=${selectedTileId}, tilesetId=${selectedTilesetId}), tileType: ${selectedTileType}`);
+    console.log('🟠 TILE SELECTION RECEIVED in MapEditorWindow:', {
+      newTileId: tileId,
+      newTilesetId: tilesetId,
+      previousTileId: selectedTileId,
+      previousTilesetId: selectedTilesetId,
+      currentTileType: selectedTileType
+    });
     
     // Update state
     setSelectedTileId(tileId);
@@ -324,13 +330,17 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     
     // When selecting a tile, switch to the corresponding tool
     if (currentTool === 'select' || currentTool === 'erase') {
-      console.log(`Switching tool from ${currentTool} to ${selectedTileType}`);
+      console.log(`🔧 Switching tool from ${currentTool} to ${selectedTileType}`);
       setCurrentTool(selectedTileType);
     }
     
-    // Debug - check state immediately after update
+    // Debug - check state immediately after update (React state is async)
     setTimeout(() => {
-      console.log(`After update: selectedTileId: ${selectedTileId}, selectedTilesetId: ${selectedTilesetId}, tileType: ${selectedTileType}`);
+      console.log('🟠 AFTER STATE UPDATE (async check):', {
+        selectedTileId,
+        selectedTilesetId,
+        selectedTileType
+      });
     }, 0);
   };
   
@@ -586,8 +596,8 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
           />
         </div>
         
-        {/* Tile Palette with Marketplace Integration */}
-        <TilePaletteWithMarketplace 
+        {/* Tile Palette */}
+        <TilePalette 
           onSelectTile={handleSelectTile}
           selectedTileId={selectedTileId}
           selectedTilesetId={selectedTilesetId}

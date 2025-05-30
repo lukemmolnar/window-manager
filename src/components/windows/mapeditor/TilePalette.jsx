@@ -489,7 +489,13 @@ const TilePalette = ({
                       ? 'bg-teal-900 border-teal-500' 
                       : 'hover:bg-stone-700 border-transparent'
                   }`}
-                  onClick={() => {
+                onClick={() => {
+                    console.log('🔵 FAVORITE TILE CLICKED:', {
+                      tileIndex: tile.tile_index,
+                      tilesetId: tile.tileset_id,
+                      tileType: tile.tile_type,
+                      currentSelected: { selectedTileId, selectedTilesetId }
+                    });
                     // UPDATED: Pass both tile index and tileset ID
                     onSelectTile(tile.tile_index, tile.tileset_id || null);
                     if (tile.tile_type !== tileType) {
@@ -593,7 +599,16 @@ const TilePalette = ({
                     ? 'bg-teal-900 border-teal-500' 
                     : 'hover:bg-stone-700 border-transparent'
                 }`}
-                onClick={() => onSelectTile(tile.tileIndex, tile.tilesetId)} // UPDATED: Pass tileset ID
+                onClick={() => {
+                  console.log('🟢 REGULAR TILE CLICKED:', {
+                    tileIndex: tile.tileIndex,
+                    tilesetId: tile.tilesetId,
+                    sectionName: tile.sectionName,
+                    tilesetName: tile.tilesetName,
+                    currentSelected: { selectedTileId, selectedTilesetId, tileType }
+                  });
+                  onSelectTile(tile.tileIndex, tile.tilesetId);
+                }} // UPDATED: Pass tileset ID
                 title={`${tile.sectionName} - ${dynamicTileRegistry.getTileName(tile.tileIndex, tileType)} (${tile.tilesetName})`}
               >
                 <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
