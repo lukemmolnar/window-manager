@@ -314,34 +314,39 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     console.log("=========================================");
   };
   
-  // Handle tile selection - UPDATED to accept tilesetId
+  // Handle tile selection - UPDATED to accept tilesetId WITH ERROR HANDLING
   const handleSelectTile = (tileId, tilesetId = null) => {
-    console.log('🟠 TILE SELECTION RECEIVED in MapEditorWindow:', {
-      newTileId: tileId,
-      newTilesetId: tilesetId,
-      previousTileId: selectedTileId,
-      previousTilesetId: selectedTilesetId,
-      currentTileType: selectedTileType
-    });
-    
-    // Update state
-    setSelectedTileId(tileId);
-    setSelectedTilesetId(tilesetId);
-    
-    // When selecting a tile, switch to the corresponding tool
-    if (currentTool === 'select' || currentTool === 'erase') {
-      console.log(`🔧 Switching tool from ${currentTool} to ${selectedTileType}`);
-      setCurrentTool(selectedTileType);
-    }
-    
-    // Debug - check state immediately after update (React state is async)
-    setTimeout(() => {
-      console.log('🟠 AFTER STATE UPDATE (async check):', {
-        selectedTileId,
-        selectedTilesetId,
-        selectedTileType
+    try {
+      console.log('🟠 TILE SELECTION RECEIVED in MapEditorWindow:', {
+        newTileId: tileId,
+        newTilesetId: tilesetId,
+        previousTileId: selectedTileId,
+        previousTilesetId: selectedTilesetId,
+        currentTileType: selectedTileType
       });
-    }, 0);
+      
+      // Update state
+      setSelectedTileId(tileId);
+      setSelectedTilesetId(tilesetId);
+      
+      // When selecting a tile, switch to the corresponding tool
+      if (currentTool === 'select' || currentTool === 'erase') {
+        console.log(`🔧 Switching tool from ${currentTool} to ${selectedTileType}`);
+        setCurrentTool(selectedTileType);
+      }
+      
+      // Debug - check state immediately after update (React state is async)
+      setTimeout(() => {
+        console.log('🟠 AFTER STATE UPDATE (async check):', {
+          selectedTileId,
+          selectedTilesetId,
+          selectedTileType
+        });
+      }, 0);
+    } catch (error) {
+      console.error('🔴 ERROR in handleSelectTile:', error);
+      console.error('Stack trace:', error.stack);
+    }
   };
   
   // Handle tile type change

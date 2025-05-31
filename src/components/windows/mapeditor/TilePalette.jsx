@@ -607,8 +607,9 @@ const TilePalette = ({
                     tilesetName: tile.tilesetName,
                     currentSelected: { selectedTileId, selectedTilesetId, tileType }
                   });
+                  console.log('🔧 CALLING onSelectTile with:', tile.tileIndex, tile.tilesetId);
                   onSelectTile(tile.tileIndex, tile.tilesetId);
-                }} // UPDATED: Pass tileset ID
+                }}
                 title={`${tile.sectionName} - ${dynamicTileRegistry.getTileName(tile.tileIndex, tileType)} (${tile.tilesetName})`}
               >
                 <div className="w-10 h-10 bg-stone-900 relative overflow-hidden flex items-center justify-center">
