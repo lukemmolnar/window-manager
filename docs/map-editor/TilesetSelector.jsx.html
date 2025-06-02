@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: TilesetSelector.jsx</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: TilesetSelector.jsx</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { useState, useEffect } from 'react';
+import { Image, Check, X } from 'lucide-react';
+
+/**
+ * Component for selecting and previewing available tilesets
+ */
+const TilesetSelector = ({ 
+  onSelectTileset, 
+  onClose,
+  currentTileset
+}) => {
+  const [tilesets, setTilesets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTileset, setSelectedTileset] = useState(currentTileset || null);
+  const [error, setError] = useState(null);
+
+  // Predefined tilesets from the oryx_ultimate_fantasy_1.2 folder
+  useEffect(() => {
+    // In a real app, this would be fetched from the server or file system
+    const availableTilesets = [
+      {
+        id: 'uf_terrain',
+        name: 'Fantasy Terrain',
+        path: '/oryx_ultimate_fantasy_1.2/uf_terrain.png',
+        preview: '/oryx_ultimate_fantasy_1.2/uf_terrain.png',
+        tileSize: 48,
+        cols: 16
+      },
+      {
+        id: 'uf_items',
+        name: 'Fantasy Items',
+        path: '/oryx_ultimate_fantasy_1.2/uf_items.png',
+        preview: '/oryx_ultimate_fantasy_1.2/uf_items.png',
+        tileSize: 48,
+        cols: 16
+      },
+      {
+        id: 'uf_heroes',
+        name: 'Fantasy Heroes',
+        path: '/oryx_ultimate_fantasy_1.2/uf_heroes.png',
+        preview: '/oryx_ultimate_fantasy_1.2/uf_heroes.png',
+        tileSize: 48,
+        cols: 16
+      }
+    ];
+
+    setTilesets(availableTilesets);
+    setLoading(false);
+  }, []);
+
+  const handleSelectTileset = (tileset) => {
+    setSelectedTileset(tileset);
+  };
+
+  const handleConfirm = () => {
+    if (!selectedTileset) {
+      setError('Please select a tileset first');
+      return;
+    }
+    onSelectTileset(selectedTileset);
+    onClose();
+  };
+
+  return (
+    &lt;div className="bg-stone-800 border border-stone-700 rounded-lg p-4 w-full max-w-3xl">
+      &lt;div className="flex justify-between items-center mb-4">
+        &lt;h2 className="text-teal-400 text-lg font-semibold flex items-center">
+          &lt;Image size={20} className="mr-2" />
+          Select Tileset
+        &lt;/h2>
+        &lt;button
+          onClick={onClose}
+          className="text-stone-500 hover:text-stone-300"
+        >
+          &lt;X size={20} />
+        &lt;/button>
+      &lt;/div>
+      
+      {error &amp;&amp; (
+        &lt;div className="bg-red-900/30 text-red-400 p-2 rounded mb-3 text-sm">
+          {error}
+        &lt;/div>
+      )}
+      
+      {loading ? (
+        &lt;div className="p-4 text-center text-stone-400">wuh available tilesets...&lt;/div>
+      ) : (
+        &lt;div className="grid grid-cols-2 gap-4 mb-4">
+          {tilesets.map(tileset => (
+            &lt;div 
+              key={tileset.id}
+              className={`p-3 rounded-lg cursor-pointer border ${
+                selectedTileset?.id === tileset.id 
+                  ? 'border-teal-500 bg-stone-700' 
+                  : 'border-stone-700 hover:bg-stone-700/50'
+              }`}
+              onClick={() => handleSelectTileset(tileset)}
+            >
+              &lt;div className="flex justify-between items-start mb-2">
+                &lt;h3 className="text-teal-300 font-medium">{tileset.name}&lt;/h3>
+                {selectedTileset?.id === tileset.id &amp;&amp; (
+                  &lt;Check size={16} className="text-teal-400" />
+                )}
+              &lt;/div>
+              
+              &lt;div className="bg-stone-900 rounded h-32 flex items-center justify-center overflow-hidden">
+                &lt;img 
+                  src={tileset.preview} 
+                  alt={tileset.name}
+                  className="max-w-full max-h-full object-contain"
+                />
+              &lt;/div>
+              
+              &lt;div className="mt-2 text-xs text-stone-400">
+                &lt;div>Tile Size: {tileset.tileSize}px&lt;/div>
+                &lt;div>Columns: {tileset.cols}&lt;/div>
+              &lt;/div>
+            &lt;/div>
+          ))}
+        &lt;/div>
+      )}
+      
+      &lt;div className="flex justify-end space-x-2 mt-4 pt-3 border-t border-stone-700">
+        &lt;button
+          onClick={onClose}
+          className="px-4 py-2 bg-stone-700 hover:bg-stone-600 text-stone-300 rounded text-sm"
+        >
+          Cancel
+        &lt;/button>
+        &lt;button
+          onClick={handleConfirm}
+          className="px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white rounded text-sm flex items-center"
+          disabled={!selectedTileset}
+        >
+          &lt;Check size={16} className="mr-1" />
+          Select Tileset
+        &lt;/button>
+      &lt;/div>
+    &lt;/div>
+  );
+};
+
+export default TilesetSelector;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#LayerPanel">LayerPanel</a></li><li><a href="global.html#MapCanvas">MapCanvas</a></li><li><a href="global.html#MapPropertiesPanel">MapPropertiesPanel</a></li><li><a href="global.html#MapToolbar">MapToolbar</a></li><li><a href="global.html#TilePalette">TilePalette</a></li><li><a href="global.html#TilesetSelector">TilesetSelector</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Sun Jun 01 2025 20:54:15 GMT-0400 (Eastern Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

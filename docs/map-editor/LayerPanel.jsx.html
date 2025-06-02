@@ -1,51 +1,39 @@
-import React, { useState, useEffect, useRef } from 'react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: LayerPanel.jsx</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: LayerPanel.jsx</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import TilePalette from './TilePalette';
 import OpacitySlider from './components/OpacitySlider';
 
 /**
- * LayerPanel - Layer management and tile selection interface
- * 
- * @component
- * @description Provides comprehensive layer management functionality including:
- * - Layer visibility controls
- * - Layer opacity adjustment
- * - Layer reordering (up/down)
- * - Layer renaming with inline editing
- * - Layer addition and removal
- * - Brush size control
- * - Integrated tile palette
- * 
- * @param {Object} props - Component props
- * @param {Array} props.layers - Array of layer objects with name, visible, cells, opacity properties
- * @param {number} props.currentLayer - Index of the currently selected layer
- * @param {function} props.setCurrentLayer - Callback to change the current layer
- * @param {function} props.onToggleLayerVisibility - Callback to toggle layer visibility
- * @param {function} props.onAddLayer - Callback to add a new layer
- * @param {function} props.onRemoveLayer - Callback to remove a layer
- * @param {function} props.onMoveLayerUp - Callback to move layer up in render order
- * @param {function} props.onMoveLayerDown - Callback to move layer down in render order
- * @param {function} props.onRenameLayer - Callback to rename a layer
- * @param {function} props.onUpdateLayerOpacity - Callback to update layer opacity
- * @param {number} [props.selectedTileId=0] - Currently selected tile ID
- * @param {function} props.onSelectTile - Callback when a tile is selected
- * @param {number} props.selectedRotation - Current tile rotation in degrees
- * @param {function} props.onRotateTile - Callback to rotate tiles
- * @param {string} props.currentTool - Currently selected editing tool
- * @param {function} props.setCurrentTool - Callback to change the current tool
- * @param {number} [props.brushSize=1] - Current brush size for painting
- * @param {function} props.setBrushSize - Callback to change brush size
- * 
- * @example
- * <LayerPanel
- *   layers={mapData.layers}
- *   currentLayer={0}
- *   setCurrentLayer={setCurrentLayer}
- *   onToggleLayerVisibility={handleToggleVisibility}
- *   onAddLayer={handleAddLayer}
- *   onRemoveLayer={handleRemoveLayer}
- *   // ... other props
- * />
+ * Layer panel component for the Map Editor
+ * Allows for managing layers (visibility, order, etc) and selecting tiles
  */
 const LayerPanel = ({ 
   layers, 
@@ -73,12 +61,7 @@ const LayerPanel = ({
   const [expandedOpacityLayers, setExpandedOpacityLayers] = useState({});
   const layerNameInputRef = useRef(null);
   
-  /**
-   * Toggles opacity control visibility for a specific layer
-   * @param {number} layerIndex - Index of the layer to toggle opacity controls for
-   * @param {Event} e - Click event object
-   * @returns {void}
-   */
+  // Toggle opacity controls for a layer
   const toggleOpacityControls = (layerIndex, e) => {
     e.stopPropagation();
     setExpandedOpacityLayers(prev => ({
@@ -87,33 +70,21 @@ const LayerPanel = ({
     }));
   };
   
-  /**
-   * Effect to focus the layer name input when editing mode is activated
-   * @listens editingLayerIndex
-   */
+  // Focus input when editing starts
   useEffect(() => {
-    if (editingLayerIndex !== null && layerNameInputRef.current) {
+    if (editingLayerIndex !== null &amp;&amp; layerNameInputRef.current) {
       layerNameInputRef.current.focus();
     }
   }, [editingLayerIndex]);
   
-  /**
-   * Initiates layer name editing mode
-   * @param {Event} e - Click event object
-   * @param {number} layerIndex - Index of the layer to edit
-   * @returns {void}
-   */
+  // Handle starting the edit process
   const handleStartEditing = (e, layerIndex) => {
     e.stopPropagation();
     setEditingLayerIndex(layerIndex);
     setEditedLayerName(layers[layerIndex].name);
   };
   
-  /**
-   * Saves the edited layer name and exits editing mode
-   * @param {number} layerIndex - Index of the layer being edited
-   * @returns {void}
-   */
+  // Handle saving the edited name
   const handleSaveLayerName = (layerIndex) => {
     if (editedLayerName.trim()) {
       onRenameLayer(layerIndex, editedLayerName);
@@ -121,12 +92,7 @@ const LayerPanel = ({
     setEditingLayerIndex(null);
   };
   
-  /**
-   * Handles keyboard events in the layer name input field
-   * @param {KeyboardEvent} e - Keyboard event object
-   * @param {number} layerIndex - Index of the layer being edited
-   * @returns {void}
-   */
+  // Handle keydown events in the input field
   const handleInputKeyDown = (e, layerIndex) => {
     if (e.key === 'Enter') {
       handleSaveLayerName(layerIndex);
@@ -136,46 +102,46 @@ const LayerPanel = ({
   };
 
   return (
-    <div className="w-64 bg-stone-800 border-l border-stone-700 flex flex-col overflow-hidden">
+    &lt;div className="w-64 bg-stone-800 border-l border-stone-700 flex flex-col overflow-hidden">
       {/* Brush Size Control */}
-      <div className="p-2 border-b border-stone-700">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-teal-400">BRUSH SIZE:</span>
-          <div className="flex items-center">
-            <button
+      &lt;div className="p-2 border-b border-stone-700">
+        &lt;div className="flex items-center justify-between">
+          &lt;span className="text-sm text-teal-400">BRUSH SIZE:&lt;/span>
+          &lt;div className="flex items-center">
+            &lt;button
               onClick={() => setBrushSize(Math.max(1, brushSize - 1))}
               className="px-2 py-0.5 bg-stone-700 hover:bg-stone-600 rounded-l text-teal-300 text-xs focus:outline-none"
             >
               -
-            </button>
-            <input
+            &lt;/button>
+            &lt;input
                 type="number"
                 value={brushSize}
                 onChange={(e) => {
                   const value = parseInt(e.target.value, 10);
-                  if (!isNaN(value) && value > 0) setBrushSize(value);
+                  if (!isNaN(value) &amp;&amp; value > 0) setBrushSize(value);
                 }}
                 className="w-10 bg-stone-700 text-xs text-teal-100 px-1 py-0.5 border-x-0 focus:outline-none text-center
-                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          [appearance:textfield] [&amp;::-webkit-outer-spin-button]:appearance-none [&amp;::-webkit-inner-spin-button]:appearance-none"
                 min="1"
                 max="10"
               />
-            <button
+            &lt;button
               onClick={() => setBrushSize(Math.min(10, brushSize + 1))}
               className="px-2 py-0.5 bg-stone-700 hover:bg-stone-600 rounded-r text-teal-300 text-xs focus:outline-none"
             >
               +
-            </button>
-          </div>
-        </div>
-        <div className="text-xs text-stone-400 mt-1">
+            &lt;/button>
+          &lt;/div>
+        &lt;/div>
+        &lt;div className="text-xs text-stone-400 mt-1">
           {brushSize}×{brushSize}
-        </div>
-      </div>
+        &lt;/div>
+      &lt;/div>
       
       {/* Tile Type and Palette Section */}
-      <div className="border-b border-stone-700">
-        <TilePalette 
+      &lt;div className="border-b border-stone-700">
+        &lt;TilePalette 
           selectedTileId={selectedTileId}
           onSelectTile={onSelectTile}
           selectedRotation={selectedRotation} // Pass rotation state down
@@ -183,24 +149,24 @@ const LayerPanel = ({
           tileType={currentTool}
           onChangeTileType={setCurrentTool}
         />
-      </div>
-      <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
-        <div className="flex items-center">
-          <Layers size={14} className="mr-2" />
-          <span>LAYERS</span>
-        </div>
-        <button
+      &lt;/div>
+      &lt;div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
+        &lt;div className="flex items-center">
+          &lt;Layers size={14} className="mr-2" />
+          &lt;span>LAYERS&lt;/span>
+        &lt;/div>
+        &lt;button
           onClick={onAddLayer}
           className="p-1 rounded hover:bg-stone-700 text-teal-400"
           title="Add new layer"
         >
-          <Plus size={16} />
-        </button>
-      </div>
+          &lt;Plus size={16} />
+        &lt;/button>
+      &lt;/div>
       
-      <div className="flex-1 overflow-auto">
-        {layers && layers.length > 0 ? (
-          <div className="p-2">
+      &lt;div className="flex-1 overflow-auto">
+        {layers &amp;&amp; layers.length > 0 ? (
+          &lt;div className="p-2">
             {/* Show layers in reverse order so top layer is shown first */}
             {[...layers].reverse().map((layer, idx) => {
               // Calculate the actual index
@@ -208,7 +174,7 @@ const LayerPanel = ({
               const isActive = currentLayer === actualIndex;
               
               return (
-                <div 
+                &lt;div 
                   key={`layer-${actualIndex}`}
                   className={`mb-2 p-2 rounded border ${
                     isActive 
@@ -217,10 +183,10 @@ const LayerPanel = ({
                   }`}
                   onClick={() => setCurrentLayer(actualIndex)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
+                  &lt;div className="flex items-center justify-between">
+                    &lt;div className="flex items-center">
                       {/* Layer visibility toggle */}
-                      <button
+                      &lt;button
                         onClick={(e) => {
                           e.stopPropagation();
                           onToggleLayerVisibility(actualIndex);
@@ -228,12 +194,12 @@ const LayerPanel = ({
                         className="mr-2 hover:bg-stone-600 p-1 rounded"
                         title={layer.visible ? "Hide layer" : "Show layer"}
                       >
-                        {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-                      </button>
+                        {layer.visible ? &lt;Eye size={14} /> : &lt;EyeOff size={14} />}
+                      &lt;/button>
                       
                       {/* Layer name - either editable or static */}
                       {editingLayerIndex === actualIndex ? (
-                        <input
+                        &lt;input
                           ref={layerNameInputRef}
                           className="bg-stone-600 text-sm text-teal-100 px-1 py-0.5 rounded border border-teal-500 focus:outline-none"
                           value={editedLayerName}
@@ -244,31 +210,31 @@ const LayerPanel = ({
                           size={15}
                         />
                       ) : (
-                        <span className="text-sm">{layer.name}</span>
+                        &lt;span className="text-sm">{layer.name}&lt;/span>
                       )}
-                    </div>
+                    &lt;/div>
                     
                     {/* Layer operations */}
-                    <div className="flex">
+                    &lt;div className="flex">
                       {/* Toggle opacity controls button */}
-                      <button
+                      &lt;button
                         onClick={(e) => toggleOpacityControls(actualIndex, e)}
                         className={`p-1 hover:bg-stone-600 rounded ${expandedOpacityLayers[actualIndex] ? 'bg-stone-600' : ''}`}
                         title="Toggle opacity controls"
                       >
                         {expandedOpacityLayers[actualIndex] ? 
-                          <ChevronUp size={14} /> : 
-                          <ChevronDown size={14} />
+                          &lt;ChevronUp size={14} /> : 
+                          &lt;ChevronDown size={14} />
                         }
-                      </button>
-                      <button
+                      &lt;/button>
+                      &lt;button
                         onClick={(e) => handleStartEditing(e, actualIndex)}
                         className="p-1 hover:bg-stone-600 rounded"
                         title="Rename layer"
                       >
-                        <Edit2 size={14} />
-                      </button>
-                      <button
+                        &lt;Edit2 size={14} />
+                      &lt;/button>
+                      &lt;button
                         onClick={(e) => {
                           e.stopPropagation();
                           onMoveLayerUp(actualIndex);
@@ -277,9 +243,9 @@ const LayerPanel = ({
                         title="Move layer up"
                         disabled={actualIndex === layers.length - 1}
                       >
-                        <ArrowUp size={14} className={actualIndex === layers.length - 1 ? "opacity-30" : ""} />
-                      </button>
-                      <button
+                        &lt;ArrowUp size={14} className={actualIndex === layers.length - 1 ? "opacity-30" : ""} />
+                      &lt;/button>
+                      &lt;button
                         onClick={(e) => {
                           e.stopPropagation();
                           onMoveLayerDown(actualIndex);
@@ -288,34 +254,34 @@ const LayerPanel = ({
                         title="Move layer down"
                         disabled={actualIndex === 0}
                       >
-                        <ArrowDown size={14} className={actualIndex === 0 ? "opacity-30" : ""} />
-                      </button>
-                      <button
+                        &lt;ArrowDown size={14} className={actualIndex === 0 ? "opacity-30" : ""} />
+                      &lt;/button>
+                      &lt;button
                         onClick={(e) => {
                           e.stopPropagation();
                           onRemoveLayer(actualIndex);
                         }}
                         className="p-1 hover:bg-red-900 rounded text-red-400 hover:text-red-300"
                         title="Delete layer"
-                        disabled={layers.length <= 1}
+                        disabled={layers.length &lt;= 1}
                       >
-                        <Trash2 size={14} className={layers.length <= 1 ? "opacity-30" : ""} />
-                      </button>
-                    </div>
-                  </div>
+                        &lt;Trash2 size={14} className={layers.length &lt;= 1 ? "opacity-30" : ""} />
+                      &lt;/button>
+                    &lt;/div>
+                  &lt;/div>
                   
                   {/* Opacity controls - only shown when expanded */}
-                  {expandedOpacityLayers[actualIndex] && (
-                    <div 
+                  {expandedOpacityLayers[actualIndex] &amp;&amp; (
+                    &lt;div 
                       className="mt-2 px-1 pt-2 border-t border-stone-600" 
                       onClick={e => e.stopPropagation()}
                     >
-                      <div className="flex items-center">
-                        <div className="text-xs text-stone-400 mr-2 w-14">Opacity:</div>
+                      &lt;div className="flex items-center">
+                        &lt;div className="text-xs text-stone-400 mr-2 w-14">Opacity:&lt;/div>
                         
                         {/* Numeric input */}
-                        <div className="flex items-center">
-                          <input
+                        &lt;div className="flex items-center">
+                          &lt;input
                             type="text"
                             value={Math.round((layer.opacity || 1.0) * 100)}
                             onChange={(e) => {
@@ -335,35 +301,58 @@ const LayerPanel = ({
                             className="w-10 bg-stone-700 text-xs text-teal-100 px-1 py-0.5 rounded border border-stone-600 focus:border-teal-500 focus:outline-none text-center"
                             title="Layer opacity (0-100%)"
                           />
-                          <span className="text-xs text-stone-400 ml-1">%</span>
-                        </div>
-                      </div>
-                    </div>
+                          &lt;span className="text-xs text-stone-400 ml-1">%&lt;/span>
+                        &lt;/div>
+                      &lt;/div>
+                    &lt;/div>
                   )}
-                </div>
+                &lt;/div>
               );
             })}
-          </div>
+          &lt;/div>
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <span className="text-stone-500">No layers defined</span>
-          </div>
+          &lt;div className="flex items-center justify-center h-full">
+            &lt;span className="text-stone-500">No layers defined&lt;/span>
+          &lt;/div>
         )}
-      </div>
+      &lt;/div>
       
       {/* Layer information */}
-      <div className="p-2 border-t border-stone-700 text-xs">
-        {layers && currentLayer !== undefined && layers[currentLayer] ? (
-          <div>
-            <div className="text-stone-400">Selected: {layers[currentLayer].name}</div>
-            <div className="text-stone-400">Total cells: {layers[currentLayer].cells?.length || 0}</div>
-          </div>
+      &lt;div className="p-2 border-t border-stone-700 text-xs">
+        {layers &amp;&amp; currentLayer !== undefined &amp;&amp; layers[currentLayer] ? (
+          &lt;div>
+            &lt;div className="text-stone-400">Selected: {layers[currentLayer].name}&lt;/div>
+            &lt;div className="text-stone-400">Total cells: {layers[currentLayer].cells?.length || 0}&lt;/div>
+          &lt;/div>
         ) : (
-          <div className="text-stone-500">No layer selected</div>
+          &lt;div className="text-stone-500">No layer selected&lt;/div>
         )}
-      </div>
-    </div>
+      &lt;/div>
+    &lt;/div>
   );
 };
 
 export default LayerPanel;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#LayerPanel">LayerPanel</a></li><li><a href="global.html#MapCanvas">MapCanvas</a></li><li><a href="global.html#MapPropertiesPanel">MapPropertiesPanel</a></li><li><a href="global.html#MapToolbar">MapToolbar</a></li><li><a href="global.html#TilePalette">TilePalette</a></li><li><a href="global.html#TilesetSelector">TilesetSelector</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Sun Jun 01 2025 20:54:15 GMT-0400 (Eastern Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

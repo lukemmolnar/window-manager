@@ -7,8 +7,31 @@ import TilePalette from './mapeditor/TilePalette';
 import { setCellInLayer, removeCellFromLayer } from './mapeditor/utils/mapUtils';
 
 /**
- * Map Editor Window Component
- * This window allows users to create and edit grid-based maps
+ * MapEditorWindow - Main map editor component
+ * 
+ * @component
+ * @description The main orchestrator component for the grid-based map editor. 
+ * Manages all state, coordinates sub-components, and handles file operations.
+ * 
+ * @param {Object} props - Component props
+ * @param {boolean} props.isActive - Whether this window is currently active/focused
+ * @param {string} props.nodeId - Unique identifier for this window instance
+ * @param {function} props.onCommand - Handler for terminal commands
+ * @param {function} props.transformWindow - Function to create new windows (e.g., marketplace)
+ * @param {Object} props.windowState - Window-specific state (e.g., selected file)
+ * @param {function} props.updateWindowState - Updates window-specific state
+ * @param {React.Ref} props.focusRef - Ref for managing window focus
+ * 
+ * @example
+ * <MapEditorWindow
+ *   isActive={true}
+ *   nodeId="map-editor-1"
+ *   onCommand={handleCommand}
+ *   transformWindow={createWindow}
+ *   windowState={state}
+ *   updateWindowState={setState}
+ *   focusRef={ref}
+ * />
  */
 const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
   // State for map data
@@ -22,14 +45,23 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
   const [selectedTileType, setSelectedTileType] = useState('floor');
   const [selectedRotation, setSelectedRotation] = useState(0); // 0, 90, 180, 270 degrees
 
-  // Load map data from file when selected
+  /**
+   * Effect hook to load map data when a .map file is selected
+   * @listens windowState.selectedFile
+   */
   useEffect(() => {
     if (windowState?.selectedFile?.path && windowState.selectedFile.name.endsWith('.map')) {
       loadMapFromFile(windowState.selectedFile.path);
     }
   }, [windowState?.selectedFile]);
 
-  // Handler for loading a map file
+  /**
+   * Loads a map from the specified file path
+   * @async
+   * @param {string} filePath - Path to the .map file
+   * @returns {Promise<void>}
+   * @throws {Error} If the map file cannot be loaded or parsed
+   */
   const loadMapFromFile = async (filePath) => {
     try {
       // Reset state for new file
@@ -81,7 +113,10 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     }
   };
 
-  // Create a new empty map
+  /**
+   * Creates a new empty map with default settings
+   * @returns {void}
+   */
   const createNewMap = () => {
     setMapData({
       version: "1.0",
@@ -108,7 +143,12 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     setIsDirty(true);
   };
 
-  // Handler for saving the map
+  /**
+   * Saves the current map data to file
+   * @async
+   * @returns {Promise<void>}
+   * @todo Implement actual file saving instead of localStorage
+   */
   const handleSaveMap = async () => {
     if (!mapData) return;
     if (!windowState?.selectedFile?.path) {
@@ -242,7 +282,16 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     }
   };
 
-  // Handler for map edits - UPDATED to accept tilesetId
+  /**
+   * Handles cell editing operations on the map
+   * @param {number} x - Grid X coordinate
+   * @param {number} y - Grid Y coordinate
+   * @param {string} tool - Tool to apply ('floor', 'wall', 'door', 'shadow', 'erase')
+   * @param {number} [rotation=0] - Rotation angle in degrees (0, 90, 180, 270)
+   * @param {number} [tileId=selectedTileId] - ID of the tile in the tileset
+   * @param {string} [tilesetId=selectedTilesetId] - ID of the tileset
+   * @returns {void}
+   */
   const handleEdit = (x, y, tool, rotation = 0, tileId = selectedTileId, tilesetId = selectedTilesetId) => {
     if (!mapData || !mapData.layers || !mapData.layers[currentLayer]) return;
     
@@ -314,7 +363,12 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     console.log("=========================================");
   };
   
-  // Handle tile selection - UPDATED to accept tilesetId WITH ERROR HANDLING
+  /**
+   * Handles tile selection from the palette
+   * @param {number} tileId - ID of the selected tile
+   * @param {string|null} [tilesetId=null] - ID of the tileset containing the tile
+   * @returns {void}
+   */
   const handleSelectTile = (tileId, tilesetId = null) => {
     try {
       console.log('🟠 TILE SELECTION RECEIVED in MapEditorWindow:', {
@@ -349,7 +403,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     }
   };
   
-  // Handle tile type change
+  /**
+   * Handles changing the tile type category
+   * @param {string} tileType - New tile type ('floor', 'wall', 'door', 'shadow')
+   * @returns {void}
+   */
   const handleChangeTileType = (tileType) => {
     setSelectedTileType(tileType);
 
@@ -363,7 +421,12 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     }
   };
   
-  // Handle tile rotation - fixes React async state update issue
+  /**
+   * Handles tile rotation changes
+   * @param {number} rotation - Rotation angle in degrees (0, 90, 180, 270)
+   * @returns {void}
+   * @todo Remove global window.currentMapRotation and use proper state management
+   */
   const handleRotateTile = (rotation) => {
     console.log("---------------------------------------");
     console.log("handleRotateTile called with rotation:", rotation);
@@ -398,7 +461,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     console.log("---------------------------------------");
   };
 
-  // Layer management functions
+  /**
+   * Toggles the visibility of a layer
+   * @param {number} layerIndex - Index of the layer to toggle
+   * @returns {void}
+   */
   const handleToggleLayerVisibility = (layerIndex) => {
     if (!mapData || !mapData.layers || !mapData.layers[layerIndex]) return;
     
@@ -412,6 +479,10 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     setIsDirty(true);
   };
 
+  /**
+   * Adds a new layer to the map
+   * @returns {void}
+   */
   const handleAddLayer = () => {
     if (!mapData) return;
     
@@ -432,6 +503,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     setIsDirty(true);
   };
 
+  /**
+   * Removes a layer from the map
+   * @param {number} layerIndex - Index of the layer to remove
+   * @returns {void}
+   */
   const handleRemoveLayer = (layerIndex) => {
     if (!mapData || !mapData.layers || mapData.layers.length <= 1) return;
     
@@ -448,6 +524,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     setIsDirty(true);
   };
 
+  /**
+   * Moves a layer up in the layer stack (higher rendering order)
+   * @param {number} layerIndex - Index of the layer to move up
+   * @returns {void}
+   */
   const handleMoveLayerUp = (layerIndex) => {
     if (!mapData || !mapData.layers || layerIndex >= mapData.layers.length - 1) return;
     
@@ -470,6 +551,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
     setIsDirty(true);
   };
 
+  /**
+   * Moves a layer down in the layer stack (lower rendering order)
+   * @param {number} layerIndex - Index of the layer to move down
+   * @returns {void}
+   */
   const handleMoveLayerDown = (layerIndex) => {
     if (!mapData || !mapData.layers || layerIndex <= 0) return;
     

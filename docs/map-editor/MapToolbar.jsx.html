@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: MapToolbar.jsx</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: MapToolbar.jsx</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { useState, useEffect } from 'react';
+import { 
+  Save, Undo, Redo, Trash2, Copy, Square, Circle, 
+  Grid, ZoomIn, ZoomOut, Download, Upload, Plus, Minus,
+  Layers, MousePointer, Hammer, Wand2, FileText, Settings,
+  Home
+} from 'lucide-react';
+
+/**
+ * Toolbar component for the Map Editor
+ */
+const MapToolbar = ({ 
+  onSave, 
+  onUndo, 
+  onRedo, 
+  onClear, 
+  onExportAscii, 
+  onImportAscii,
+  onToggleGrid,
+  onResetView,
+  showGrid = true,
+  saveStatus = 'saved', // default to 'saved'
+  mapData,
+  onApplyProperties
+}) => {
+  const [showProperties, setShowProperties] = useState(false);
+  const [mapName, setMapName] = useState(mapData?.name || 'New Map');
+  const [mapWidth, setMapWidth] = useState(mapData?.width || 20);
+  const [mapHeight, setMapHeight] = useState(mapData?.height || 15);
+  const [mapGridSize, setMapGridSize] = useState(mapData?.gridSize || 32);
+  const [error, setError] = useState(null);
+
+  // Update state when mapData changes
+  useEffect(() => {
+    if (mapData) {
+      setMapName(mapData.name || 'New Map');
+      setMapWidth(mapData.width || 20);
+      setMapHeight(mapData.height || 15);
+      setMapGridSize(mapData.gridSize || 32);
+    }
+  }, [mapData]);
+
+  // Handle applying property changes
+  const handleApplyProperties = () => {
+    // Validate inputs
+    if (mapWidth &lt; 1 || mapWidth > 100) {
+      setError('Width must be between 1 and 100');
+      return;
+    }
+    if (mapHeight &lt; 1 || mapHeight > 100) {
+      setError('Height must be between 1 and 100');
+      return;
+    }
+    if (mapGridSize &lt; 16 || mapGridSize > 64) {
+      setError('Grid size must be between 16 and 64');
+      return;
+    }
+
+    // Clear any errors
+    setError(null);
+
+    // Apply changes
+    onApplyProperties({
+      name: mapName,
+      width: Number(mapWidth),
+      height: Number(mapHeight),
+      gridSize: Number(mapGridSize)
+    });
+  };
+
+  // Handle number input changes with validation
+  const handleNumberChange = (setter) => (e) => {
+    const value = e.target.value;
+    if (value === '' || /^\d+$/.test(value)) {
+      setter(value === '' ? '' : Number(value));
+    }
+  };
+
+  // Toggle properties panel
+  const toggleProperties = () => {
+    setShowProperties(!showProperties);
+  };
+
+  return (
+    &lt;>
+      &lt;div className="flex justify-between items-center p-2 bg-stone-800 border-b border-stone-700">
+        {/* File operations */}
+        &lt;div className="flex space-x-1 items-center">
+          &lt;button 
+            onClick={onSave}
+            className="p-2 hover:bg-stone-700 rounded text-teal-400"
+            title="Save map"
+          >
+            &lt;Save size={18} />
+          &lt;/button>
+          &lt;button 
+            className="p-2 hover:bg-stone-700 rounded text-teal-400"
+            title="Clear map"
+            onClick={onClear}
+          >
+            &lt;Trash2 size={18} />
+          &lt;/button>
+          &lt;button 
+            className="p-2 hover:bg-stone-700 rounded text-teal-400"
+            title="Export as PNG"
+          >
+            &lt;Download size={18} />
+          &lt;/button>
+          &lt;button 
+            className="p-2 hover:bg-stone-700 rounded text-teal-400"
+            title="Import tileset"
+          >
+            &lt;Upload size={18} />
+          &lt;/button>
+          &lt;div className="h-6 border-r border-stone-700 mx-1">&lt;/div>
+          &lt;button 
+            className="p-2 hover:bg-stone-700 rounded text-teal-400"
+            title="Export as ASCII"
+            onClick={onExportAscii}
+          >
+            &lt;FileText size={18} />
+          &lt;/button>
+          &lt;button 
+            className="p-2 hover:bg-stone-700 rounded text-teal-400"
+            title="Import from ASCII"
+            onClick={onImportAscii}
+          >
+            &lt;Upload size={18} />
+          &lt;/button>
+        &lt;/div>
+
+        {/* Empty space in the middle to maintain layout */}
+        &lt;div className="flex-1">&lt;/div>
+
+        {/* View options */}
+        &lt;div className="flex space-x-1">
+          &lt;button
+            onClick={onToggleGrid}
+            className={`p-2 hover:bg-stone-700 rounded ${
+              showGrid ? 'text-teal-400' : 'text-stone-500'
+            }`}
+            title={showGrid ? "Hide grid" : "Show grid"}
+          >
+            &lt;Grid size={18} />
+          &lt;/button>
+          &lt;button
+            onClick={onResetView}
+            className="p-2 hover:bg-stone-700 rounded text-teal-400"
+            title="Return to origin (0,0)"
+          >
+            &lt;Home size={18} />
+          &lt;/button>
+          &lt;button 
+            className={`p-2 hover:bg-stone-700 rounded ${showProperties ? 'bg-stone-700 text-teal-300' : 'text-teal-400'}`}
+            title="Map Properties"
+            onClick={toggleProperties}
+          >
+            &lt;Settings size={18} />
+          &lt;/button>
+        &lt;/div>
+      &lt;/div>
+      
+      {/* Properties Panel - Expandable */}
+      {showProperties &amp;&amp; (
+        &lt;div className="bg-stone-800 border-b border-stone-700 p-2 grid grid-cols-5 gap-2 items-center text-sm">
+          {error &amp;&amp; (
+            &lt;div className="col-span-5 bg-red-900/30 text-red-400 p-2 rounded mb-2 text-xs">
+              {error}
+            &lt;/div>
+          )}
+          
+          &lt;div className="flex items-center">
+            &lt;label className="mr-2 text-stone-400">Width:&lt;/label>
+            &lt;input
+              type="text"
+              value={mapWidth}
+              onChange={handleNumberChange(setMapWidth)}
+              className="w-16 bg-stone-900 border border-stone-700 rounded px-2 py-1 text-sm text-teal-100 focus:outline-none focus:border-teal-600"
+            />
+          &lt;/div>
+          
+          &lt;div className="flex items-center">
+            &lt;label className="mr-2 text-stone-400">Height:&lt;/label>
+            &lt;input
+              type="text"
+              value={mapHeight}
+              onChange={handleNumberChange(setMapHeight)}
+              className="w-16 bg-stone-900 border border-stone-700 rounded px-2 py-1 text-sm text-teal-100 focus:outline-none focus:border-teal-600"
+            />
+          &lt;/div>
+          
+          &lt;div className="flex items-center">
+            &lt;label className="mr-2 text-stone-400">Grid Size:&lt;/label>
+            &lt;input
+              type="text"
+              value={mapGridSize}
+              onChange={handleNumberChange(setMapGridSize)}
+              className="w-16 bg-stone-900 border border-stone-700 rounded px-2 py-1 text-sm text-teal-100 focus:outline-none focus:border-teal-600"
+            />
+          &lt;/div>
+          
+          &lt;div className="flex justify-end">
+            &lt;button
+              onClick={handleApplyProperties}
+              className="bg-teal-700 hover:bg-teal-600 text-white px-3 py-1 rounded text-xs flex items-center"
+            >
+              &lt;Save size={14} className="mr-1" />
+              Apply
+            &lt;/button>
+          &lt;/div>
+        &lt;/div>
+      )}
+    &lt;/>
+  );
+};
+
+export default MapToolbar;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#LayerPanel">LayerPanel</a></li><li><a href="global.html#MapCanvas">MapCanvas</a></li><li><a href="global.html#MapPropertiesPanel">MapPropertiesPanel</a></li><li><a href="global.html#MapToolbar">MapToolbar</a></li><li><a href="global.html#TilePalette">TilePalette</a></li><li><a href="global.html#TilesetSelector">TilesetSelector</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Sun Jun 01 2025 20:54:15 GMT-0400 (Eastern Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
