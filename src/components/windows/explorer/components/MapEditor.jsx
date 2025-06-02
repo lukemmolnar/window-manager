@@ -31,7 +31,9 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   const [asciiImportText, setAsciiImportText] = useState('');
   const [asciiModalMode, setAsciiModalMode] = useState('export'); // 'export' or 'import'
   const [selectedTileId, setSelectedTileId] = useState(0);
+  const [selectedTilesetId, setSelectedTilesetId] = useState(null); // NEW: Add state for tileset ID
   const [selectedRotation, setSelectedRotation] = useState(0); // Add state for rotation
+  const [selectedTileType, setSelectedTileType] = useState('floor'); // NEW: Add state for tile type
   const [showGrid, setShowGrid] = useState(true); // State for grid visibility
   const [brushSize, setBrushSize] = useState(1); // State for brush size
   
@@ -129,9 +131,19 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   };
 
   // Handler for map edits
-  // Add 'rotation' parameter to accept the rotation value from MapCanvas
-  const handleEdit = (x, y, tool, rotation) => {
+  // UPDATED: Add tilesetId parameter to accept the tileset ID from MapCanvas
+  const handleEdit = (x, y, tool, rotation, tileId = selectedTileId, tilesetId = selectedTilesetId) => {
     if (!mapData || !mapData.layers || !mapData.layers[currentLayer]) return;
+    
+    console.log('🔄 [Explorer MapEditor] handleEdit called:', {
+      coordinates: { x, y },
+      tool,
+      rotation,
+      tileId,
+      tilesetId,
+      selectedTileId,
+      selectedTilesetId
+    });
     
     // Clone the current map data to avoid direct state mutation
     const newMapData = { ...mapData };
@@ -147,16 +159,17 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
       }
     } else {
       // Create the cell data based on the tool type
-      // Include the received rotation value
+      // Include the received rotation value and tilesetId
       let cellData = { x, y, type: tool, rotation: rotation || 0 }; // Default to 0 if rotation is undefined/falsy
       
-      // CRITICAL FIX: Include the selected tile ID for shadow tiles as well!
+      // CRITICAL FIX: Include the selected tile ID and tilesetId for shadow tiles as well!
       if (tool === 'floor' || tool === 'wall' || tool === 'shadow') {
-        cellData.tileId = selectedTileId;
+        cellData.tileId = tileId;
+        cellData.tilesetId = tilesetId; // NEW: Include tilesetId
         
         // For shadow tiles, add extra debug logging
         if (tool === 'shadow') {
-          console.log(`MapEditor CRITICAL: Creating shadow tile at (${x}, ${y}) with tileId=${selectedTileId}`);
+          console.log(`MapEditor CRITICAL: Creating shadow tile at (${x}, ${y}) with tileId=${tileId}, tilesetId=${tilesetId}`);
         }
       }
       
@@ -180,10 +193,26 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
     setIsDirty(true);
   };
 
+  // NEW: Handler for tile selection from TilePalette (supports both tileId and tilesetId)
+  const handleSelectTile = (tileId, tilesetId = null) => {
+    console.log('🟢 [Explorer MapEditor] handleSelectTile called:', { tileId, tilesetId });
+    setSelectedTileId(tileId);
+    setSelectedTilesetId(tilesetId);
+  };
+
   // Handler for rotation changes from TilePalette
   const handleRotateTile = (newRotation) => {
     setSelectedRotation(newRotation);
     // Note: We don't mark as dirty here, as rotation is a tool setting, not map data change
+  };
+
+  // NEW: Handler for changing tile type
+  const handleChangeTileType = (tileType) => {
+    setSelectedTileType(tileType);
+    // When changing tile type, also change the current tool
+    if (currentTool !== 'select' && currentTool !== 'erase') {
+      setCurrentTool(tileType);
+    }
   };
 
   // Layer management functions
@@ -465,6 +494,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           currentLayer={currentLayer}
           currentTool={currentTool}
           selectedTileId={selectedTileId}
+          selectedTilesetId={selectedTilesetId} // NEW: Pass tilesetId to canvas
           selectedRotation={selectedRotation} // Pass rotation state to canvas
           onEdit={handleEdit}
           showGrid={showGrid}
@@ -472,27 +502,43 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
           brushSize={brushSize}
         />
         
-        {/* Layer panel with integrated tile palette */}
-        <LayerPanel 
-          layers={mapData.layers}
-          currentLayer={currentLayer}
-          setCurrentLayer={setCurrentLayer}
-          onToggleLayerVisibility={handleToggleLayerVisibility}
-          onAddLayer={handleAddLayer}
-          onRemoveLayer={handleRemoveLayer}
-          onMoveLayerUp={handleMoveLayerUp}
-          onMoveLayerDown={handleMoveLayerDown}
-          onRenameLayer={handleRenameLayer}
-          onUpdateLayerOpacity={handleUpdateLayerOpacity}
-          selectedTileId={selectedTileId}
-          onSelectTile={setSelectedTileId}
-          selectedRotation={selectedRotation} // Pass rotation state to LayerPanel
-          onRotateTile={handleRotateTile} // Pass rotation handler to LayerPanel
-          currentTool={currentTool}
-          setCurrentTool={setCurrentTool}
-          brushSize={brushSize}
-          setBrushSize={setBrushSize}
-        />
+        {/* Layer panel - UPDATED: Use new TilePalette if this layout supports it */}
+        <div className="w-80 bg-stone-800 border-l border-stone-700 flex flex-col">
+          {/* Layer Panel */}
+          <LayerPanel 
+            layers={mapData.layers}
+            currentLayer={currentLayer}
+            setCurrentLayer={setCurrentLayer}
+            onToggleLayerVisibility={handleToggleLayerVisibility}
+            onAddLayer={handleAddLayer}
+            onRemoveLayer={handleRemoveLayer}
+            onMoveLayerUp={handleMoveLayerUp}
+            onMoveLayerDown={handleMoveLayerDown}
+            onRenameLayer={handleRenameLayer}
+            onUpdateLayerOpacity={handleUpdateLayerOpacity}
+            selectedTileId={selectedTileId}
+            onSelectTile={handleSelectTile} // UPDATED: Use new handler that supports tilesetId
+            selectedTilesetId={selectedTilesetId} // NEW: Pass tilesetId
+            selectedRotation={selectedRotation} // Pass rotation state to LayerPanel
+            onRotateTile={handleRotateTile} // Pass rotation handler to LayerPanel
+            currentTool={currentTool}
+            setCurrentTool={setCurrentTool}
+            brushSize={brushSize}
+            setBrushSize={setBrushSize}
+          />
+          
+          {/* NEW: Add standalone TilePalette for better tileset support */}
+          <TilePalette 
+            onSelectTile={handleSelectTile}
+            selectedTileId={selectedTileId}
+            selectedTilesetId={selectedTilesetId}
+            tileType={selectedTileType}
+            onChangeTileType={handleChangeTileType}
+            selectedRotation={selectedRotation}
+            onRotateTile={handleRotateTile}
+            createWindow={() => console.log('Marketplace not available in file explorer mode')}
+          />
+        </div>
       </div>
       
       

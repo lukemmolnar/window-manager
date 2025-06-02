@@ -415,9 +415,15 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
         setCurrentTool(selectedTileType);
       }
       
+      // ENHANCED DEBUG: Use refs to check state immediately
+      console.log('🟠 IMMEDIATE AFTER setState (but before React batching):', {
+        paramsThatWereSet: { tileId, tilesetId },
+        currentStateBeforeUpdate: { selectedTileId, selectedTilesetId }
+      });
+      
       // Debug - check state immediately after update (React state is async)
       setTimeout(() => {
-        console.log('🟠 AFTER STATE UPDATE (async check):', {
+        console.log('🟠 AFTER STATE UPDATE (nextTick check):', {
           selectedTileId,
           selectedTilesetId,
           selectedTileType

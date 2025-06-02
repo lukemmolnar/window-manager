@@ -60,6 +60,17 @@ const MapCanvas = ({
     }
   }, [resetViewToOrigin, resetViewRef]);
   
+  // ENHANCED DEBUG: Track when critical props change
+  useEffect(() => {
+    console.log('🔄 [MapCanvas] Props Changed - selectedTilesetId:', {
+      selectedTilesetId: { value: selectedTilesetId, type: typeof selectedTilesetId },
+      selectedTileId: { value: selectedTileId, type: typeof selectedTileId },
+      selectedRotation: { value: selectedRotation, type: typeof selectedRotation },
+      currentTool,
+      timestamp: new Date().toLocaleTimeString()
+    });
+  }, [selectedTilesetId, selectedTileId, selectedRotation, currentTool]);
+  
   // Initialize dynamic tile registry on component mount
   useEffect(() => {
     const initializeTilesets = async () => {
@@ -313,6 +324,30 @@ const MapCanvas = ({
    */
   const handleCellEdit = (e, overrideTool) => {
     if (!canvasRef.current || !mapData || !onEdit) return;
+    
+    // ENHANCED DEBUG: Log current props at the moment of editing
+    console.log('🎯 [MapCanvas] handleCellEdit ENTRY - Current Props State:', {
+      selectedTileId: { value: selectedTileId, type: typeof selectedTileId },
+      selectedTilesetId: { value: selectedTilesetId, type: typeof selectedTilesetId },
+      selectedRotation: { value: selectedRotation, type: typeof selectedRotation },
+      currentTool,
+      overrideTool,
+      propsReceived: {
+        selectedTileIdFromProps: selectedTileId,
+        selectedTilesetIdFromProps: selectedTilesetId,
+        selectedRotationFromProps: selectedRotation
+      },
+      isUndefined: {
+        selectedTileId: selectedTileId === undefined,
+        selectedTilesetId: selectedTilesetId === undefined,
+        selectedRotation: selectedRotation === undefined
+      },
+      isNull: {
+        selectedTileId: selectedTileId === null,
+        selectedTilesetId: selectedTilesetId === null,
+        selectedRotation: selectedRotation === null
+      }
+    });
     
     // Get mouse position relative to canvas
     const rect = canvasRef.current.getBoundingClientRect();
