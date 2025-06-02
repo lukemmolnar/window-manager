@@ -370,7 +370,28 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
    * @returns {void}
    */
   const handleSelectTile = (tileId, tilesetId = null) => {
+    console.log('🚨 IMMEDIATE CHECK:', { tileId, tilesetId, arguments: [...arguments] });
+    
     try {
+      console.log('🔥 [MapEditorWindow] handleSelectTile ENTRY:', {
+        receivedParams: { tileId, tilesetId },
+        paramTypes: { 
+          tileId: typeof tileId, 
+          tilesetId: typeof tilesetId 
+        },
+        paramValues: {
+          tileIdValue: tileId,
+          tilesetIdValue: tilesetId,
+          tilesetIdIsNull: tilesetId === null,
+          tilesetIdIsUndefined: tilesetId === undefined
+        },
+        previousState: {
+          selectedTileId,
+          selectedTilesetId,
+          selectedTileType
+        }
+      });
+
       console.log('🟠 TILE SELECTION RECEIVED in MapEditorWindow:', {
         newTileId: tileId,
         newTilesetId: tilesetId,
@@ -380,6 +401,11 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       });
       
       // Update state
+      console.log('🔧 [MapEditorWindow] Setting state:', {
+        setSelectedTileId: tileId,
+        setSelectedTilesetId: tilesetId
+      });
+      
       setSelectedTileId(tileId);
       setSelectedTilesetId(tilesetId);
       
@@ -397,8 +423,19 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
           selectedTileType
         });
       }, 0);
+      
+      // CRITICAL: Also check the state after a longer delay to see final values
+      setTimeout(() => {
+        console.log('🚨 [MapEditorWindow] FINAL STATE CHECK (100ms later):', {
+          selectedTileId,
+          selectedTilesetId,
+          selectedTileType,
+          stateSetSuccessfully: selectedTileId === tileId && selectedTilesetId === tilesetId
+        });
+      }, 100);
+      
     } catch (error) {
-      console.error('🔴 ERROR in handleSelectTile:', error);
+      console.error('🔴 [MapEditorWindow] ERROR in handleSelectTile:', error);
       console.error('Stack trace:', error.stack);
     }
   };
@@ -662,6 +699,15 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 flex overflow-hidden">
+          {/* DEBUG: Log what we're passing to MapCanvas */}
+          {console.log('🎯 [MapEditorWindow] About to render MapCanvas with props:', {
+            selectedTileId,
+            selectedTilesetId,
+            selectedTileType,
+            currentTool,
+            handleSelectTileFunction: typeof handleSelectTile
+          })}
+
           {/* Canvas for map editing */}
           <MapCanvas 
             mapData={mapData}
@@ -687,6 +733,15 @@ const MapEditorWindow = ({ isActive, nodeId, onCommand, transformWindow, windowS
           />
         </div>
         
+        {/* DEBUG: Log what we're passing to TilePalette */}
+        {console.log('🎯 [MapEditorWindow] About to render TilePalette with props:', {
+          onSelectTile: typeof handleSelectTile,
+          onSelectTileRef: handleSelectTile.toString().substring(0, 100),
+          selectedTileId,
+          selectedTilesetId,
+          tileType: selectedTileType
+        })}
+
         {/* Tile Palette */}
         <TilePalette 
           onSelectTile={handleSelectTile}
