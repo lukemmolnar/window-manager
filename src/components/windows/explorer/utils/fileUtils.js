@@ -1,4 +1,4 @@
-// List of available file types for autocomplete
+// List of available file types. idk why canvas exists atm this doesnt even do anything
 export const AVAILABLE_FILE_TYPES = [
   'md',
   'canvas',

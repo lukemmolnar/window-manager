@@ -127,15 +127,16 @@ const MapCanvas = ({
   const drawTile = (ctx, x, y, size, cell) => {
     const { type, tileId, rotation = 0, tilesetId } = cell;
     
-    console.log('🎨 RENDERING TILE:', {
-      position: `(${cell.x}, ${cell.y})`,
-      type,
-      tileId,
-      tilesetId,
-      rotation,
-      hasRegistryInit: isRegistryInitialized,
-      availableTilesets: Object.keys(tilesetImages)
-    });
+    // console.log('🎨 RENDERING TILE:', {
+    //   position: `(${cell.x}, ${cell.y})`,
+    //   type,
+    //   tileId,
+    //   tilesetId,
+    //   rotation,
+    //   hasRegistryInit: isRegistryInitialized,
+    //   availableTilesets: Object.keys(tilesetImages)
+    // }
+    ;
     
     // If registry is not initialized or no tilesets are loaded, use fallback rendering
     if (!isRegistryInitialized || Object.keys(tilesetImages).length === 0) {

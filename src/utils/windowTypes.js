@@ -6,7 +6,6 @@ import { WINDOW_TYPES } from './constants';
 import { 
   EnhancedTerminalWindow,
   EnhancedExplorerWindow,
-  EnhancedAudioWindow,
   EnhancedChatWindow,
   EnhancedAdminWindow
 } from '../components/windows';

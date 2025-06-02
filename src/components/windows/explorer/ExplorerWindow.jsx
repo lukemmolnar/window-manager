@@ -3,7 +3,6 @@ import useExplorerState from './state/useExplorerState';
 import { useAuth } from '../../../context/AuthContext';
 import FileTree from './components/FileTree';
 import FileContent from './components/FileContent';
-import CommandInput from './components/CommandInput';
 import StorageStats from './components/StorageStats';
 import '../ExplorerWindow.css';
 
@@ -87,11 +86,6 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
       </div>
       
       {/* Command input */}
-      <CommandInput
-        focusRef={focusRef}
-        isAdmin={explorerState.isAdmin}
-        handleCommand={explorerState.handleCommand}
-      />
     </div>
   );
 };
