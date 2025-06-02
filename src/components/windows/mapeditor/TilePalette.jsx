@@ -490,15 +490,17 @@ const TilePalette = ({
                       : 'hover:bg-stone-700 border-transparent'
                   }`}
                 onClick={() => {
-                    console.log('🔵 FAVORITE TILE CLICKED:', {
+                    console.log('🎯 [TilePalette] FAVORITE TILE CLICKED:', {
                       tileIndex: tile.tile_index,
                       tilesetId: tile.tileset_id,
                       tileType: tile.tile_type,
-                      currentSelected: { selectedTileId, selectedTilesetId }
+                      currentSelected: { selectedTileId, selectedTilesetId, tileType }
                     });
+                    console.log('🚀 [TilePalette] Calling onSelectTile with:', tile.tile_index, tile.tileset_id || null);
                     // UPDATED: Pass both tile index and tileset ID
                     onSelectTile(tile.tile_index, tile.tileset_id || null);
                     if (tile.tile_type !== tileType) {
+                      console.log('🔄 [TilePalette] Changing tile type from', tileType, 'to', tile.tile_type);
                       onChangeTileType(tile.tile_type);
                     }
                   }}
