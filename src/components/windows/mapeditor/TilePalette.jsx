@@ -30,6 +30,13 @@ const TilePalette = ({
   onRotateTile,
   createWindow
 }) => {
+  // CRITICAL DEBUG: Check if onSelectTile is a function
+  console.log('🚨 TilePalette props check:', {
+    onSelectTile: typeof onSelectTile,
+    onSelectTileExists: !!onSelectTile,
+    isFunction: typeof onSelectTile === 'function'
+  });
+
   // Local state to track rotation, will sync back to parent
   const [localRotation, setLocalRotation] = useState(selectedRotation);
   
@@ -381,6 +388,38 @@ const TilePalette = ({
     }));
   }, [isInitialized, sections, tileType]);
 
+  // Enhanced tile selection handler with comprehensive debugging
+  const handleTileSelection = (tileId, tilesetId, source = 'unknown') => {
+    console.log('🚀 [TilePalette] handleTileSelection called:', {
+      source,
+      tileId: { value: tileId, type: typeof tileId },
+      tilesetId: { value: tilesetId, type: typeof tilesetId },
+      tilesetIdIsNull: tilesetId === null,
+      tilesetIdIsUndefined: tilesetId === undefined,
+      onSelectTileType: typeof onSelectTile,
+      onSelectTileExists: !!onSelectTile
+    });
+
+    if (typeof onSelectTile === 'function') {
+      console.log('🟢 [TilePalette] Calling onSelectTile with params:', tileId, tilesetId);
+      onSelectTile(tileId, tilesetId);
+      
+      // Verify the call was made by checking if parameters were passed correctly
+      setTimeout(() => {
+        console.log('🔍 [TilePalette] Post-call verification - parameters sent:', {
+          tileId,
+          tilesetId,
+          bothDefined: tileId !== undefined && tilesetId !== undefined
+        });
+      }, 0);
+    } else {
+      console.error('🔴 [TilePalette] onSelectTile is not a function!', {
+        receivedType: typeof onSelectTile,
+        receivedValue: onSelectTile
+      });
+    }
+  };
+
   return (
     <div className="bg-stone-800 border-t border-stone-700 p-2 max-h-64 overflow-y-auto">
       {/* Tile Type Selector with Marketplace Button */}
@@ -390,8 +429,6 @@ const TilePalette = ({
           
           {/* Buttons for Selected Tile */}
           <div className="flex items-center">
-            {/* Marketplace Button */}
-            
             {/* Refresh Button */}
             <button 
               className="text-green-400 hover:text-green-300 flex items-center mr-2"
@@ -489,16 +526,19 @@ const TilePalette = ({
                       ? 'bg-teal-900 border-teal-500' 
                       : 'hover:bg-stone-700 border-transparent'
                   }`}
-                onClick={() => {
+                  onClick={() => {
                     console.log('🎯 [TilePalette] FAVORITE TILE CLICKED:', {
                       tileIndex: tile.tile_index,
                       tilesetId: tile.tileset_id,
                       tileType: tile.tile_type,
-                      currentSelected: { selectedTileId, selectedTilesetId, tileType }
+                      currentSelected: { selectedTileId, selectedTilesetId, tileType },
+                      rawTileData: tile
                     });
-                    console.log('🚀 [TilePalette] Calling onSelectTile with:', tile.tile_index, tile.tileset_id || null);
-                    // UPDATED: Pass both tile index and tileset ID
-                    onSelectTile(tile.tile_index, tile.tileset_id || null);
+                    
+                    // Use the enhanced handler
+                    handleTileSelection(tile.tile_index, tile.tileset_id || null, 'favorite');
+                    
+                    // Change tile type if needed
                     if (tile.tile_type !== tileType) {
                       console.log('🔄 [TilePalette] Changing tile type from', tileType, 'to', tile.tile_type);
                       onChangeTileType(tile.tile_type);
@@ -565,7 +605,10 @@ const TilePalette = ({
           <div className="grid grid-cols-2 gap-2">
             <div 
               className="bg-stone-700 p-3 rounded cursor-pointer border-2 border-teal-500 text-center"
-              onClick={() => onSelectTile(0, null)} // No tileset for doors
+              onClick={() => {
+                console.log('🚪 [TilePalette] DOOR TILE CLICKED');
+                handleTileSelection(0, null, 'door');
+              }}
             >
               <div className="bg-slate-900 h-10 w-full flex items-center justify-center">
                 <div className="bg-amber-700 h-5 w-8"></div>
@@ -595,22 +638,24 @@ const TilePalette = ({
           <div className="grid grid-cols-5 gap-1 justify-items-center">
             {displayTiles.map(tile => (
               <div
-                key={`${tile.tilesetId}-${tile.tileIndex}`} // FIXED: Unique keys using tileset + tile
+                key={`${tile.tilesetId}-${tile.tileIndex}`}
                 className={`rounded cursor-pointer border ${
                   selectedTileId === tile.tileIndex && selectedTilesetId === tile.tilesetId
                     ? 'bg-teal-900 border-teal-500' 
                     : 'hover:bg-stone-700 border-transparent'
                 }`}
                 onClick={() => {
-                  console.log('🟢 REGULAR TILE CLICKED:', {
+                  console.log('🟢 [TilePalette] REGULAR TILE CLICKED:', {
                     tileIndex: tile.tileIndex,
                     tilesetId: tile.tilesetId,
                     sectionName: tile.sectionName,
                     tilesetName: tile.tilesetName,
-                    currentSelected: { selectedTileId, selectedTilesetId, tileType }
+                    currentSelected: { selectedTileId, selectedTilesetId, tileType },
+                    rawTileData: tile
                   });
-                  console.log('🔧 CALLING onSelectTile with:', tile.tileIndex, tile.tilesetId);
-                  onSelectTile(tile.tileIndex, tile.tilesetId);
+                  
+                  // Use the enhanced handler
+                  handleTileSelection(tile.tileIndex, tile.tilesetId, 'regular');
                 }}
                 title={`${tile.sectionName} - ${dynamicTileRegistry.getTileName(tile.tileIndex, tileType)} (${tile.tilesetName})`}
               >

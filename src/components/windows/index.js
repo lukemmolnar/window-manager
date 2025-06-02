@@ -10,7 +10,6 @@ import MarketplaceWindow from './MarketplaceWindow';
 import { WINDOW_TYPES } from '../../utils/constants';
 
 // Create enhanced versions of each window component by wrapping them with HOCs
-// Terminal and Explorer already have command inputs, so we don't need to add them
 export const EnhancedTerminalWindow = withWindowState(withCommandHandling(TerminalWindow), WINDOW_TYPES.TERMINAL);
 export const EnhancedExplorerWindow = withWindowState(withCommandHandling(withCommandInput(ExplorerWindow)), WINDOW_TYPES.EXPLORER);
 
