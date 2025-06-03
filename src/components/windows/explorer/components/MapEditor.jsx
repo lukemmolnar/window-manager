@@ -513,7 +513,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
             onAddLayer={handleAddLayer}
             onRemoveLayer={handleRemoveLayer}
             onMoveLayerUp={handleMoveLayerUp}
-            onMoveLayerDown={handleMoveLayerDown}
+            onMoveLayerDown={handleMoveLayerDown} 
             onRenameLayer={handleRenameLayer}
             onUpdateLayerOpacity={handleUpdateLayerOpacity}
             selectedTileId={selectedTileId}
@@ -525,18 +525,6 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
             setCurrentTool={setCurrentTool}
             brushSize={brushSize}
             setBrushSize={setBrushSize}
-          />
-          
-          {/* NEW: Add standalone TilePalette for better tileset support */}
-          <TilePalette 
-            onSelectTile={handleSelectTile}
-            selectedTileId={selectedTileId}
-            selectedTilesetId={selectedTilesetId}
-            tileType={selectedTileType}
-            onChangeTileType={handleChangeTileType}
-            selectedRotation={selectedRotation}
-            onRotateTile={handleRotateTile}
-            createWindow={() => console.log('Marketplace not available in file explorer mode')}
           />
         </div>
       </div>

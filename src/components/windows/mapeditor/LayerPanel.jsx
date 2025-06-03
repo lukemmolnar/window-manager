@@ -178,12 +178,13 @@ const LayerPanel = ({
         <TilePalette 
           selectedTileId={selectedTileId}
           onSelectTile={onSelectTile}
-          selectedRotation={selectedRotation} // Pass rotation state down
-          onRotateTile={onRotateTile}         // Pass rotation handler down
+          selectedRotation={selectedRotation}
+          onRotateTile={onRotateTile}         
           tileType={currentTool}
           onChangeTileType={setCurrentTool}
         />
       </div>
+
       <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
         <div className="flex items-center">
           <Layers size={14} className="mr-2" />
