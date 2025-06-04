@@ -15,7 +15,8 @@ import defaultWallTilesetImage from '/sheets/walls/uf_terrain_sheet_walls.png';
 import defaultShadowTilesetImage from '/sheets/shadows/uf_terrain_shadows.png';
 
 // Dynamic tileset registry
-let tilesets = [];
+let allTilesets = []; // All available tilesets (for rendering)
+let selectedTilesets = []; // User-selected tilesets (for palette)
 let sections = {
   floor: {},
   wall: {},
@@ -23,8 +24,14 @@ let sections = {
   door: {},
   object: {}
 };
-let tilesetImages = {};
-let selectedTilesets = [];
+let selectedSections = { // Only sections from selected tilesets (for palette)
+  floor: {},
+  wall: {},
+  shadow: {},
+  door: {},
+  object: {}
+};
+let tilesetImages = {}; // All tileset images (for rendering)
 let initialized = false;
 
 // Default sections (same as original tileRegistry)
@@ -50,7 +57,8 @@ export const DEFAULT_SHADOW_SECTIONS = {
 };
 
 /**
- * Initialize the tile registry with user-selected tilesets
+ * Initialize the tile registry - loads ALL available tilesets for rendering,
+ * and tracks which ones are selected for the palette
  * @returns {Promise<boolean>} True if initialization succeeded
  */
 export const initializeTileRegistry = async () => {
@@ -61,31 +69,33 @@ export const initializeTileRegistry = async () => {
     if (!token) {
       console.log('No auth token found, initializing with empty state');
       selectedTilesets = [];
-      tilesets = [];
+      allTilesets = [];
       initialized = true;
       return true;
     }
     
-    // Fetch user-selected tilesets
-    console.log('Fetching user-selected tilesets from server...');
-    const response = await axios.get(
+    // Fetch ALL available tilesets (for rendering)
+    console.log('Fetching all available tilesets for rendering...');
+    const allTilesetsResponse = await axios.get(
+      `${API_CONFIG.BASE_URL}/tilesets`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    
+    // Fetch user-selected tilesets (for palette)
+    console.log('Fetching user-selected tilesets for palette...');
+    const selectedResponse = await axios.get(
       `${API_CONFIG.BASE_URL}/tilesets/user/selected`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     
-    if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-      console.log('No selected tilesets found, initializing with empty state');
-      selectedTilesets = [];
-      tilesets = [];
-      initialized = true;
-      return true;
-    }
+    // Store all tilesets and selected tilesets
+    allTilesets = Array.isArray(allTilesetsResponse.data) ? allTilesetsResponse.data : [];
+    selectedTilesets = Array.isArray(selectedResponse.data) ? selectedResponse.data : [];
     
-    selectedTilesets = response.data;
-    tilesets = response.data;
+    console.log(`Found ${allTilesets.length} total tilesets, ${selectedTilesets.length} selected`);
     
-    // Process and organize sections by category
-    for (const tileset of tilesets) {
+    // Load images for ALL available tilesets (so any tile can be rendered)
+    for (const tileset of allTilesets) {
       if (!tileset.sections || !Array.isArray(tileset.sections)) {
         console.warn(`Tileset ${tileset.id} has no sections`);
         continue;
@@ -107,7 +117,7 @@ export const initializeTileRegistry = async () => {
       // Store the image reference
       tilesetImages[tileset.id] = tilesetImage;
       
-      // Organize sections by category
+      // Organize ALL sections by category (for tile name lookups and rendering)
       for (const section of tileset.sections) {
         if (!sections[section.category]) {
           sections[section.category] = {};
@@ -125,7 +135,30 @@ export const initializeTileRegistry = async () => {
       }
     }
     
-    console.log('Tile registry initialized with user tilesets');
+    // Organize SELECTED sections by category (for palette display)
+    for (const tileset of selectedTilesets) {
+      if (!tileset.sections || !Array.isArray(tileset.sections)) {
+        continue;
+      }
+      
+      for (const section of tileset.sections) {
+        if (!selectedSections[section.category]) {
+          selectedSections[section.category] = {};
+        }
+        
+        const sectionKey = `${tileset.id}_${section.id}`;
+        selectedSections[section.category][sectionKey] = {
+          tilesetId: tileset.id,
+          sectionId: section.id,
+          startIndex: section.start_index,
+          count: section.count,
+          name: section.section_name,
+          tilesetName: tileset.name
+        };
+      }
+    }
+    
+    console.log('Tile registry initialized - all tilesets loaded for rendering, selected tilesets tracked for palette');
     initialized = true;
     
     return true;
@@ -133,7 +166,7 @@ export const initializeTileRegistry = async () => {
     console.error('Failed to initialize tile registry:', error);
     // Initialize with empty state instead of falling back to defaults
     selectedTilesets = [];
-    tilesets = [];
+    allTilesets = [];
     initialized = true;
     return false;
   }
@@ -200,7 +233,8 @@ export const getTilesetImageForCategory = (category, tilesetId = null) => {
   }
   
   // Otherwise, find the first tileset that has sections for this category
-  for (const tileset of tilesets) {
+  // Use selectedTilesets for fallback (palette compatibility)
+  for (const tileset of selectedTilesets) {
     if (tileset.sections && tileset.sections.some(s => s.category === category)) {
       if (tilesetImages[tileset.id]) {
         return tilesetImages[tileset.id];
@@ -213,20 +247,45 @@ export const getTilesetImageForCategory = (category, tilesetId = null) => {
 };
 
 /**
- * Get sections for a specific category
+ * Get sections for a specific category (for palette display - only selected tilesets)
  * @param {string} category - The tile category (floor, wall, shadow, etc.)
  * @returns {Object} - Object of sections for the category
  */
 export const getSectionsForCategory = (category) => {
-  return sections[category] || {};
+  return selectedSections[category] || {};
 };
 
 /**
- * Get all sections from all tilesets
+ * Get all sections from selected tilesets (for palette display)
  * @returns {Object} - Sections organized by category and tileset
  */
 export const getAllSections = () => {
+  return selectedSections;
+};
+
+/**
+ * Get all sections from ALL tilesets (for rendering and tile name lookups)
+ * @returns {Object} - All sections organized by category and tileset
+ */
+export const getAllAvailableSections = () => {
   return sections;
+};
+
+/**
+ * Get a tileset image by ID (for rendering any tile from any tileset)
+ * @param {string} tilesetId - The tileset ID
+ * @returns {HTMLImageElement|null} - The tileset image or null if not found
+ */
+export const getTilesetImageById = (tilesetId) => {
+  return tilesetImages[tilesetId] || null;
+};
+
+/**
+ * Get all available tilesets (for rendering)
+ * @returns {Array} - Array of all available tilesets
+ */
+export const getAllTilesets = () => {
+  return allTilesets;
 };
 
 /**
@@ -267,7 +326,8 @@ export const getTileCoordinates = (tileIndex, cols = DEFAULT_TILESET_COLS) => {
  * @returns {string} A human-readable name for the tile
  */
 export const getTileName = (tileIndex, tileType = 'floor', tilesetId = null) => {
-  // Find which section this tile belongs to
+  // Use ALL available sections (not just selected) for tile name lookups
+  // This ensures tiles from deselected tilesets still get proper names
   const categorySections = sections[tileType] || {};
   
   for (const [sectionKey, section] of Object.entries(categorySections)) {
@@ -306,7 +366,8 @@ export const isInitialized = () => {
  */
 export const refreshTileRegistry = async () => {
   initialized = false;
-  tilesets = [];
+  allTilesets = [];
+  selectedTilesets = [];
   sections = {
     floor: {},
     wall: {},
@@ -314,8 +375,14 @@ export const refreshTileRegistry = async () => {
     door: {},
     object: {}
   };
+  selectedSections = {
+    floor: {},
+    wall: {},
+    shadow: {},
+    door: {},
+    object: {}
+  };
   tilesetImages = {};
-  selectedTilesets = [];
   
   // Re-initialize
   return await initializeTileRegistry();
@@ -324,8 +391,11 @@ export const refreshTileRegistry = async () => {
 export default {
   initializeTileRegistry,
   getTilesetImageForCategory,
+  getTilesetImageById,
   getSectionsForCategory,
   getAllSections,
+  getAllAvailableSections,
+  getAllTilesets,
   getCategories,
   getTileCoordinates,
   getTileName,

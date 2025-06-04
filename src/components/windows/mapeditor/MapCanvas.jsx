@@ -76,48 +76,40 @@ const MapCanvas = ({
     const initializeTilesets = async () => {
       console.log('MapCanvas: Initializing dynamic tile registry...');
       
-      // Initialize the registry
+      // Initialize the registry (now loads ALL available tilesets for rendering)
       const success = await dynamicTileRegistry.initializeTileRegistry();
       
       if (success) {
-        // Get selected tilesets
-        const selectedTilesets = dynamicTileRegistry.getSelectedTilesets();
-        console.log('MapCanvas: Selected tilesets:', selectedTilesets);
+        // Get ALL available tilesets (for rendering any tile)
+        const allTilesets = dynamicTileRegistry.getAllTilesets();
+        console.log(`MapCanvas: Found ${allTilesets.length} total tilesets for rendering`);
         
-        // Load tileset images by category
+        // Load tileset images for ALL tilesets (so any tile can be rendered)
         const loadedImages = {};
         const loadedColumns = {};
         
-        for (const tileset of selectedTilesets) {
+        for (const tileset of allTilesets) {
           if (tileset.sections && tileset.sections.length > 0) {
-            // Load the tileset image
-            const img = new Image();
+            // Get the pre-loaded image from the registry
+            const img = dynamicTileRegistry.getTilesetImageById(tileset.id);
             
-            await new Promise((resolve) => {
-              img.onload = () => {
-                // Calculate columns based on image width
-                const cols = Math.floor(img.width / dynamicTileRegistry.TILE_SIZE);
-                loadedColumns[tileset.id] = cols;
-                console.log(`MapCanvas: Loaded tileset ${tileset.name} with ${cols} columns`);
-                resolve();
-              };
-              
-              img.onerror = () => {
-                console.error(`Failed to load tileset image for ${tileset.name}`);
-                resolve();
-              };
-              
-              // Use the API endpoint to load the image
-              img.src = `${API_CONFIG.BASE_URL}/tilesets/${tileset.id}/image`;
-            });
-            
-            loadedImages[tileset.id] = img;
+            if (img) {
+              // Calculate columns based on image width
+              const cols = Math.floor(img.width / dynamicTileRegistry.TILE_SIZE);
+              loadedColumns[tileset.id] = cols;
+              loadedImages[tileset.id] = img;
+              console.log(`MapCanvas: Loaded tileset ${tileset.name} with ${cols} columns`);
+            } else {
+              console.warn(`MapCanvas: Could not load image for tileset ${tileset.name}`);
+            }
           }
         }
         
         setTilesetImages(loadedImages);
         setTilesetColumns(loadedColumns);
         setIsRegistryInitialized(true);
+        
+        console.log(`MapCanvas: Initialization complete - ${Object.keys(loadedImages).length} tileset images loaded for rendering`);
       } else {
         console.log('MapCanvas: No tilesets available or initialization failed');
         setIsRegistryInitialized(true);
