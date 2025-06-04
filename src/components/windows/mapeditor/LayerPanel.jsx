@@ -59,6 +59,7 @@ const LayerPanel = ({
   onRenameLayer,
   onUpdateLayerOpacity,
   selectedTileId = 0,
+  selectedTilesetId = null,
   onSelectTile,
   selectedRotation, // Add prop for receiving rotation state
   onRotateTile,     // Add prop for passing rotation handler
@@ -177,11 +178,13 @@ const LayerPanel = ({
       <div className="border-b border-stone-700">
         <TilePalette 
           selectedTileId={selectedTileId}
+          selectedTilesetId={selectedTilesetId} // ← ADD THIS LINE!
           onSelectTile={onSelectTile}
           selectedRotation={selectedRotation}
           onRotateTile={onRotateTile}         
           tileType={currentTool}
           onChangeTileType={setCurrentTool}
+          createWindow={() => console.log('Marketplace not available in LayerPanel mode')}
         />
       </div>
 

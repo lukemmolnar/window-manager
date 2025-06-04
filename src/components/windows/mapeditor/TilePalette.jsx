@@ -37,6 +37,18 @@ const TilePalette = ({
     isFunction: typeof onSelectTile === 'function'
   });
 
+  // NEW DEBUG: Check render state
+  console.log('🎯 TilePalette render state:', {
+    selectedTileId,
+    selectedTilesetId,
+    tileType,
+    propsReceived: {
+      selectedTileId: typeof selectedTileId,
+      selectedTilesetId: typeof selectedTilesetId,
+      tileType: typeof tileType
+    }
+  });
+
   // Local state to track rotation, will sync back to parent
   const [localRotation, setLocalRotation] = useState(selectedRotation);
   
@@ -645,6 +657,23 @@ const TilePalette = ({
                     : 'hover:bg-stone-700 border-transparent'
                 }`}
                 onClick={() => {
+                  // NEW DEBUG: Add selection check before existing logs
+                  console.log('🔍 TILE SELECTION CHECK:', {
+                    clickedTile: { tileIndex: tile.tileIndex, tilesetId: tile.tilesetId },
+                    currentSelection: { selectedTileId, selectedTilesetId },
+                    matches: {
+                      tileIdMatch: selectedTileId === tile.tileIndex,
+                      tilesetIdMatch: selectedTilesetId === tile.tilesetId,
+                      bothMatch: selectedTileId === tile.tileIndex && selectedTilesetId === tile.tilesetId
+                    },
+                    types: {
+                      selectedTileIdType: typeof selectedTileId,
+                      selectedTilesetIdType: typeof selectedTilesetId,
+                      tileTileIndexType: typeof tile.tileIndex,
+                      tileTilesetIdType: typeof tile.tilesetId
+                    }
+                  });
+
                   console.log('🟢 [TilePalette] REGULAR TILE CLICKED:', {
                     tileIndex: tile.tileIndex,
                     tilesetId: tile.tilesetId,

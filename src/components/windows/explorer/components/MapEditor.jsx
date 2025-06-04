@@ -194,11 +194,27 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
   };
 
   // NEW: Handler for tile selection from TilePalette (supports both tileId and tilesetId)
-  const handleSelectTile = (tileId, tilesetId = null) => {
-    console.log('🟢 [Explorer MapEditor] handleSelectTile called:', { tileId, tilesetId });
-    setSelectedTileId(tileId);
-    setSelectedTilesetId(tilesetId);
-  };
+// NEW: Handler for tile selection from TilePalette (supports both tileId and tilesetId)
+const handleSelectTile = (tileId, tilesetId = null) => {
+  console.log('🟢 [Explorer MapEditor] handleSelectTile called:', { tileId, tilesetId });
+  console.log('🔧 [Explorer MapEditor] SETTING STATE:', { 
+    newTileId: tileId, 
+    newTilesetId: tilesetId,
+    previousTileId: selectedTileId,
+    previousTilesetId: selectedTilesetId 
+  });
+  
+  setSelectedTileId(tileId);
+  setSelectedTilesetId(tilesetId);  // ← Make sure this line exists and works
+  
+  // Debug state after setting
+  setTimeout(() => {
+    console.log('🔍 [Explorer MapEditor] State after update:', { 
+      selectedTileId, 
+      selectedTilesetId 
+    });
+  }, 10);
+};
 
   // Handler for rotation changes from TilePalette
   const handleRotateTile = (newRotation) => {
@@ -503,7 +519,7 @@ const MapEditor = ({ fileContent, selectedFile, onSave }) => {
         />
         
         {/* Layer panel - UPDATED: Use new TilePalette if this layout supports it */}
-        <div className="w-80 bg-stone-800 border-l border-stone-700 flex flex-col">
+        <div className="w-64 bg-stone-800 border-l border-stone-700 flex flex-col">
           {/* Layer Panel */}
           <LayerPanel 
             layers={mapData.layers}
