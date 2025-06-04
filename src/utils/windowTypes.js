@@ -7,9 +7,9 @@ import {
   EnhancedTerminalWindow,
   EnhancedExplorerWindow,
   EnhancedChatWindow,
-  EnhancedAdminWindow
+  EnhancedAdminWindow,
+  EnhancedMarketplaceWindow
 } from '../components/windows';
-import MarketplaceWindow from '../components/windows/MarketplaceWindow';
 
 export { WINDOW_TYPES };
 
@@ -37,6 +37,6 @@ export const WINDOW_CONTENT = {
   [WINDOW_TYPES.MARKETPLACE]: {
     title: 'Tileset Marketplace',
     icon: Store,
-    component: MarketplaceWindow
+    component: EnhancedMarketplaceWindow
   }
 };
