@@ -1,19 +1,15 @@
-/**
- * Terminal command for opening the Marketplace window
- */
 import { Command } from '../../Command';
 import { WINDOW_TYPES } from '../../../constants';
 
 export class MarketplaceCommand extends Command {
   constructor() {
-    super({
-      name: 'marketplace',
-      description: 'Open the Tileset Marketplace window',
-      usage: 'marketplace',
-      examples: [
-        { command: 'marketplace', description: 'Open the Tileset Marketplace' }
-      ]
-    });
+    super();
+    this.name = 'marketplace';
+    this.aliases = ['market'];
+    this.description = 'Open the Tileset Marketplace window';
+    this.usage = 'marketplace';
+    this.category = 'Window';
+    this.args = [];
   }
 
   async execute(args, context) {
