@@ -135,7 +135,7 @@ export const initializeTileRegistry = async () => {
       }
     }
     
-    // Organize SELECTED sections by category (for palette display)
+    // Organize SELECTED sections by category (for palette display) ah
     for (const tileset of selectedTilesets) {
       if (!tileset.sections || !Array.isArray(tileset.sections)) {
         continue;
