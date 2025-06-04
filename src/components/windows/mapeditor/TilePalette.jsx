@@ -160,14 +160,17 @@ const TilePalette = ({
   const checkIsFavorite = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      if (!token) return;
+      if (!token || !selectedTilesetId) {
+        setIsFavorited(false);
+        return;
+      }
 
       const response = await axios.get(
-        `${API_CONFIG.BASE_URL}/favorite-tiles/check/${selectedTileId}/${tileType}`,
+        `${API_CONFIG.BASE_URL}/favorite-tiles/check/${selectedTileId}/${tileType}/${selectedTilesetId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      logApiCall('GET', `/favorite-tiles/check/${selectedTileId}/${tileType}`, response.status, response.data);
+      logApiCall('GET', `/favorite-tiles/check/${selectedTileId}/${tileType}/${selectedTilesetId}`, response.status, response.data);
       setIsFavorited(response.data.isFavorite);
     } catch (error) {
       console.error('Error checking favorite status from server:', error);
@@ -219,14 +222,14 @@ const TilePalette = ({
   const removeFromFavorites = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      if (!token) return;
+      if (!token || !selectedTilesetId) return;
 
       const response = await axios.delete(
-        `${API_CONFIG.BASE_URL}/favorite-tiles/${selectedTileId}/${tileType}`,
+        `${API_CONFIG.BASE_URL}/favorite-tiles/${selectedTileId}/${tileType}/${selectedTilesetId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      logApiCall('DELETE', `/favorite-tiles/${selectedTileId}/${tileType}`, response.status, response.data);
+      logApiCall('DELETE', `/favorite-tiles/${selectedTileId}/${tileType}/${selectedTilesetId}`, response.status, response.data);
       
       // Reload favorite tiles
       await loadFavoriteTiles();
