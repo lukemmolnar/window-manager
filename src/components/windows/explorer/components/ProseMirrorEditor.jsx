@@ -19,10 +19,10 @@ import {
   sinkListItem 
 } from 'prosemirror-schema-list';
 import { InputRule, inputRules, wrappingInputRule, textblockTypeInputRule, smartQuotes, emDash, ellipsis } from 'prosemirror-inputrules';
-import { tableEditing, columnResizing, goToNextCell } from 'prosemirror-tables';
+import { tableEditing, columnResizing, goToNextCell, deleteTable, addRowAfter, addRowBefore, deleteRow, addColumnAfter, addColumnBefore, deleteColumn } from 'prosemirror-tables';
 import { 
   Bold, Italic, Code, List, ListOrdered, Quote, 
-  Undo2, Redo2, Table, RotateCcw
+  Undo2, Redo2, Table, RotateCcw, Trash2, Plus, Minus
 } from 'lucide-react';
 import './ProseMirrorEditor.css';
 
@@ -117,10 +117,20 @@ function buildInputRules(schema) {
   return inputRules({ rules });
 }
 
+// Helper function to check if cursor is inside a table
+const isInTable = (state) => {
+  const { $from } = state.selection;
+  for (let d = $from.depth; d > 0; d--) {
+    if ($from.node(d).type.spec.tableRole) return true;
+  }
+  return false;
+};
+
 // Toolbar component
 const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
   const [activeMarks, setActiveMarks] = useState(new Set());
   const [currentBlockType, setCurrentBlockType] = useState('paragraph');
+  const [inTable, setInTable] = useState(false);
   
   // Update active states when selection changes
   useEffect(() => {
@@ -143,6 +153,9 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
         });
       }
       setActiveMarks(marks);
+      
+      // Check if cursor is in a table
+      setInTable(isInTable(state));
       
       // Get current block type
       const $from = state.selection.$from;
@@ -319,6 +332,48 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
       <ToolbarButton onClick={insertTable} title="Insert Table">
         <Table size={16} />
       </ToolbarButton>
+      
+      {/* Table Management (only show when in table) */}
+      {inTable && (
+        <>
+          <ToolbarButton 
+            onClick={() => runCommand(deleteTable)}
+            title="Delete Table"
+          >
+            <Trash2 size={16} />
+          </ToolbarButton>
+          <ToolbarButton 
+            onClick={() => runCommand(addRowAfter)}
+            title="Add Row After"
+          >
+            <Plus size={16} />
+          </ToolbarButton>
+          <ToolbarButton 
+            onClick={() => runCommand(deleteRow)}
+            title="Delete Row"
+          >
+            <Minus size={16} />
+          </ToolbarButton>
+          <ToolbarButton 
+            onClick={() => runCommand(addColumnAfter)}
+            title="Add Column After"
+          >
+            <div className="flex items-center">
+              <Plus size={12} />
+              <div className="w-px h-3 bg-current ml-1" />
+            </div>
+          </ToolbarButton>
+          <ToolbarButton 
+            onClick={() => runCommand(deleteColumn)}
+            title="Delete Column"
+          >
+            <div className="flex items-center">
+              <Minus size={12} />
+              <div className="w-px h-3 bg-current ml-1" />
+            </div>
+          </ToolbarButton>
+        </>
+      )}
       
       <ToolbarDivider />
       
