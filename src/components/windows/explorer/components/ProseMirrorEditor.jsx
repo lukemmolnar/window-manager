@@ -118,7 +118,7 @@ function buildInputRules(schema) {
 }
 
 // Toolbar component
-const EditorToolbar = ({ view, disabled }) => {
+const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
   const [activeMarks, setActiveMarks] = useState(new Set());
   const [currentBlockType, setCurrentBlockType] = useState('paragraph');
   
@@ -152,8 +152,12 @@ const EditorToolbar = ({ view, disabled }) => {
     
     updateState();
     
-    // Listen for transaction updates
-    const handleTransaction = () => updateState();
+    // Store update function for external calls
+    if (onStateUpdate) {
+      onStateUpdate(updateState);
+    }
+    
+    // Listen for focus/blur events
     view.dom.addEventListener('focus', updateState);
     view.dom.addEventListener('blur', updateState);
     
@@ -161,7 +165,7 @@ const EditorToolbar = ({ view, disabled }) => {
       view.dom.removeEventListener('focus', updateState);
       view.dom.removeEventListener('blur', updateState);
     };
-  }, [view]);
+  }, [view, onStateUpdate]);
   
   const runCommand = (command) => {
     if (disabled || !view) return false;
@@ -351,6 +355,7 @@ const ProseMirrorEditor = ({
 }) => {
   const editorRef = useRef(null);
   const viewRef = useRef(null);
+  const toolbarUpdateRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
   const lastExternalContentRef = useRef(content);
   const isInternalChangeRef = useRef(false);
@@ -463,6 +468,16 @@ const ProseMirrorEditor = ({
         const newState = view.state.apply(transaction);
         view.updateState(newState);
         
+        // Trigger toolbar update on selection changes or doc changes
+        if (toolbarUpdateRef.current && (transaction.selectionSet || transaction.docChanged)) {
+          // Use setTimeout to ensure the update happens after the state is applied
+          setTimeout(() => {
+            if (toolbarUpdateRef.current) {
+              toolbarUpdateRef.current();
+            }
+          }, 0);
+        }
+        
         // Call onChange with the JSON content
         if (onChange && transaction.docChanged) {
           isInternalChangeRef.current = true;
@@ -540,7 +555,13 @@ const ProseMirrorEditor = ({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Toolbar */}
-      <EditorToolbar view={viewRef.current} disabled={!isReady || readOnly} />
+      <EditorToolbar 
+        view={viewRef.current} 
+        disabled={!isReady || readOnly}
+        onStateUpdate={(updateFn) => {
+          toolbarUpdateRef.current = updateFn;
+        }}
+      />
       
       {/* Editor */}
       <div className="flex-1 overflow-auto">
