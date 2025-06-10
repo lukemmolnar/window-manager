@@ -1,8 +1,9 @@
 import React, { useRef, useEffect } from 'react';
-import { FileText, Edit, Eye, Bold, Italic, Code as CodeIcon, Link, Heading, List, ListOrdered, CheckSquare, Download, Map } from 'lucide-react';
-import { handleEditorKeyDown, convertMarkdownToHtml } from '../utils/markdownUtils';
+import { FileText, Edit, Eye, Download, Map } from 'lucide-react';
+import { convertMarkdownToHtml } from '../utils/markdownUtils';
 import MapEditor from './MapEditor';
 import CanvasEditor from './CanvasEditor';
+import ProseMirrorEditor from './ProseMirrorEditor';
 
 const FileContent = ({
   selectedFile,
@@ -40,96 +41,6 @@ const FileContent = ({
     handleSaveFileContent(content);
   };
 
-  const textareaRef = useRef(null);
-
-  // Insert markdown syntax at cursor position
-  const insertMarkdown = (prefix, suffix = '') => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = fileContent;
-    
-    // If text is selected, wrap it with prefix and suffix
-    if (start !== end) {
-      const selectedText = text.substring(start, end);
-      const newContent = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
-      setFileContent(newContent);
-      
-      // Set cursor position after the inserted text
-      setTimeout(() => {
-        textarea.selectionStart = start + prefix.length;
-        textarea.selectionEnd = end + prefix.length;
-        textarea.focus();
-      }, 0);
-    } else {
-      // No selection, just insert at cursor
-      const newContent = text.substring(0, start) + prefix + suffix + text.substring(start);
-      setFileContent(newContent);
-      
-      // Move cursor between prefix and suffix
-      setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + prefix.length;
-        textarea.focus();
-      }, 0);
-    }
-  };
-
-  // Insert list items
-  const insertList = (listPrefix) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = fileContent;
-    
-    // If text is selected, apply list formatting to each line
-    if (start !== end) {
-      const selectedText = text.substring(start, end);
-      const lines = selectedText.split('\n');
-      
-      // Format each line as a list item
-      const formattedLines = lines.map(line => {
-        // Skip empty lines
-        if (line.trim() === '') return line;
-        
-        // For numbered lists, increment the number for each line
-        if (listPrefix === '1. ') {
-          const index = lines.indexOf(line) + 1;
-          return `${index}. ${line}`;
-        }
-        
-        return `${listPrefix}${line}`;
-      });
-      
-      const newContent = text.substring(0, start) + formattedLines.join('\n') + text.substring(end);
-      setFileContent(newContent);
-      
-      // Set cursor position after the inserted text
-      setTimeout(() => {
-        textarea.selectionStart = start;
-        textarea.selectionEnd = start + formattedLines.join('\n').length;
-        textarea.focus();
-      }, 0);
-    } else {
-      // No selection, just insert at cursor
-      const newContent = text.substring(0, start) + listPrefix + text.substring(start);
-      setFileContent(newContent);
-      
-      // Move cursor after the inserted prefix
-      setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + listPrefix.length;
-        textarea.focus();
-      }, 0);
-    }
-  };
-
-  // Handle editor keyboard events
-  const onEditorKeyDown = (e) => {
-    handleEditorKeyDown(e, textareaRef, fileContent, setFileContent);
-  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -155,27 +66,15 @@ const FileContent = ({
                 Export
               </button>
               
-              {/* Show edit/preview toggle for markdown files to admins or users with file access (for private files) */}
+              {/* Show save button for markdown files to admins or users with file access (for private files) */}
               {selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
-                <>
-                  {editMode && (
-                    <button 
-                      onClick={handleSaveFileContent}
-                      className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
-                      title="Save file"
-                    >
-                      Save
-                    </button>
-                  )}
-                  <button 
-                    onClick={toggleEditMode}
-                    className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${editMode ? 'bg-teal-700 text-teal-100' : 'bg-stone-800 hover:bg-stone-700'}`}
-                    title={editMode ? "Switch to preview mode" : "Switch to edit mode"}
-                  >
-                    {editMode ? <Eye size={14} /> : <Edit size={14} />}
-                    {editMode ? 'Preview' : 'Edit'}
-                  </button>
-                </>
+                <button 
+                  onClick={() => handleSaveFileContent()}
+                  className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
+                  title="Save file"
+                >
+                  Save
+                </button>
               )}
             </div>
           </div>
@@ -206,83 +105,17 @@ const FileContent = ({
               selectedFile={selectedFile}
               onSave={wrappedHandleSaveFileContent}
             />
-          ) : editMode && selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
-            // Markdown Editor mode - only for markdown files and admin users
-            <div className="flex-1 flex flex-col">
-              {/* Markdown toolbar */}
-              <div className="p-2 border-b border-stone-700 bg-stone-800 flex flex-wrap gap-2">
-                <button 
-                  onClick={() => insertMarkdown('### ')}
-                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
-                  title="Heading"
-                >
-                  <Heading size={16} />
-                </button>
-                <button 
-                  onClick={() => insertMarkdown('**', '**')}
-                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
-                  title="Bold"
-                >
-                  <Bold size={16} />
-                </button>
-                <button 
-                  onClick={() => insertMarkdown('*', '*')}
-                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
-                  title="Italic"
-                >
-                  <Italic size={16} />
-                </button>
-                <button 
-                  onClick={() => insertMarkdown('`', '`')}
-                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
-                  title="Inline Code"
-                >
-                  <CodeIcon size={16} />
-                </button>
-                <button 
-                  onClick={() => insertMarkdown('[', '](url)')}
-                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
-                  title="Link"
-                >
-                  <Link size={16} />
-                </button>
-                <span className="border-r border-stone-700 h-6"></span>
-                <button 
-                  onClick={() => insertList('- ')}
-                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
-                  title="Bullet List"
-                >
-                  <List size={16} />
-                </button>
-                <button 
-                  onClick={() => insertList('1. ')}
-                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
-                  title="Numbered List"
-                >
-                  <ListOrdered size={16} />
-                </button>
-                <button 
-                  onClick={() => insertList('- [ ] ')}
-                  className="p-1 rounded hover:bg-stone-700 text-teal-400"
-                  title="Checklist"
-                >
-                  <CheckSquare size={16} />
-                </button>
-              </div>
-              
-              <div className="flex-1 p-2">
-                <textarea
-                  ref={textareaRef}
-                  className="w-full h-full bg-stone-800 text-teal-50 p-4 resize-none focus:outline-none font-mono"
-                  value={fileContent}
-                  onChange={handleMarkdownChange}
-                  onKeyDown={onEditorKeyDown}
-                  placeholder="# Start typing your markdown here..."
-                />
-              </div>
-            </div>
+          ) : selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
+            // ProseMirror WYSIWYG Editor for markdown files - admins and users with file access
+            <ProseMirrorEditor
+              content={fileContent}
+              onChange={setFileContent}
+              onSave={wrappedHandleSaveFileContent}
+              placeholder="Start typing your markdown here..."
+              readOnly={false}
+            />
           ) : (
-            // Preview mode
+            // Preview mode for all other files and read-only markdown
             <div className="flex-1 overflow-auto p-4">
               <div className="markdown-preview text-teal-50">
                 {selectedFile.name.endsWith('.md') ? (

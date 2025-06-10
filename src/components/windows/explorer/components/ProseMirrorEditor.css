@@ -1,0 +1,227 @@
+/* ProseMirror Editor Styles */
+.ProseMirror {
+  outline: none;
+  min-height: 300px;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  line-height: 1.6;
+}
+
+.ProseMirror p {
+  margin: 0.75em 0;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  margin: 1.25em 0 0.5em 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ProseMirror h1 {
+  font-size: 2em;
+  border-bottom: 1px solid #44403c;
+  padding-bottom: 0.3em;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #44403c;
+  padding-bottom: 0.3em;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25em;
+}
+
+.ProseMirror h4 {
+  font-size: 1em;
+}
+
+.ProseMirror h5 {
+  font-size: 0.875em;
+}
+
+.ProseMirror h6 {
+  font-size: 0.85em;
+  color: #a8a29e;
+}
+
+.ProseMirror blockquote {
+  margin: 1em 0;
+  padding: 0 1em;
+  border-left: 4px solid #14b8a6;
+  color: #d6d3d1;
+  font-style: italic;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  margin: 0.75em 0;
+  padding-left: 2em;
+}
+
+.ProseMirror li {
+  margin: 0.25em 0;
+}
+
+.ProseMirror li p {
+  margin: 0.25em 0;
+}
+
+.ProseMirror code {
+  background-color: #292524;
+  color: #5eead4;
+  padding: 0.125em 0.25em;
+  border-radius: 0.25em;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.875em;
+}
+
+.ProseMirror pre {
+  background-color: #1c1917;
+  color: #e7e5e4;
+  padding: 1em;
+  border-radius: 0.375em;
+  overflow-x: auto;
+  margin: 1em 0;
+  border: 1px solid #44403c;
+}
+
+.ProseMirror pre code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.ProseMirror a {
+  color: #5eead4;
+  text-decoration: underline;
+  text-decoration-color: #14b8a6;
+  text-underline-offset: 2px;
+}
+
+.ProseMirror a:hover {
+  color: #2dd4bf;
+  text-decoration-color: #2dd4bf;
+}
+
+.ProseMirror strong {
+  font-weight: 600;
+  color: #f5f5f4;
+}
+
+.ProseMirror em {
+  font-style: italic;
+  color: #e7e5e4;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid #57534e;
+  margin: 2em 0;
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375em;
+  margin: 1em 0;
+}
+
+/* Table styles */
+.ProseMirror table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  overflow-x: auto;
+  width: 100%;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  border: 1px solid #44403c;
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.ProseMirror table th {
+  background-color: #292524;
+  font-weight: 600;
+}
+
+.ProseMirror table tr:nth-child(even) {
+  background-color: rgba(41, 37, 36, 0.3);
+}
+
+/* Selection styling */
+.ProseMirror-selectednode {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+}
+
+/* Placeholder styling */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #78716c;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Focus styles */
+.ProseMirror-focused {
+  outline: none;
+}
+
+/* List item specific styles */
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.ProseMirror ul[data-type="taskList"] li input[type="checkbox"] {
+  margin: 0;
+  margin-top: 0.125em;
+  flex-shrink: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+/* Ensure proper spacing for nested lists */
+.ProseMirror li > ul,
+.ProseMirror li > ol {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+/* Loading state */
+.prose-mirror-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #5eead4;
+}
+
+/* Error state */
+.prose-mirror-error {
+  background-color: #7f1d1d;
+  color: #fecaca;
+  padding: 1em;
+  border-radius: 0.375em;
+  margin: 1em 0;
+  border: 1px solid #dc2626;
+}
