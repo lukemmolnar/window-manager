@@ -201,7 +201,12 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
     
     return (
       <button
-        onClick={onClick}
+        onMouseDown={(e) => {
+          e.preventDefault(); // Prevent focus shift away from editor
+          if (!disabled && !buttonDisabled && onClick) {
+            onClick(e);
+          }
+        }}
         disabled={disabled || buttonDisabled}
         className={`${baseClasses} ${variantClasses[variant]} ${disabled || buttonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         title={title}
