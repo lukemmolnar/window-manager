@@ -8,6 +8,7 @@ import { MarkdownParser, MarkdownSerializer } from 'prosemirror-markdown';
 import { keymap } from 'prosemirror-keymap';
 import { history } from 'prosemirror-history';
 import { baseKeymap } from 'prosemirror-commands';
+import MarkdownIt from 'markdown-it';
 import './ProseMirrorEditor.css';
 
 // Create schema with list support
@@ -16,8 +17,11 @@ const mySchema = new Schema({
   marks: schema.spec.marks
 });
 
+// Create markdown-it instance
+const md = new MarkdownIt('commonmark', { html: false });
+
 // Create markdown parser and serializer
-const markdownParser = new MarkdownParser(mySchema, {
+const markdownParser = new MarkdownParser(mySchema, md, {
   blockquote: { block: 'blockquote' },
   paragraph: { block: 'paragraph' },
   list_item: { block: 'list_item' },
@@ -153,12 +157,36 @@ const ProseMirrorEditor = ({
     // Parse the markdown content
     let doc;
     try {
-      doc = markdownParser.parse(content || '');
+      console.log('ProseMirror: Parsing content:', content?.substring(0, 100) + '...');
+      if (content && content.trim()) {
+        doc = markdownParser.parse(content);
+      } else {
+        // Create empty document with a paragraph
+        doc = mySchema.nodes.doc.create([
+          mySchema.nodes.paragraph.create()
+        ]);
+      }
     } catch (error) {
       console.error('Error parsing markdown:', error);
-      doc = mySchema.nodes.doc.create(
-        mySchema.nodes.paragraph.create()
-      );
+      // Fallback to plain text in a paragraph
+      if (content && content.trim()) {
+        try {
+          doc = mySchema.nodes.doc.create([
+            mySchema.nodes.paragraph.create(null, [
+              mySchema.text(content)
+            ])
+          ]);
+        } catch (fallbackError) {
+          console.error('Fallback parsing failed:', fallbackError);
+          doc = mySchema.nodes.doc.create([
+            mySchema.nodes.paragraph.create()
+          ]);
+        }
+      } else {
+        doc = mySchema.nodes.doc.create([
+          mySchema.nodes.paragraph.create()
+        ]);
+      }
     }
 
     // Create the editor state
@@ -211,26 +239,7 @@ const ProseMirrorEditor = ({
       viewRef.current = null;
       setIsReady(false);
     };
-  }, [readOnly]); // Only recreate when readOnly changes
-
-  // Update content when it changes externally
-  useEffect(() => {
-    if (!viewRef.current || !isReady) return;
-
-    const currentMarkdown = markdownSerializer.serialize(viewRef.current.state.doc);
-    if (currentMarkdown !== content) {
-      try {
-        const doc = markdownParser.parse(content || '');
-        const newState = EditorState.create({
-          doc,
-          plugins: viewRef.current.state.plugins
-        });
-        viewRef.current.updateState(newState);
-      } catch (error) {
-        console.error('Error updating editor content:', error);
-      }
-    }
-  }, [content, isReady]);
+  }, [readOnly, content]); // React to content changes too
 
   return (
     <div className="flex-1 overflow-auto">
