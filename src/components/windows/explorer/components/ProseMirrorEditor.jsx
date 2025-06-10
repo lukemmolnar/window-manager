@@ -17,8 +17,13 @@ const mySchema = new Schema({
   marks: schema.spec.marks
 });
 
-// Create markdown-it instance
-const md = new MarkdownIt('commonmark', { html: false });
+// Create markdown-it instance with breaks enabled
+const md = new MarkdownIt('commonmark', { 
+  html: false,
+  breaks: true,  // Enable line break parsing
+  linkify: false,
+  typographer: false
+});
 
 // Create markdown parser and serializer
 const markdownParser = new MarkdownParser(mySchema, md, {
@@ -39,6 +44,7 @@ const markdownParser = new MarkdownParser(mySchema, md, {
     })
   },
   hardbreak: { node: 'hard_break' },
+  softbreak: { node: 'hard_break' }, // Map soft breaks to hard breaks for consistency
   em: { mark: 'em' },
   strong: { mark: 'strong' },
   link: {
@@ -100,13 +106,8 @@ const markdownSerializer = new MarkdownSerializer({
         ')'
     );
   },
-  hard_break: (state, node, parent, index) => {
-    for (let i = index + 1; i < parent.childCount; i++) {
-      if (parent.child(i).type !== node.type) {
-        state.write('\\\n');
-        return;
-      }
-    }
+  hard_break: (state, node) => {
+    state.write('\n');
   },
   text: (state, node) => {
     state.text(node.text);
