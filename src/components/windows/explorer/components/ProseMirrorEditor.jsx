@@ -19,7 +19,7 @@ import {
   sinkListItem 
 } from 'prosemirror-schema-list';
 import { inputRules, wrappingInputRule, textblockTypeInputRule, smartQuotes, emDash, ellipsis } from 'prosemirror-inputrules';
-import { tableEditing, columnResizing, goToNextCell, addColumnBefore, addColumnAfter, deleteColumn, addRowBefore, addRowAfter, deleteRow, deleteTable, mergeCells, splitCell, setCellAttr, toggleHeaderRow, toggleHeaderColumn, toggleHeaderCell } from 'prosemirror-tables';
+import { tableEditing, columnResizing, goToNextCell } from 'prosemirror-tables';
 import { 
   Bold, Italic, Code, List, ListOrdered, Quote, 
   Undo2, Redo2, Table, RotateCcw
@@ -27,16 +27,7 @@ import {
 import './ProseMirrorEditor.css';
 
 // Import table nodes
-import { 
-  tableNodes, 
-  createTable, 
-  getCellsInColumn, 
-  isColumnSelected,
-  getCellsInRow,
-  isRowSelected,
-  isTableSelected,
-  selectionCell
-} from 'prosemirror-tables';
+import { tableNodes } from 'prosemirror-tables';
 
 // Create enhanced schema with tables and lists
 const mySchema = new Schema({
@@ -53,6 +44,29 @@ const mySchema = new Schema({
   })),
   marks: schema.spec.marks
 });
+
+// Custom table creation function
+function createSimpleTable(schema, rows = 3, cols = 3, withHeaderRow = true) {
+  const tableRows = [];
+  
+  for (let i = 0; i < rows; i++) {
+    const cells = [];
+    const isHeaderRow = withHeaderRow && i === 0;
+    
+    for (let j = 0; j < cols; j++) {
+      const cellType = isHeaderRow ? schema.nodes.table_header : schema.nodes.table_cell;
+      const cell = cellType.create(null, [
+        schema.nodes.paragraph.create()
+      ]);
+      cells.push(cell);
+    }
+    
+    const row = schema.nodes.table_row.create(null, cells);
+    tableRows.push(row);
+  }
+  
+  return schema.nodes.table.create(null, tableRows);
+}
 
 // Create input rules for markdown-style shortcuts
 function buildInputRules(schema) {
@@ -167,7 +181,7 @@ const EditorToolbar = ({ view, disabled }) => {
   };
   
   const insertTable = () => {
-    const table = createTable(mySchema, 3, 3, true);
+    const table = createSimpleTable(mySchema, 3, 3, true);
     const tr = view.state.tr.replaceSelectionWith(table);
     view.dispatch(tr);
   };
