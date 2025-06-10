@@ -66,8 +66,8 @@ const FileContent = ({
                 Export
               </button>
               
-              {/* Show save button for markdown files to admins or users with file access (for private files) */}
-              {selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
+              {/* Show save button for ProseMirror files to admins or users with file access (for private files) */}
+              {selectedFile.name.endsWith('.prosemirror') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
                 <button 
                   onClick={() => handleSaveFileContent()}
                   className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
@@ -105,13 +105,13 @@ const FileContent = ({
               selectedFile={selectedFile}
               onSave={wrappedHandleSaveFileContent}
             />
-          ) : selectedFile.name.endsWith('.md') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
-            // ProseMirror WYSIWYG Editor for markdown files - admins and users with file access
+          ) : selectedFile.name.endsWith('.prosemirror') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
+            // ProseMirror WYSIWYG Editor for .prosemirror files - admins and users with file access
             <ProseMirrorEditor
               content={fileContent}
               onChange={setFileContent}
               onSave={wrappedHandleSaveFileContent}
-              placeholder="Start typing your markdown here..."
+              placeholder="Start typing your document here..."
               readOnly={false}
             />
           ) : (
@@ -143,12 +143,12 @@ const FileContent = ({
             <p className="text-xs mt-2">All file types are supported for viewing</p>
             {isAdmin && (
               <p className="text-xs mt-1">
-                Admin users can edit markdown (.md), map (.map), and canvas (.canvas) files
+                Admin users can edit ProseMirror (.prosemirror), map (.map), and canvas (.canvas) files
               </p>
             )}
             {!isAdmin && user && user.has_file_access && (
               <p className="text-xs mt-1">
-                Users with file access can edit markdown (.md), map (.map), and canvas (.canvas) files in the Private section
+                Users with file access can edit ProseMirror (.prosemirror), map (.map), and canvas (.canvas) files in the Private section
               </p>
             )}
           </div>

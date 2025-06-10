@@ -1,14 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
-import { Schema } from 'prosemirror-model';
+import { Schema, Node } from 'prosemirror-model';
 import { schema } from 'prosemirror-schema-basic';
 import { addListNodes } from 'prosemirror-schema-list';
-import { MarkdownParser, MarkdownSerializer } from 'prosemirror-markdown';
 import { keymap } from 'prosemirror-keymap';
 import { history } from 'prosemirror-history';
 import { baseKeymap } from 'prosemirror-commands';
-import MarkdownIt from 'markdown-it';
 import './ProseMirrorEditor.css';
 
 // Create schema with list support
@@ -16,129 +14,6 @@ const mySchema = new Schema({
   nodes: addListNodes(schema.spec.nodes, 'paragraph block*', 'block'),
   marks: schema.spec.marks
 });
-
-// Create markdown-it instance with breaks enabled
-const md = new MarkdownIt('commonmark', { 
-  html: false,
-  breaks: true,  // Enable line break parsing
-  linkify: false,
-  typographer: false
-});
-
-// Create markdown parser and serializer
-const markdownParser = new MarkdownParser(mySchema, md, {
-  blockquote: { block: 'blockquote' },
-  paragraph: { block: 'paragraph' },
-  list_item: { block: 'list_item' },
-  bullet_list: { block: 'bullet_list' },
-  ordered_list: { block: 'ordered_list' },
-  heading: { block: 'heading', getAttrs: (token) => ({ level: +token.attrGet('level') }) },
-  code_block: { block: 'code_block', noCloseToken: true },
-  hr: { node: 'horizontal_rule' },
-  image: {
-    node: 'image',
-    getAttrs: (token) => ({
-      src: token.attrGet('src'),
-      title: token.attrGet('title') || null,
-      alt: token.children[0]?.content || null
-    })
-  },
-  hardbreak: { node: 'hard_break' },
-  softbreak: { node: 'hard_break' }, // Map soft breaks to hard breaks for consistency
-  em: { mark: 'em' },
-  strong: { mark: 'strong' },
-  link: {
-    mark: 'link',
-    getAttrs: (token) => ({
-      href: token.attrGet('href'),
-      title: token.attrGet('title') || null
-    })
-  },
-  code_inline: { mark: 'code' }
-});
-
-const markdownSerializer = new MarkdownSerializer({
-  blockquote: (state, node) => {
-    state.wrapBlock('> ', null, node, () => state.renderContent(node));
-  },
-  code_block: (state, node) => {
-    state.write('```\n');
-    state.text(node.textContent, false);
-    state.ensureNewLine();
-    state.write('```');
-    state.closeBlock(node);
-  },
-  heading: (state, node) => {
-    state.write(state.repeat('#', node.attrs.level) + ' ');
-    state.renderInline(node);
-    state.closeBlock(node);
-  },
-  horizontal_rule: (state, node) => {
-    state.write(node.attrs.markup || '---');
-    state.closeBlock(node);
-  },
-  bullet_list: (state, node) => {
-    state.renderList(node, '  ', () => '- ');
-  },
-  ordered_list: (state, node) => {
-    let start = node.attrs.order || 1;
-    let maxW = String(start + node.childCount - 1).length;
-    let space = state.repeat(' ', maxW + 2);
-    state.renderList(node, space, (i) => {
-      let nStr = String(start + i);
-      return state.repeat(' ', maxW - nStr.length) + nStr + '. ';
-    });
-  },
-  list_item: (state, node) => {
-    state.renderContent(node);
-  },
-  paragraph: (state, node) => {
-    state.renderInline(node);
-    state.closeBlock(node);
-  },
-  image: (state, node) => {
-    state.write(
-      '![' +
-        state.esc(node.attrs.alt || '') +
-        '](' +
-        state.esc(node.attrs.src) +
-        (node.attrs.title ? ' ' + state.quote(node.attrs.title) : '') +
-        ')'
-    );
-  },
-  hard_break: (state, node) => {
-    state.write('\n');
-  },
-  text: (state, node) => {
-    state.text(node.text);
-  }
-}, {
-  em: { open: '*', close: '*' },
-  strong: { open: '**', close: '**' },
-  link: {
-    open(_state, mark, parent, index) {
-      return isPlainURL(mark, parent, index, 1) ? '<' : '[';
-    },
-    close(state, mark, parent, index) {
-      return isPlainURL(mark, parent, index, -1)
-        ? '>'
-        : '](' +
-            state.esc(mark.attrs.href) +
-            (mark.attrs.title ? ' ' + state.quote(mark.attrs.title) : '') +
-            ')';
-    }
-  },
-  code: { open: '`', close: '`' }
-});
-
-function isPlainURL(link, parent, index, side) {
-  if (link.attrs.title || !/^\w+:/.test(link.attrs.href)) return false;
-  let content = parent.child(index + (side < 0 ? -1 : 0));
-  if (!content.isText || content.text !== link.attrs.href || content.marks[content.marks.length - 1] !== link) return false;
-  if (index === (side < 0 ? 1 : parent.childCount - 1)) return true;
-  let next = parent.child(index + (side < 0 ? -2 : 1));
-  return !link.isInSet(next.marks);
-}
 
 const ProseMirrorEditor = ({ 
   content = '', 
@@ -158,12 +33,14 @@ const ProseMirrorEditor = ({
   useEffect(() => {
     if (!editorRef.current) return;
 
-    // Parse the initial markdown content
+    // Parse the initial JSON content
     let doc;
     try {
       console.log('ProseMirror: Creating editor with content:', content?.substring(0, 100) + '...');
       if (content && content.trim()) {
-        doc = markdownParser.parse(content);
+        // Try to parse as JSON first
+        const jsonContent = JSON.parse(content);
+        doc = Node.fromJSON(mySchema, jsonContent);
         lastExternalContentRef.current = content;
       } else {
         // Create empty document with a paragraph
@@ -172,10 +49,11 @@ const ProseMirrorEditor = ({
         ]);
       }
     } catch (error) {
-      console.error('Error parsing markdown:', error);
-      // Fallback to plain text in a paragraph
+      console.error('Error parsing ProseMirror JSON:', error);
+      // Fallback: create empty document or try to parse as plain text
       if (content && content.trim()) {
         try {
+          // If JSON parsing failed, treat as plain text and create a paragraph
           doc = mySchema.nodes.doc.create([
             mySchema.nodes.paragraph.create(null, [
               mySchema.text(content)
@@ -204,8 +82,8 @@ const ProseMirrorEditor = ({
         keymap({
           'Mod-s': () => {
             if (onSave && viewRef.current) {
-              const markdown = markdownSerializer.serialize(viewRef.current.state.doc);
-              onSave(markdown);
+              const jsonContent = JSON.stringify(viewRef.current.state.doc.toJSON(), null, 2);
+              onSave(jsonContent);
               return true;
             }
             return false;
@@ -222,11 +100,11 @@ const ProseMirrorEditor = ({
         const newState = view.state.apply(transaction);
         view.updateState(newState);
         
-        // Call onChange with the markdown content
+        // Call onChange with the JSON content
         if (onChange && transaction.docChanged) {
           isInternalChangeRef.current = true;
-          const markdown = markdownSerializer.serialize(newState.doc);
-          onChange(markdown);
+          const jsonContent = JSON.stringify(newState.doc.toJSON(), null, 2);
+          onChange(jsonContent);
           // Reset the flag after the state update
           setTimeout(() => {
             isInternalChangeRef.current = false;
@@ -268,7 +146,9 @@ const ProseMirrorEditor = ({
       try {
         let doc;
         if (content && content.trim()) {
-          doc = markdownParser.parse(content);
+          // Try to parse as JSON
+          const jsonContent = JSON.parse(content);
+          doc = Node.fromJSON(mySchema, jsonContent);
         } else {
           doc = mySchema.nodes.doc.create([
             mySchema.nodes.paragraph.create()

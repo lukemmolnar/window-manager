@@ -344,11 +344,11 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
 
   // Auto-save functionality with debounce
   useEffect(() => {
-    // Auto-save if user has permission and we have a markdown file selected
+    // Auto-save if user has permission and we have a ProseMirror file selected
     // Allow for admins and users with file_access (for private files)
-    // Note: ProseMirror is always "live" so no need to check editMode for markdown files
+    // Note: ProseMirror is always "live" so no need to check editMode for .prosemirror files
     const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
-    if (hasEditPermission && selectedFile && selectedFile.name.endsWith('.md') && fileContent) {
+    if (hasEditPermission && selectedFile && selectedFile.name.endsWith('.prosemirror') && fileContent) {
       // Clear any existing timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
