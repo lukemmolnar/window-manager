@@ -10,14 +10,7 @@ import {
   baseKeymap, 
   toggleMark, 
   setBlockType, 
-  wrapIn,
-  splitBlock,
-  liftTarget,
-  canSplit,
-  lift,
-  selectParentNode,
-  chainCommands,
-  exitCode
+  wrapIn
 } from 'prosemirror-commands';
 import { 
   wrapInList, 
@@ -28,9 +21,8 @@ import {
 import { inputRules, wrappingInputRule, textblockTypeInputRule, smartQuotes, emDash, ellipsis } from 'prosemirror-inputrules';
 import { tableEditing, columnResizing, goToNextCell, addColumnBefore, addColumnAfter, deleteColumn, addRowBefore, addRowAfter, deleteRow, deleteTable, mergeCells, splitCell, setCellAttr, toggleHeaderRow, toggleHeaderColumn, toggleHeaderCell } from 'prosemirror-tables';
 import { 
-  Bold, Italic, Code, Underline, List, ListOrdered, Quote, 
-  Type, Undo2, Redo2, Table, Plus, Minus, RotateCcw,
-  Heading1, Heading2, Heading3, AlignLeft
+  Bold, Italic, Code, List, ListOrdered, Quote, 
+  Undo2, Redo2, Table, RotateCcw
 } from 'lucide-react';
 import './ProseMirrorEditor.css';
 
