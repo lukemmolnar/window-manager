@@ -1,9 +1,61 @@
-// List of available file types. idk why canvas exists atm this doesnt even do anything
+// List of available file types for autocomplete
 export const AVAILABLE_FILE_TYPES = [
-  'md',
+  'txt',    // User-facing extension, actually .prosemirror on server
   'canvas',
   'map'
 ];
+
+// File extension aliasing - maps user-facing extensions to server extensions
+export const FILE_EXTENSION_ALIASES = {
+  'txt': 'prosemirror',    // Users see .txt, server stores .prosemirror
+};
+
+// Convert user-facing extension to server extension
+export const getServerExtension = (userExtension) => {
+  return FILE_EXTENSION_ALIASES[userExtension] || userExtension;
+};
+
+// Convert server extension to user-facing extension
+export const getUserExtension = (serverExtension) => {
+  const alias = Object.entries(FILE_EXTENSION_ALIASES).find(([user, server]) => server === serverExtension);
+  return alias ? alias[0] : serverExtension;
+};
+
+// Get the actual extension from a filename (either user or server)
+export const getFileExtension = (fileName) => {
+  const lastDot = fileName.lastIndexOf('.');
+  return lastDot !== -1 ? fileName.substring(lastDot + 1) : '';
+};
+
+// Check if a file should use the ProseMirror editor
+export const shouldUseProseMirrorEditor = (fileName) => {
+  const ext = getFileExtension(fileName);
+  return ext === 'prosemirror' || ext === 'txt';
+};
+
+// Convert a user-input filename to server filename
+export const convertUserFileNameToServer = (userFileName) => {
+  const lastDot = userFileName.lastIndexOf('.');
+  if (lastDot === -1) return userFileName;
+  
+  const baseName = userFileName.substring(0, lastDot);
+  const userExt = userFileName.substring(lastDot + 1);
+  const serverExt = getServerExtension(userExt);
+  
+  return `${baseName}.${serverExt}`;
+};
+
+// Convert a server filename to user-facing filename
+export const convertServerFileNameToUser = (serverFileName) => {
+  const lastDot = serverFileName.lastIndexOf('.');
+  if (lastDot === -1) return serverFileName;
+  
+  const baseName = serverFileName.substring(0, lastDot);
+  const serverExt = serverFileName.substring(lastDot + 1);
+  const userExt = getUserExtension(serverExt);
+  
+  return `${baseName}.${userExt}`;
+};
 
 // Helper function to get parent directory path from a file path
 export const getParentDirectoryPath = (filePath) => {
@@ -40,6 +92,7 @@ export const expandParentFolders = (filePath, currentExpandedFolders) => {
 
 // Get file icon based on file extension
 export const getFileIconName = (fileName) => {
+  if (fileName.endsWith('.txt') || fileName.endsWith('.prosemirror')) return 'FileText';
   if (fileName.endsWith('.md')) return 'FileText';
   if (fileName.endsWith('.jsx') || fileName.endsWith('.js')) return 'Code';
   if (fileName.endsWith('.json')) return 'Coffee';

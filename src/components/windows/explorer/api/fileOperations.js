@@ -1,4 +1,5 @@
 import API_CONFIG from '../../../../config/api';
+import { convertUserFileNameToServer } from '../utils/fileUtils';
 
 // Function to fetch public directory contents
 export const fetchPublicDirectoryContents = async (publicPath = '/', refreshAll = false) => {
@@ -298,6 +299,13 @@ export const createNewItem = async (activeTab, activeFolderPath, newItemName, cr
     // Determine if we're creating in the public folder or private folder
     const isPublicFolder = activeTab === 'public';
     
+    // For files, convert user-facing filename to server filename (handles .txt -> .prosemirror)
+    const serverItemName = createType === 'file' 
+      ? convertUserFileNameToServer(newItemName.trim())
+      : newItemName.trim();
+    
+    console.log(`[DEBUG] Creating ${createType}: User name="${newItemName}" -> Server name="${serverItemName}"`);
+    
     // Construct the full path for the new item
     let newItemPath;
     if (isPublicFolder) {
@@ -307,10 +315,10 @@ export const createNewItem = async (activeTab, activeFolderPath, newItemName, cr
       const folderPath = publicPrefix && activeFolderPath.startsWith('/') 
         ? activeFolderPath.substring(1) 
         : activeFolderPath;
-      newItemPath = joinPaths(publicPrefix, folderPath, newItemName.trim());
+      newItemPath = joinPaths(publicPrefix, folderPath, serverItemName);
     } else {
       // For private folder (admin only)
-      newItemPath = joinPaths(activeFolderPath, newItemName.trim());
+      newItemPath = joinPaths(activeFolderPath, serverItemName);
     }
     
     // Create the new file or folder

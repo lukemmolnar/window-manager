@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { FileText, Edit, Eye, Download, Map } from 'lucide-react';
 import { convertMarkdownToHtml } from '../utils/markdownUtils';
+import { shouldUseProseMirrorEditor } from '../utils/fileUtils';
 import MapEditor from './MapEditor';
 import CanvasEditor from './CanvasEditor';
 import ProseMirrorEditor from './ProseMirrorEditor';
@@ -66,8 +67,8 @@ const FileContent = ({
                 Export
               </button>
               
-              {/* Show save button for ProseMirror files to admins or users with file access (for private files) */}
-              {selectedFile.name.endsWith('.prosemirror') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
+              {/* Show save button for ProseMirror files (.txt/.prosemirror) to admins or users with file access (for private files) */}
+              {shouldUseProseMirrorEditor(selectedFile.name) && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
                 <button 
                   onClick={() => handleSaveFileContent()}
                   className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
@@ -105,8 +106,8 @@ const FileContent = ({
               selectedFile={selectedFile}
               onSave={wrappedHandleSaveFileContent}
             />
-          ) : selectedFile.name.endsWith('.prosemirror') && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
-            // ProseMirror WYSIWYG Editor for .prosemirror files - admins and users with file access
+          ) : shouldUseProseMirrorEditor(selectedFile.name) && (isAdmin || (user && user.has_file_access && activeTab === 'private')) ? (
+            // ProseMirror WYSIWYG Editor for .txt/.prosemirror files - admins and users with file access
             <ProseMirrorEditor
               content={fileContent}
               onChange={setFileContent}
@@ -143,12 +144,12 @@ const FileContent = ({
             <p className="text-xs mt-2">All file types are supported for viewing</p>
             {isAdmin && (
               <p className="text-xs mt-1">
-                Admin users can edit ProseMirror (.prosemirror), map (.map), and canvas (.canvas) files
+                Admin users can edit text (.txt), map (.map), and canvas (.canvas) files
               </p>
             )}
             {!isAdmin && user && user.has_file_access && (
               <p className="text-xs mt-1">
-                Users with file access can edit ProseMirror (.prosemirror), map (.map), and canvas (.canvas) files in the Private section
+                Users with file access can edit text (.txt), map (.map), and canvas (.canvas) files in the Private section
               </p>
             )}
           </div>

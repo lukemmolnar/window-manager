@@ -26,6 +26,7 @@ export const CreateFileDialog = ({
     const iconProps = { size: 16, className: "mr-2" };
     
     switch (fileType) {
+      case 'txt': return <FileText {...iconProps} />;
       case 'md': return <FileText {...iconProps} />;
       case 'canvas': return <Figma {...iconProps} />;
       case 'map': return <Map {...iconProps} />;

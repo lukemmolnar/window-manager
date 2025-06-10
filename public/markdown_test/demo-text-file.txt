@@ -1,0 +1,148 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 1
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Welcome to Text Files!"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "This looks like a simple "
+        },
+        {
+          "type": "text",
+          "marks": [
+            {
+              "type": "code"
+            }
+          ],
+          "text": ".txt"
+        },
+        {
+          "type": "text",
+          "text": " file to users, but it's actually powered by ProseMirror behind the scenes!"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Users can now:"
+        }
+      ]
+    },
+    {
+      "type": "bullet_list",
+      "content": [
+        {
+          "type": "list_item",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Type "
+                },
+                {
+                  "type": "text",
+                  "marks": [
+                    {
+                      "type": "code"
+                    }
+                  ],
+                  "text": ".txt"
+                },
+                {
+                  "type": "text",
+                  "text": " in autocomplete"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "list_item",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Get a full "
+                },
+                {
+                  "type": "text",
+                  "marks": [
+                    {
+                      "type": "strong"
+                    }
+                  ],
+                  "text": "WYSIWYG editor"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "list_item",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Have "
+                },
+                {
+                  "type": "text",
+                  "marks": [
+                    {
+                      "type": "em"
+                    }
+                  ],
+                  "text": "perfect data preservation"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Behind the scenes, this file is stored as "
+        },
+        {
+          "type": "text",
+          "marks": [
+            {
+              "type": "code"
+            }
+          ],
+          "text": ".prosemirror"
+        },
+        {
+          "type": "text",
+          "text": " with perfect JSON structure!"
+        }
+      ]
+    }
+  ]
+}

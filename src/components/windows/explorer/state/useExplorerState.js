@@ -19,7 +19,8 @@ import {
 import { 
   getParentDirectoryPath, 
   expandParentFolders, 
-  getActiveFolderPath 
+  getActiveFolderPath,
+  shouldUseProseMirrorEditor
 } from '../utils/fileUtils';
 
 const useExplorerState = (nodeId, windowState, updateWindowState) => {
@@ -344,11 +345,11 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
 
   // Auto-save functionality with debounce
   useEffect(() => {
-    // Auto-save if user has permission and we have a ProseMirror file selected
+    // Auto-save if user has permission and we have a ProseMirror file selected (.txt/.prosemirror)
     // Allow for admins and users with file_access (for private files)
-    // Note: ProseMirror is always "live" so no need to check editMode for .prosemirror files
+    // Note: ProseMirror is always "live" so no need to check editMode for these files
     const hasEditPermission = isAdmin || (user?.has_file_access && activeTab === 'private');
-    if (hasEditPermission && selectedFile && selectedFile.name.endsWith('.prosemirror') && fileContent) {
+    if (hasEditPermission && selectedFile && shouldUseProseMirrorEditor(selectedFile.name) && fileContent) {
       // Clear any existing timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
