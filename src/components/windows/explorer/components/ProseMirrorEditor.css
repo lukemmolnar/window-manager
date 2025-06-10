@@ -4,6 +4,8 @@
   outline: none;
   white-space: pre-wrap;
   word-wrap: break-word;
+  background-color: #292524; /* stone-800 to match container */
+  min-height: 100%;
 }
 
 /* Table Styles */
