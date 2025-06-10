@@ -5,15 +5,335 @@ import { Schema, Node } from 'prosemirror-model';
 import { schema } from 'prosemirror-schema-basic';
 import { addListNodes } from 'prosemirror-schema-list';
 import { keymap } from 'prosemirror-keymap';
-import { history } from 'prosemirror-history';
-import { baseKeymap } from 'prosemirror-commands';
+import { history, undo, redo } from 'prosemirror-history';
+import { 
+  baseKeymap, 
+  toggleMark, 
+  setBlockType, 
+  wrapIn,
+  splitBlock,
+  liftTarget,
+  canSplit,
+  lift,
+  selectParentNode,
+  chainCommands,
+  exitCode
+} from 'prosemirror-commands';
+import { 
+  wrapInList, 
+  splitListItem, 
+  liftListItem, 
+  sinkListItem 
+} from 'prosemirror-schema-list';
+import { inputRules, wrappingInputRule, textblockTypeInputRule, smartQuotes, emDash, ellipsis } from 'prosemirror-inputrules';
+import { tableEditing, columnResizing, goToNextCell, addColumnBefore, addColumnAfter, deleteColumn, addRowBefore, addRowAfter, deleteRow, deleteTable, mergeCells, splitCell, setCellAttr, toggleHeaderRow, toggleHeaderColumn, toggleHeaderCell } from 'prosemirror-tables';
+import { 
+  Bold, Italic, Code, Underline, List, ListOrdered, Quote, 
+  Type, Undo2, Redo2, Table, Plus, Minus, RotateCcw,
+  Heading1, Heading2, Heading3, AlignLeft
+} from 'lucide-react';
 import './ProseMirrorEditor.css';
 
-// Create schema with list support
+// Import table nodes
+import { 
+  tableNodes, 
+  createTable, 
+  getCellsInColumn, 
+  isColumnSelected,
+  getCellsInRow,
+  isRowSelected,
+  isTableSelected,
+  selectionCell
+} from 'prosemirror-tables';
+
+// Create enhanced schema with tables and lists
 const mySchema = new Schema({
-  nodes: addListNodes(schema.spec.nodes, 'paragraph block*', 'block'),
+  nodes: addListNodes(schema.spec.nodes, 'paragraph block*', 'block').append(tableNodes({
+    tableGroup: 'block',
+    cellContent: 'block+',
+    cellAttributes: {
+      background: {
+        default: null,
+        getFromDOM(dom) { return dom.style.backgroundColor || null },
+        setDOMAttr(value, attrs) { if (value) attrs.style = (attrs.style || '') + `background-color: ${value};` }
+      }
+    }
+  })),
   marks: schema.spec.marks
 });
+
+// Create input rules for markdown-style shortcuts
+function buildInputRules(schema) {
+  const rules = smartQuotes.concat(ellipsis, emDash);
+  
+  // Bold with **text**
+  rules.push(inputRules.InputRule(/\*\*([^\*]+)\*\*$/, (state, match, start, end) => {
+    const { tr } = state;
+    tr.delete(start, end).insertText(match[1]);
+    return tr.addMark(start, start + match[1].length, schema.marks.strong.create());
+  }));
+  
+  // Italic with *text*
+  rules.push(inputRules.InputRule(/\*([^\*]+)\*$/, (state, match, start, end) => {
+    const { tr } = state;
+    tr.delete(start, end).insertText(match[1]);
+    return tr.addMark(start, start + match[1].length, schema.marks.em.create());
+  }));
+  
+  // Code with `text`
+  rules.push(inputRules.InputRule(/`([^`]+)`$/, (state, match, start, end) => {
+    const { tr } = state;
+    tr.delete(start, end).insertText(match[1]);
+    return tr.addMark(start, start + match[1].length, schema.marks.code.create());
+  }));
+  
+  // Headings
+  for (let i = 1; i <= 6; i++) {
+    rules.push(textblockTypeInputRule(
+      new RegExp(`^#{${i}}\\s$`),
+      schema.nodes.heading,
+      { level: i }
+    ));
+  }
+  
+  // Blockquote
+  rules.push(wrappingInputRule(/^\s*>\s$/, schema.nodes.blockquote));
+  
+  // Code block
+  rules.push(textblockTypeInputRule(/^```$/, schema.nodes.code_block));
+  
+  // Bullet list
+  rules.push(wrappingInputRule(/^\s*([-+*])\s$/, schema.nodes.bullet_list));
+  
+  // Ordered list
+  rules.push(wrappingInputRule(/^\s*(\d+)\.\s$/, schema.nodes.ordered_list));
+  
+  return inputRules({ rules });
+}
+
+// Toolbar component
+const EditorToolbar = ({ view, disabled }) => {
+  const [activeMarks, setActiveMarks] = useState(new Set());
+  const [currentBlockType, setCurrentBlockType] = useState('paragraph');
+  
+  // Update active states when selection changes
+  useEffect(() => {
+    if (!view) return;
+    
+    const updateState = () => {
+      const { state } = view;
+      const { from, to, empty } = state.selection;
+      
+      // Get active marks
+      const marks = new Set();
+      if (empty) {
+        // Get marks that would be applied to typed text
+        const storedMarks = state.storedMarks || state.selection.$from.marks();
+        storedMarks.forEach(mark => marks.add(mark.type.name));
+      } else {
+        // Get marks that apply to the entire selection
+        state.doc.nodesBetween(from, to, (node) => {
+          node.marks.forEach(mark => marks.add(mark.type.name));
+        });
+      }
+      setActiveMarks(marks);
+      
+      // Get current block type
+      const $from = state.selection.$from;
+      const blockType = $from.parent.type.name;
+      setCurrentBlockType(blockType);
+    };
+    
+    updateState();
+    
+    // Listen for transaction updates
+    const handleTransaction = () => updateState();
+    view.dom.addEventListener('focus', updateState);
+    view.dom.addEventListener('blur', updateState);
+    
+    return () => {
+      view.dom.removeEventListener('focus', updateState);
+      view.dom.removeEventListener('blur', updateState);
+    };
+  }, [view]);
+  
+  const runCommand = (command) => {
+    if (disabled || !view) return false;
+    return command(view.state, view.dispatch, view);
+  };
+  
+  const toggleMarkCommand = (markType) => {
+    return runCommand(toggleMark(markType));
+  };
+  
+  const setBlockTypeCommand = (nodeType, attrs = {}) => {
+    return runCommand(setBlockType(nodeType, attrs));
+  };
+  
+  const wrapInCommand = (nodeType, attrs = {}) => {
+    return runCommand(wrapIn(nodeType, attrs));
+  };
+  
+  const insertTable = () => {
+    const table = createTable(mySchema, 3, 3, true);
+    const tr = view.state.tr.replaceSelectionWith(table);
+    view.dispatch(tr);
+  };
+  
+  const ToolbarButton = ({ onClick, active, disabled: buttonDisabled, title, children, variant = 'default' }) => {
+    const baseClasses = "p-1.5 rounded text-sm transition-colors flex items-center justify-center min-w-[32px] h-8";
+    const variantClasses = {
+      default: active 
+        ? "bg-teal-600 text-white" 
+        : "bg-stone-700 hover:bg-stone-600 text-stone-300 hover:text-white",
+      dropdown: "bg-stone-700 hover:bg-stone-600 text-stone-300 hover:text-white px-2"
+    };
+    
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled || buttonDisabled}
+        className={`${baseClasses} ${variantClasses[variant]} ${disabled || buttonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        title={title}
+      >
+        {children}
+      </button>
+    );
+  };
+  
+  const ToolbarDivider = () => (
+    <div className="w-px h-6 bg-stone-600 mx-1" />
+  );
+  
+  return (
+    <div className="border-b border-stone-700 bg-stone-800 p-2 flex items-center gap-1 flex-wrap">
+      {/* Undo/Redo */}
+      <ToolbarButton onClick={() => runCommand(undo)} title="Undo (Ctrl+Z)">
+        <Undo2 size={16} />
+      </ToolbarButton>
+      <ToolbarButton onClick={() => runCommand(redo)} title="Redo (Ctrl+Y)">
+        <Redo2 size={16} />
+      </ToolbarButton>
+      
+      <ToolbarDivider />
+      
+      {/* Headings Dropdown */}
+      <select
+        value={currentBlockType === 'heading' ? `heading-${view?.state.selection.$from.parent.attrs.level || 1}` : currentBlockType}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (value.startsWith('heading-')) {
+            const level = parseInt(value.split('-')[1]);
+            setBlockTypeCommand(mySchema.nodes.heading, { level });
+          } else if (value === 'paragraph') {
+            setBlockTypeCommand(mySchema.nodes.paragraph);
+          } else if (value === 'code_block') {
+            setBlockTypeCommand(mySchema.nodes.code_block);
+          }
+        }}
+        className="bg-stone-700 text-stone-300 text-sm rounded px-2 py-1 border border-stone-600 focus:border-teal-500 focus:outline-none min-w-[100px]"
+        disabled={disabled}
+      >
+        <option value="paragraph">Paragraph</option>
+        <option value="heading-1">Heading 1</option>
+        <option value="heading-2">Heading 2</option>
+        <option value="heading-3">Heading 3</option>
+        <option value="heading-4">Heading 4</option>
+        <option value="heading-5">Heading 5</option>
+        <option value="heading-6">Heading 6</option>
+        <option value="code_block">Code Block</option>
+      </select>
+      
+      <ToolbarDivider />
+      
+      {/* Text Formatting */}
+      <ToolbarButton 
+        onClick={() => toggleMarkCommand(mySchema.marks.strong)}
+        active={activeMarks.has('strong')}
+        title="Bold (Ctrl+B)"
+      >
+        <Bold size={16} />
+      </ToolbarButton>
+      <ToolbarButton 
+        onClick={() => toggleMarkCommand(mySchema.marks.em)}
+        active={activeMarks.has('em')}
+        title="Italic (Ctrl+I)"
+      >
+        <Italic size={16} />
+      </ToolbarButton>
+      <ToolbarButton 
+        onClick={() => toggleMarkCommand(mySchema.marks.code)}
+        active={activeMarks.has('code')}
+        title="Code (Ctrl+`)"
+      >
+        <Code size={16} />
+      </ToolbarButton>
+      
+      <ToolbarDivider />
+      
+      {/* Lists */}
+      <ToolbarButton 
+        onClick={() => runCommand(wrapInList(mySchema.nodes.bullet_list))}
+        active={currentBlockType === 'bullet_list'}
+        title="Bullet List"
+      >
+        <List size={16} />
+      </ToolbarButton>
+      <ToolbarButton 
+        onClick={() => runCommand(wrapInList(mySchema.nodes.ordered_list))}
+        active={currentBlockType === 'ordered_list'}
+        title="Numbered List"
+      >
+        <ListOrdered size={16} />
+      </ToolbarButton>
+      
+      <ToolbarDivider />
+      
+      {/* Block Elements */}
+      <ToolbarButton 
+        onClick={() => wrapInCommand(mySchema.nodes.blockquote)}
+        active={currentBlockType === 'blockquote'}
+        title="Blockquote"
+      >
+        <Quote size={16} />
+      </ToolbarButton>
+      
+      <ToolbarDivider />
+      
+      {/* Table */}
+      <ToolbarButton onClick={insertTable} title="Insert Table">
+        <Table size={16} />
+      </ToolbarButton>
+      
+      <ToolbarDivider />
+      
+      {/* Clear Formatting */}
+      <ToolbarButton 
+        onClick={() => {
+          const { state, dispatch } = view;
+          const { from, to } = state.selection;
+          const tr = state.tr;
+          
+          // Remove all marks from selection
+          state.doc.nodesBetween(from, to, (node, pos) => {
+            if (node.marks.length > 0) {
+              const start = Math.max(from, pos);
+              const end = Math.min(to, pos + node.nodeSize);
+              node.marks.forEach(mark => {
+                tr.removeMark(start, end, mark.type);
+              });
+            }
+          });
+          
+          dispatch(tr);
+        }}
+        title="Clear Formatting"
+      >
+        <RotateCcw size={16} />
+      </ToolbarButton>
+    </div>
+  );
+};
 
 const ProseMirrorEditor = ({ 
   content = '', 
@@ -73,23 +393,60 @@ const ProseMirrorEditor = ({
       }
     }
 
+    // Create enhanced plugins array
+    const plugins = [
+      buildInputRules(mySchema),
+      history(),
+      keymap({
+        // Text formatting shortcuts
+        'Mod-b': toggleMark(mySchema.marks.strong),
+        'Mod-i': toggleMark(mySchema.marks.em),
+        'Mod-`': toggleMark(mySchema.marks.code),
+        
+        // List shortcuts  
+        'Shift-Ctrl-8': wrapInList(mySchema.nodes.bullet_list),
+        'Shift-Ctrl-9': wrapInList(mySchema.nodes.ordered_list),
+        
+        // List item navigation
+        'Tab': sinkListItem(mySchema.nodes.list_item),
+        'Shift-Tab': liftListItem(mySchema.nodes.list_item),
+        'Enter': splitListItem(mySchema.nodes.list_item),
+        
+        // Table navigation
+        'Tab': goToNextCell(1),
+        'Shift-Tab': goToNextCell(-1),
+        
+        // Block shortcuts
+        'Ctrl-Shift-0': setBlockType(mySchema.nodes.paragraph),
+        'Ctrl-Shift-1': setBlockType(mySchema.nodes.heading, { level: 1 }),
+        'Ctrl-Shift-2': setBlockType(mySchema.nodes.heading, { level: 2 }),
+        'Ctrl-Shift-3': setBlockType(mySchema.nodes.heading, { level: 3 }),
+        'Ctrl-Shift-4': setBlockType(mySchema.nodes.heading, { level: 4 }),
+        'Ctrl-Shift-5': setBlockType(mySchema.nodes.heading, { level: 5 }),
+        'Ctrl-Shift-6': setBlockType(mySchema.nodes.heading, { level: 6 }),
+        
+        // Quote
+        'Ctrl-Shift-.': wrapIn(mySchema.nodes.blockquote),
+        
+        // Save
+        'Mod-s': () => {
+          if (onSave && viewRef.current) {
+            const jsonContent = JSON.stringify(viewRef.current.state.doc.toJSON(), null, 2);
+            onSave(jsonContent);
+            return true;
+          }
+          return false;
+        }
+      }),
+      keymap(baseKeymap),
+      columnResizing(),
+      tableEditing()
+    ];
+
     // Create the editor state
     const state = EditorState.create({
       doc,
-      plugins: [
-        history(),
-        keymap(baseKeymap),
-        keymap({
-          'Mod-s': () => {
-            if (onSave && viewRef.current) {
-              const jsonContent = JSON.stringify(viewRef.current.state.doc.toJSON(), null, 2);
-              onSave(jsonContent);
-              return true;
-            }
-            return false;
-          }
-        })
-      ]
+      plugins
     });
 
     // Create the editor view
@@ -175,17 +532,23 @@ const ProseMirrorEditor = ({
   }, [content, isReady]);
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div 
-        ref={editorRef}
-        className="w-full h-full bg-stone-800 text-teal-50 prose-headings:text-teal-100 prose-a:text-teal-400 prose-strong:text-teal-100 prose-em:text-teal-200 prose-code:text-teal-300 prose-pre:bg-stone-900 prose-blockquote:border-teal-600 prose-hr:border-stone-600"
-        style={{ minHeight: '400px' }}
-      />
-      {!isReady && (
-        <div className="flex items-center justify-center h-full">
-          <span className="text-teal-300">Loading editor...</span>
-        </div>
-      )}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Toolbar */}
+      <EditorToolbar view={viewRef.current} disabled={!isReady || readOnly} />
+      
+      {/* Editor */}
+      <div className="flex-1 overflow-auto">
+        <div 
+          ref={editorRef}
+          className="w-full h-full bg-stone-800 text-teal-50 prose-headings:text-teal-100 prose-a:text-teal-400 prose-strong:text-teal-100 prose-em:text-teal-200 prose-code:text-teal-300 prose-pre:bg-stone-900 prose-blockquote:border-teal-600 prose-hr:border-stone-600"
+          style={{ minHeight: '400px' }}
+        />
+        {!isReady && (
+          <div className="flex items-center justify-center h-full">
+            <span className="text-teal-300">Loading editor...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
