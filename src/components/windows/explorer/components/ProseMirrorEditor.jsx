@@ -18,7 +18,7 @@ import {
   liftListItem, 
   sinkListItem 
 } from 'prosemirror-schema-list';
-import { inputRules, wrappingInputRule, textblockTypeInputRule, smartQuotes, emDash, ellipsis } from 'prosemirror-inputrules';
+import { InputRule, inputRules, wrappingInputRule, textblockTypeInputRule, smartQuotes, emDash, ellipsis } from 'prosemirror-inputrules';
 import { tableEditing, columnResizing, goToNextCell } from 'prosemirror-tables';
 import { 
   Bold, Italic, Code, List, ListOrdered, Quote, 
@@ -73,21 +73,21 @@ function buildInputRules(schema) {
   const rules = smartQuotes.concat(ellipsis, emDash);
   
   // Bold with **text**
-  rules.push(inputRules.InputRule(/\*\*([^\*]+)\*\*$/, (state, match, start, end) => {
+  rules.push(new InputRule(/\*\*([^\*]+)\*\*$/, (state, match, start, end) => {
     const { tr } = state;
     tr.delete(start, end).insertText(match[1]);
     return tr.addMark(start, start + match[1].length, schema.marks.strong.create());
   }));
   
   // Italic with *text*
-  rules.push(inputRules.InputRule(/\*([^\*]+)\*$/, (state, match, start, end) => {
+  rules.push(new InputRule(/\*([^\*]+)\*$/, (state, match, start, end) => {
     const { tr } = state;
     tr.delete(start, end).insertText(match[1]);
     return tr.addMark(start, start + match[1].length, schema.marks.em.create());
   }));
   
   // Code with `text`
-  rules.push(inputRules.InputRule(/`([^`]+)`$/, (state, match, start, end) => {
+  rules.push(new InputRule(/`([^`]+)`$/, (state, match, start, end) => {
     const { tr } = state;
     tr.delete(start, end).insertText(match[1]);
     return tr.addMark(start, start + match[1].length, schema.marks.code.create());
