@@ -4,7 +4,7 @@ import {
   BookOpen, FileText, Globe, Lock, FileEdit, Trash2, Music, Image, Figma,
   FolderPlus, Plus, Map
 } from 'lucide-react';
-import { getFileIconName } from '../utils/fileUtils';
+import { getFileIconName, convertServerFileNameToUser } from '../utils/fileUtils';
 import StorageStats from './StorageStats';
 import { CreateFileDialog, RenameDialog, DeleteDialog } from './dialogs/FileDialogs';
 
@@ -152,7 +152,7 @@ const FileTree = ({
           >
             <div className="flex items-center">
               {getFileIcon(item.name)}
-              <span className="text-sm">{item.name}</span>
+              <span className="text-sm">{convertServerFileNameToUser(item.name)}</span>
             </div>
             
             {/* File operation buttons */}

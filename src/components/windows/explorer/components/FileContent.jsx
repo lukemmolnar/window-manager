@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { FileText, Edit, Eye, Download, Map } from 'lucide-react';
 import { convertMarkdownToHtml } from '../utils/markdownUtils';
-import { shouldUseProseMirrorEditor } from '../utils/fileUtils';
+import { shouldUseProseMirrorEditor, convertServerFileNameToUser } from '../utils/fileUtils';
 import MapEditor from './MapEditor';
 import CanvasEditor from './CanvasEditor';
 import ProseMirrorEditor from './ProseMirrorEditor';
@@ -50,7 +50,7 @@ const FileContent = ({
           {/* Header with file name, status, and controls */}
           <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
             <div className="flex items-center">
-              <span className="mr-2">{selectedFile.name}</span>
+              <span className="mr-2">{convertServerFileNameToUser(selectedFile.name)}</span>
               {saveStatus === 'saving' && <span className="text-yellow-400 text-xs ml-2">Saving...</span>}
               {saveStatus === 'saved' && <span className="text-green-400 text-xs ml-2">Saved</span>}
               {saveStatus === 'error' && <span className="text-red-400 text-xs ml-2">Error!</span>}
@@ -61,7 +61,7 @@ const FileContent = ({
               <button 
                 onClick={handleExportFile}
                 className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs flex items-center gap-1"
-                title="Export file"
+                title={`Export ${convertServerFileNameToUser(selectedFile.name)}`}
               >
                 <Download size={14} />
                 Export

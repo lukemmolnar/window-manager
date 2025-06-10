@@ -20,7 +20,8 @@ import {
   getParentDirectoryPath, 
   expandParentFolders, 
   getActiveFolderPath,
-  shouldUseProseMirrorEditor
+  shouldUseProseMirrorEditor,
+  convertServerFileNameToUser
 } from '../utils/fileUtils';
 
 const useExplorerState = (nodeId, windowState, updateWindowState) => {
@@ -1165,7 +1166,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
         // Create a temporary anchor element to trigger the download
         const a = document.createElement('a');
         a.href = url;
-        a.download = selectedFile.name;
+        a.download = convertServerFileNameToUser(selectedFile.name);
         
         // Append the anchor to the document, click it, and remove it
         document.body.appendChild(a);

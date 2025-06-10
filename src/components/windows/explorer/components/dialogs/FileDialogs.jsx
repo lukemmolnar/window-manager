@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { AVAILABLE_FILE_TYPES } from '../../utils/fileUtils';
+import { AVAILABLE_FILE_TYPES, convertServerFileNameToUser } from '../../utils/fileUtils';
 import { 
   X, FileText, Code, Coffee, BookOpen, Globe, File, 
   Music, Image, Figma, Map 
@@ -268,7 +268,7 @@ export const DeleteDialog = ({
         </button>
       </div>
       <div className="mb-2 text-sm">
-        <p>Are you sure you want to delete <span className="text-red-400 font-bold">{itemToDelete.name}</span>?</p>
+        <p>Are you sure you want to delete <span className="text-red-400 font-bold">{convertServerFileNameToUser(itemToDelete.name)}</span>?</p>
         {itemToDelete.type === 'directory' && (
           <p className="text-red-400 text-xs mt-1">This will delete all files and folders inside it!</p>
         )}
