@@ -150,16 +150,20 @@ const ProseMirrorEditor = ({
   const editorRef = useRef(null);
   const viewRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
+  const lastExternalContentRef = useRef(content);
+  const isInternalChangeRef = useRef(false);
 
+  // Create the editor view only once or when readOnly changes
   useEffect(() => {
     if (!editorRef.current) return;
 
-    // Parse the markdown content
+    // Parse the initial markdown content
     let doc;
     try {
-      console.log('ProseMirror: Parsing content:', content?.substring(0, 100) + '...');
+      console.log('ProseMirror: Creating editor with content:', content?.substring(0, 100) + '...');
       if (content && content.trim()) {
         doc = markdownParser.parse(content);
+        lastExternalContentRef.current = content;
       } else {
         // Create empty document with a paragraph
         doc = mySchema.nodes.doc.create([
@@ -176,6 +180,7 @@ const ProseMirrorEditor = ({
               mySchema.text(content)
             ])
           ]);
+          lastExternalContentRef.current = content;
         } catch (fallbackError) {
           console.error('Fallback parsing failed:', fallbackError);
           doc = mySchema.nodes.doc.create([
@@ -218,8 +223,13 @@ const ProseMirrorEditor = ({
         
         // Call onChange with the markdown content
         if (onChange && transaction.docChanged) {
+          isInternalChangeRef.current = true;
           const markdown = markdownSerializer.serialize(newState.doc);
           onChange(markdown);
+          // Reset the flag after the state update
+          setTimeout(() => {
+            isInternalChangeRef.current = false;
+          }, 0);
         }
       },
       attributes: {
@@ -239,7 +249,49 @@ const ProseMirrorEditor = ({
       viewRef.current = null;
       setIsReady(false);
     };
-  }, [readOnly, content]); // React to content changes too
+  }, [readOnly]); // Only recreate when readOnly changes
+
+  // Handle external content changes (from file loading)
+  useEffect(() => {
+    if (!viewRef.current || !isReady) return;
+    
+    // Skip if this is an internal change (from user typing)
+    if (isInternalChangeRef.current) {
+      return;
+    }
+
+    // Only update if content actually changed externally
+    if (content !== lastExternalContentRef.current) {
+      console.log('ProseMirror: External content change detected, updating editor');
+      
+      try {
+        let doc;
+        if (content && content.trim()) {
+          doc = markdownParser.parse(content);
+        } else {
+          doc = mySchema.nodes.doc.create([
+            mySchema.nodes.paragraph.create()
+          ]);
+        }
+
+        // Get current selection to preserve cursor position if possible
+        const currentSelection = viewRef.current.state.selection;
+        
+        // Create new state with updated content
+        const newState = EditorState.create({
+          doc,
+          plugins: viewRef.current.state.plugins,
+          // Try to preserve selection if the document structure allows it
+          selection: currentSelection && doc.content.size >= currentSelection.from ? currentSelection : undefined
+        });
+        
+        viewRef.current.updateState(newState);
+        lastExternalContentRef.current = content;
+      } catch (error) {
+        console.error('Error updating editor with external content:', error);
+      }
+    }
+  }, [content, isReady]);
 
   return (
     <div className="flex-1 overflow-auto">
