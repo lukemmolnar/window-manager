@@ -538,10 +538,30 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
       [folderPath]: isExpanding
     }));
     
-    // If we're expanding the folder, also set it as the current path
     if (isExpanding) {
+      // If we're expanding the folder, set it as the current path and selected item
       setCurrentPath(folderPath);
       setSelectedFile(folder);
+      // Clear file content since we're selecting a folder
+      setFileContent('');
+      setShowPreview(false);
+      if (editMode) {
+        setEditMode(false);
+      }
+    } else {
+      // If we're collapsing the folder, check if the currently selected file is within this folder
+      if (selectedFile && selectedFile.path.startsWith(folderPath + '/')) {
+        // Clear the selection and content if the selected file is within the collapsed folder
+        setSelectedFile(null);
+        setFileContent('');
+        setShowPreview(false);
+        if (editMode) {
+          setEditMode(false);
+        }
+        // Reset current path to parent directory
+        const parentPath = getParentDirectoryPath(folderPath);
+        setCurrentPath(parentPath);
+      }
     }
   };
   
