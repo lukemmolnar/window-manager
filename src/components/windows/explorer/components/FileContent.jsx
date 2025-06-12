@@ -68,7 +68,7 @@ const FileContent = ({
               </button>
               
               {/* Show save button for ProseMirror files (.txt/.prosemirror) to admins or users with file access (for private files) */}
-              {shouldUseProseMirrorEditor(selectedFile.name) && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
+              {/* {shouldUseProseMirrorEditor(selectedFile.name) && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
                 <button 
                   onClick={() => handleSaveFileContent()}
                   className="px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded text-xs"
@@ -76,7 +76,7 @@ const FileContent = ({
                 >
                   Save
                 </button>
-              )}
+              )} */}
             </div>
           </div>
           
