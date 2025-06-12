@@ -52,6 +52,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [showPreview, setShowPreview] = useState(windowState?.showPreview || false);
   const [activeTab, setActiveTab] = useState(windowState?.activeTab || 'public'); // 'public' or 'private'
+  const [isFileTreeCollapsed, setIsFileTreeCollapsed] = useState(windowState?.isFileTreeCollapsed || false);
   
   // Additional state for markdown editing
   const [editMode, setEditMode] = useState(windowState?.editMode || false);
@@ -133,6 +134,11 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
             setEditMode(savedState.content.editMode);
           }
           
+          if (savedState.content.isFileTreeCollapsed !== undefined) {
+            console.log(`[DEBUG] Restoring file tree collapsed state: ${savedState.content.isFileTreeCollapsed}`);
+            setIsFileTreeCollapsed(savedState.content.isFileTreeCollapsed);
+          }
+          
           // Mark as loaded
           stateLoadedRef.current = true;
         } else {
@@ -174,7 +180,8 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
         selectedFile,
         expandedFolders,
         activeTab,
-        editMode
+        editMode,
+        isFileTreeCollapsed
       });
       
       saveExplorerState({
@@ -183,7 +190,8 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
           selectedFile,
           expandedFolders,
           activeTab,
-          editMode
+          editMode,
+          isFileTreeCollapsed
         }
       }).catch(error => {
         console.error(`[DEBUG] Failed to save explorer state for window ${nodeId} to IndexedDB:`, error);
@@ -196,7 +204,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
         clearTimeout(explorerSaveTimeoutRef.current);
       }
     };
-  }, [selectedFile, expandedFolders, activeTab, editMode, nodeId]);
+  }, [selectedFile, expandedFolders, activeTab, editMode, isFileTreeCollapsed, nodeId]);
 
   // Load initial directory contents and restore selected file afterward
   useEffect(() => {
@@ -1093,6 +1101,11 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     }
   };
 
+  // Toggle file tree collapse
+  const toggleFileTreeCollapse = () => {
+    setIsFileTreeCollapsed(!isFileTreeCollapsed);
+  };
+  
   // Handle file or folder export/download
   const handleExportFile = async () => {
     if (!selectedFile) {
@@ -1216,6 +1229,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     activeTab,
     editMode,
     saveStatus,
+    isFileTreeCollapsed,
     showCreateDialog,
     createType, 
     newItemName,
@@ -1239,6 +1253,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
     handleSaveFileContent,
     handleExportFile,
     toggleFolder,
+    toggleFileTreeCollapse,
     createNewItem,
     openCreateDialog,
     closeCreateDialog,

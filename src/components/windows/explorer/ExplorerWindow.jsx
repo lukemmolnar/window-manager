@@ -4,6 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import FileTree from './components/FileTree';
 import FileContent from './components/FileContent';
 import StorageStats from './components/StorageStats';
+import { PanelLeftOpen } from 'lucide-react';
 import '../ExplorerWindow.css';
 
 const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
@@ -15,56 +16,70 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
   return (
     <div className="h-full w-full flex flex-col bg-stone-900 text-teal-400 overflow-hidden">
       <div className="flex flex-1 overflow-hidden relative">
-        {/* File tree panel */}
-        <FileTree 
-          files={explorerState.files}
-          publicFiles={explorerState.publicFiles}
-          activeTab={explorerState.activeTab}
-          expandedFolders={explorerState.expandedFolders}
-          currentPath={explorerState.currentPath}
-          selectedFile={explorerState.selectedFile}
-          isTreeLoading={explorerState.isTreeLoading}
-          errorMessage={explorerState.errorMessage}
-          isAdmin={explorerState.isAdmin}
-          user={user}
-          toggleFolder={explorerState.toggleFolder}
-          handleFileSelect={explorerState.handleFileSelect}
-          openRenameDialog={explorerState.openRenameDialog}
-          openDeleteDialog={explorerState.openDeleteDialog}
-          openCreateDialog={explorerState.openCreateDialog}
-          handleDragStart={explorerState.handleDragStart}
-          handleDragOver={explorerState.handleDragOver}
-          handleDragLeave={explorerState.handleDragLeave}
-          handleDrop={explorerState.handleDrop}
-          handleContainerDragOver={explorerState.handleContainerDragOver}
-          handleContainerDragLeave={explorerState.handleContainerDragLeave}
-          handleContainerDrop={explorerState.handleContainerDrop}
-          dropTarget={explorerState.dropTarget}
-          storageStats={explorerState.storageStats}
-          // Dialog-related props
-          showCreateDialog={explorerState.showCreateDialog}
-          createType={explorerState.createType}
-          newItemName={explorerState.newItemName}
-          setNewItemName={explorerState.setNewItemName}
-          isCreating={explorerState.isCreating}
-          closeCreateDialog={explorerState.closeCreateDialog}
-          createNewItem={explorerState.createNewItem}
-          showRenameDialog={explorerState.showRenameDialog}
-          itemToRename={explorerState.itemToRename}
-          newName={explorerState.newName}
-          setNewName={explorerState.setNewName}
-          isRenaming={explorerState.isRenaming}
-          closeRenameDialog={explorerState.closeRenameDialog}
-          renameItem={explorerState.renameItem}
-          showDeleteDialog={explorerState.showDeleteDialog}
-          itemToDelete={explorerState.itemToDelete}
-          isDeleting={explorerState.isDeleting}
-          closeDeleteDialog={explorerState.closeDeleteDialog}
-          handleDeleteItem={explorerState.handleDeleteItem}
-        />
+        {/* File tree panel - conditionally rendered */}
+        {!explorerState.isFileTreeCollapsed && (
+          <FileTree 
+            files={explorerState.files}
+            publicFiles={explorerState.publicFiles}
+            activeTab={explorerState.activeTab}
+            expandedFolders={explorerState.expandedFolders}
+            currentPath={explorerState.currentPath}
+            selectedFile={explorerState.selectedFile}
+            isTreeLoading={explorerState.isTreeLoading}
+            errorMessage={explorerState.errorMessage}
+            isAdmin={explorerState.isAdmin}
+            user={user}
+            isFileTreeCollapsed={explorerState.isFileTreeCollapsed}
+            toggleFileTreeCollapse={explorerState.toggleFileTreeCollapse}
+            toggleFolder={explorerState.toggleFolder}
+            handleFileSelect={explorerState.handleFileSelect}
+            openRenameDialog={explorerState.openRenameDialog}
+            openDeleteDialog={explorerState.openDeleteDialog}
+            openCreateDialog={explorerState.openCreateDialog}
+            handleDragStart={explorerState.handleDragStart}
+            handleDragOver={explorerState.handleDragOver}
+            handleDragLeave={explorerState.handleDragLeave}
+            handleDrop={explorerState.handleDrop}
+            handleContainerDragOver={explorerState.handleContainerDragOver}
+            handleContainerDragLeave={explorerState.handleContainerDragLeave}
+            handleContainerDrop={explorerState.handleContainerDrop}
+            dropTarget={explorerState.dropTarget}
+            storageStats={explorerState.storageStats}
+            // Dialog-related props
+            showCreateDialog={explorerState.showCreateDialog}
+            createType={explorerState.createType}
+            newItemName={explorerState.newItemName}
+            setNewItemName={explorerState.setNewItemName}
+            isCreating={explorerState.isCreating}
+            closeCreateDialog={explorerState.closeCreateDialog}
+            createNewItem={explorerState.createNewItem}
+            showRenameDialog={explorerState.showRenameDialog}
+            itemToRename={explorerState.itemToRename}
+            newName={explorerState.newName}
+            setNewName={explorerState.setNewName}
+            isRenaming={explorerState.isRenaming}
+            closeRenameDialog={explorerState.closeRenameDialog}
+            renameItem={explorerState.renameItem}
+            showDeleteDialog={explorerState.showDeleteDialog}
+            itemToDelete={explorerState.itemToDelete}
+            isDeleting={explorerState.isDeleting}
+            closeDeleteDialog={explorerState.closeDeleteDialog}
+            handleDeleteItem={explorerState.handleDeleteItem}
+          />
+        )}
         
+        {/* Floating expand button when file tree is collapsed */}
+        {explorerState.isFileTreeCollapsed && (
+          <button
+            onClick={explorerState.toggleFileTreeCollapse}
+            className="absolute top-4 left-4 z-10 p-2 bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded-md text-teal-400 hover:text-teal-300 transition-colors shadow-lg"
+            title="Expand File Tree"
+          >
+            <PanelLeftOpen size={20} />
+          </button>
+        )}
         
-        {/* File content panel */}
+        {/* File content panel - takes full width when tree is collapsed */}
         <FileContent
           selectedFile={explorerState.selectedFile}
           isContentLoading={explorerState.isContentLoading}

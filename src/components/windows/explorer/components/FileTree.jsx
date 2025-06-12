@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   FolderOpen, ChevronRight, ChevronDown, File, Coffee, Code, 
   BookOpen, FileText, Globe, Lock, FileEdit, Trash2, Music, Image, Figma,
-  FolderPlus, Plus, Map
+  FolderPlus, Plus, Map, PanelLeftClose
 } from 'lucide-react';
 import { getFileIconName, convertServerFileNameToUser } from '../utils/fileUtils';
 import StorageStats from './StorageStats';
@@ -19,6 +19,8 @@ const FileTree = ({
   errorMessage,
   isAdmin,
   user,
+  isFileTreeCollapsed,
+  toggleFileTreeCollapse,
   toggleFolder,
   handleFileSelect,
   openRenameDialog,
@@ -245,25 +247,36 @@ const FileTree = ({
           </div>
         </div>
         
-        {/* File creation buttons (admins for both tabs, users with file access only for private tab) */}
-        {(isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => openCreateDialog('file')}
-              className="p-1 rounded hover:bg-stone-700 text-teal-400"
-              title="Create new file"
-            >
-              <Plus size={16} />
-            </button>
-            <button
-              onClick={() => openCreateDialog('directory')}
-              className="p-1 rounded hover:bg-stone-700 text-teal-400"
-              title="Create new folder"
-            >
-              <FolderPlus size={16} />
-            </button>
-          </div>
-        )}
+        <div className="flex gap-2">
+          {/* Collapse button */}
+          <button
+            onClick={toggleFileTreeCollapse}
+            className="p-1 rounded hover:bg-stone-700 text-teal-400 hover:text-teal-300"
+            title="Collapse File Tree"
+          >
+            <PanelLeftClose size={16} />
+          </button>
+          
+          {/* File creation buttons (admins for both tabs, users with file access only for private tab) */}
+          {(isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
+            <>
+              <button
+                onClick={() => openCreateDialog('file')}
+                className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                title="Create new file"
+              >
+                <Plus size={16} />
+              </button>
+              <button
+                onClick={() => openCreateDialog('directory')}
+                className="p-1 rounded hover:bg-stone-700 text-teal-400"
+                title="Create new folder"
+              >
+                <FolderPlus size={16} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
       
       <div 
