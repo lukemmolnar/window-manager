@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { FileText, Edit, Eye, Download, Map } from 'lucide-react';
+import { FileText, Edit, Eye, Download, Map, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { convertMarkdownToHtml } from '../utils/markdownUtils';
 import { shouldUseProseMirrorEditor, convertServerFileNameToUser } from '../utils/fileUtils';
 import MapEditor from './MapEditor';
@@ -18,6 +18,8 @@ const FileContent = ({
   isAdmin,
   user,
   activeTab,
+  isFileTreeCollapsed,
+  toggleFileTreeCollapse,
   setFileContent,
   toggleEditMode,
   handleMarkdownChange,
@@ -50,6 +52,15 @@ const FileContent = ({
           {/* Header with file name, status, and controls */}
           <div className="p-2 border-b border-stone-700 font-mono text-sm flex items-center justify-between">
             <div className="flex items-center">
+              {/* File tree toggle button */}
+              <button
+                onClick={toggleFileTreeCollapse}
+                className="p-1 rounded hover:bg-stone-700 text-teal-400 hover:text-teal-300 mr-3"
+                title={isFileTreeCollapsed ? "Show File Tree" : "Hide File Tree"}
+              >
+                {isFileTreeCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+              </button>
+              
               <span className="mr-2">{convertServerFileNameToUser(selectedFile.name)}</span>
               {saveStatus === 'saving' && <span className="text-yellow-400 text-xs ml-2">Saving...</span>}
               {saveStatus === 'saved' && <span className="text-green-400 text-xs ml-2">Saved</span>}

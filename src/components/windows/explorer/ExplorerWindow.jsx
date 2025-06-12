@@ -29,8 +29,6 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
             errorMessage={explorerState.errorMessage}
             isAdmin={explorerState.isAdmin}
             user={user}
-            isFileTreeCollapsed={explorerState.isFileTreeCollapsed}
-            toggleFileTreeCollapse={explorerState.toggleFileTreeCollapse}
             toggleFolder={explorerState.toggleFolder}
             handleFileSelect={explorerState.handleFileSelect}
             openRenameDialog={explorerState.openRenameDialog}
@@ -68,16 +66,6 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           />
         )}
         
-        {/* Floating expand button when file tree is collapsed */}
-        {explorerState.isFileTreeCollapsed && (
-          <button
-            onClick={explorerState.toggleFileTreeCollapse}
-            className="absolute top-4 left-4 z-10 p-2 bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded-md text-teal-400 hover:text-teal-300 transition-colors shadow-lg"
-            title="Expand File Tree"
-          >
-            <PanelLeftOpen size={20} />
-          </button>
-        )}
         
         {/* File content panel - takes full width when tree is collapsed */}
         <FileContent
@@ -92,6 +80,8 @@ const ExplorerWindow = ({ isActive, nodeId, onCommand, transformWindow, windowSt
           isAdmin={explorerState.isAdmin}
           user={user}
           activeTab={explorerState.activeTab}
+          isFileTreeCollapsed={explorerState.isFileTreeCollapsed}
+          toggleFileTreeCollapse={explorerState.toggleFileTreeCollapse}
           setFileContent={explorerState.setFileContent}
           toggleEditMode={explorerState.toggleEditMode}
           handleMarkdownChange={explorerState.handleMarkdownChange}
