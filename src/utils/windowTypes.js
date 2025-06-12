@@ -1,5 +1,5 @@
 // src/utils/windowTypes.js
-import { FolderOpen, Code, Terminal as TerminalIcon, Eye, MessageSquare, Shield, Layout, Dices, Store } from 'lucide-react';
+import { FolderOpen, Code, Terminal as TerminalIcon, Eye, MessageSquare, Shield, Layout, Dices, Store, Users } from 'lucide-react';
 import { WINDOW_TYPES } from './constants';
 
 // Import individually to avoid circular dependency
@@ -10,6 +10,7 @@ import {
   EnhancedAdminWindow,
   EnhancedMarketplaceWindow
 } from '../components/windows';
+import GameWindow from '../components/windows/GameWindow';
 
 export { WINDOW_TYPES };
 
@@ -38,5 +39,10 @@ export const WINDOW_CONTENT = {
     title: 'Tileset Marketplace',
     icon: Store,
     component: EnhancedMarketplaceWindow
+  },
+  [WINDOW_TYPES.GAME]: {
+    title: 'Game',
+    icon: Users,
+    component: GameWindow
   }
 };

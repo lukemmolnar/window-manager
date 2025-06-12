@@ -1,10 +1,11 @@
-import React, { useRef, useEffect } from 'react';
-import { FileText, Edit, Eye, Download, Map, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { FileText, Edit, Eye, Download, Map, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-react';
 import { convertMarkdownToHtml } from '../utils/markdownUtils';
 import { shouldUseProseMirrorEditor, convertServerFileNameToUser } from '../utils/fileUtils';
 import MapEditor from './MapEditor';
 import CanvasEditor from './CanvasEditor';
 import ProseMirrorEditor from './ProseMirrorEditor';
+import API_CONFIG from '../../../../config/api';
 
 const FileContent = ({
   selectedFile,
@@ -26,6 +27,94 @@ const FileContent = ({
   handleSaveFileContent,
   handleExportFile
 }) => {
+  const [currentParty, setCurrentParty] = useState(null);
+  const [isLoadingMap, setIsLoadingMap] = useState(false);
+
+  // Check if user has a party and is the creator
+  useEffect(() => {
+    const fetchCurrentParty = async () => {
+      if (!user) return;
+
+      try {
+        // Get JWT token from localStorage
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/auth/current-party`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const party = await response.json();
+          setCurrentParty(party);
+        } else {
+          setCurrentParty(null);
+        }
+      } catch (error) {
+        console.error('Error fetching current party:', error);
+        setCurrentParty(null);
+      }
+    };
+
+    fetchCurrentParty();
+  }, [user]);
+
+  // Handle loading map for party
+  const handleLoadMapForParty = async () => {
+    if (!selectedFile || !currentParty || !fileContent) {
+      return;
+    }
+
+    try {
+      setIsLoadingMap(true);
+
+      // Parse the map data
+      let mapData;
+      try {
+        mapData = JSON.parse(fileContent);
+      } catch (parseError) {
+        console.error('Error parsing map file:', parseError);
+        alert('Error: Invalid map file format');
+        return;
+      }
+
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        alert('Authentication required. Please log in.');
+        return;
+      }
+
+      // Send to the party load-map endpoint
+      const response = await fetch(`${API_CONFIG.BASE_URL}/parties/${currentParty.id}/load-map`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          mapFilePath: selectedFile.path || selectedFile.name,
+          mapData: mapData
+        })
+      });
+
+      if (response.ok) {
+        alert(`Map "${convertServerFileNameToUser(selectedFile.name)}" loaded successfully for party "${currentParty.name}"`);
+      } else {
+        const errorData = await response.json();
+        alert(`Error loading map: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error('Error loading map for party:', error);
+      alert('Error loading map for party');
+    } finally {
+      setIsLoadingMap(false);
+    }
+  };
+
   // Debug logging
 
   // Add an effect to log when file content changes
@@ -43,6 +132,9 @@ const FileContent = ({
     // Call the original function
     handleSaveFileContent(content);
   };
+
+  // Check if user can load maps (is party creator)
+  const canLoadMap = currentParty && user && currentParty.creator_id === user.id;
 
 
   return (
@@ -77,6 +169,19 @@ const FileContent = ({
                 <Download size={14} />
                 Export
               </button>
+
+              {/* Load button - available for .map files when user is party creator */}
+              {selectedFile.name.endsWith('.map') && canLoadMap && (
+                <button 
+                  onClick={handleLoadMapForParty}
+                  disabled={isLoadingMap}
+                  className="px-2 py-1 bg-amber-800 hover:bg-amber-700 disabled:bg-stone-600 disabled:cursor-not-allowed rounded text-xs flex items-center gap-1"
+                  title={`Load map for party "${currentParty.name}"`}
+                >
+                  <Users size={14} />
+                  {isLoadingMap ? 'Loading...' : 'Load'}
+                </button>
+              )}
               
               {/* Show save button for ProseMirror files (.txt/.prosemirror) to admins or users with file access (for private files) */}
               {/* {shouldUseProseMirrorEditor(selectedFile.name) && (isAdmin || (user && user.has_file_access && activeTab === 'private')) && (
