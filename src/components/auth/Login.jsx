@@ -72,7 +72,7 @@ export function Login() {
         
         <div className="mt-4 text-center">
           <p className="text-stone-400 text-sm font-mono">
-            Are ya in the know?
+            You're not ready for the Hyperwar
           </p>
         </div>
       </div>
