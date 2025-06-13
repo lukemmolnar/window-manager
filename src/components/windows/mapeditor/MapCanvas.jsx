@@ -517,19 +517,21 @@ const MapCanvas = ({
     const offsetX = viewportOffset.x;
     const offsetY = viewportOffset.y;
     
-    // Draw default grid background - useful for visualizing empty spaces
-    for (let x = 0; x < mapData.width; x++) {
-      for (let y = 0; y < mapData.height; y++) {
-        const screenX = Math.floor(x * gridSize + offsetX);
-        const screenY = Math.floor(y * gridSize + offsetY);
-        
-        // Only draw if visible on screen
-        if (screenX > -gridSize && screenX < width && 
-            screenY > -gridSize && screenY < height) {
-          // Draw a subtle background for all cells
-          // ctx.fillStyle = '#0f172a'; // Very dark slate blue
-          ctx.fillStyle = '#042f2e'; // Very dark slate blue
-          ctx.fillRect(screenX, screenY, gridSize, gridSize);
+    // Draw default grid background - useful for visualizing empty spaces (hidden in game mode)
+    if (!hideEditorUI) {
+      for (let x = 0; x < mapData.width; x++) {
+        for (let y = 0; y < mapData.height; y++) {
+          const screenX = Math.floor(x * gridSize + offsetX);
+          const screenY = Math.floor(y * gridSize + offsetY);
+          
+          // Only draw if visible on screen
+          if (screenX > -gridSize && screenX < width && 
+              screenY > -gridSize && screenY < height) {
+            // Draw a subtle background for all cells
+            // ctx.fillStyle = '#0f172a'; // Very dark slate blue
+            ctx.fillStyle = '#042f2e'; // Very dark slate blue
+            ctx.fillRect(screenX, screenY, gridSize, gridSize);
+          }
         }
       }
     }
@@ -635,8 +637,8 @@ const MapCanvas = ({
       }
     }
     
-    // Draw hover highlight (hidden in game mode)
-    if (hoverCell && !hideEditorUI) {
+    // Draw hover highlight (always show, but hide tool text in game mode)
+    if (hoverCell) {
       // For brush size of 1, just highlight the single cell
       if (brushSize === 1) {
         const screenX = Math.floor(hoverCell.x * gridSize + offsetX);
@@ -645,13 +647,15 @@ const MapCanvas = ({
         ctx.fillStyle = 'rgba(20, 184, 166, 0.3)'; // Teal with opacity
         ctx.fillRect(screenX, screenY, gridSize, gridSize);
         
-        // Show tool indicator
-        ctx.fillStyle = '#14b8a6';
-        ctx.font = '12px monospace';
-        
-        // If right mouse button is pressed, show "erase" as the tool
-        const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
-        ctx.fillText(displayTool, screenX + 5, screenY + 15);
+        // Show tool indicator only in editor mode
+        if (!hideEditorUI) {
+          ctx.fillStyle = '#14b8a6';
+          ctx.font = '12px monospace';
+          
+          // If right mouse button is pressed, show "erase" as the tool
+          const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
+          ctx.fillText(displayTool, screenX + 5, screenY + 15);
+        }
       } else {
         // For larger brushes, always center around the hoverCell
         const halfBrush = Math.floor(brushSize / 2);
@@ -681,16 +685,18 @@ const MapCanvas = ({
           }
         }
         
-        // Show tool indicator centered on the cursor position
-        const indicatorX = Math.floor(hoverCell.x * gridSize) + offsetX;
-        const indicatorY = Math.floor(hoverCell.y * gridSize) + offsetY;
-        
-        ctx.fillStyle = '#14b8a6';
-        ctx.font = '12px monospace';
-        
-        // If right mouse button is pressed, show "erase" as the tool
-        const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
-        ctx.fillText(`${displayTool} (${brushSize}×${brushSize})`, indicatorX + 5, indicatorY + 15);
+        // Show tool indicator only in editor mode
+        if (!hideEditorUI) {
+          const indicatorX = Math.floor(hoverCell.x * gridSize) + offsetX;
+          const indicatorY = Math.floor(hoverCell.y * gridSize) + offsetY;
+          
+          ctx.fillStyle = '#14b8a6';
+          ctx.font = '12px monospace';
+          
+          // If right mouse button is pressed, show "erase" as the tool
+          const displayTool = activeMouseButton === 2 ? 'erase' : currentTool;
+          ctx.fillText(`${displayTool} (${brushSize}×${brushSize})`, indicatorX + 5, indicatorY + 15);
+        }
       }
     }
   }, [
