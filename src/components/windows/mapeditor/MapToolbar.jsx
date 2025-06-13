@@ -7,9 +7,10 @@ import {
 } from 'lucide-react';
 
 /**
- * Toolbar component for the Map Editor
+ * Toolbar component for the Map Editor and Game Window
  */
 const MapToolbar = ({ 
+  mode = 'edit', // 'edit' or 'game'
   onSave, 
   onUndo, 
   onRedo, 
@@ -21,7 +22,11 @@ const MapToolbar = ({
   showGrid = true,
   saveStatus = 'saved', // default to 'saved'
   mapData,
-  onApplyProperties
+  onApplyProperties,
+  // Game mode specific props
+  gameTitle,
+  gameSubtitle,
+  isDM = false
 }) => {
   const [showProperties, setShowProperties] = useState(false);
   const [mapName, setMapName] = useState(mapData?.name || 'New Map');
@@ -84,50 +89,69 @@ const MapToolbar = ({
   return (
     <>
       <div className="flex justify-between items-center p-2 bg-stone-800 border-b border-stone-700">
-        {/* File operations */}
-        <div className="flex space-x-1 items-center">
-          <button 
-            onClick={onSave}
-            className="p-2 hover:bg-stone-700 rounded text-teal-400"
-            title="Save map"
-          >
-            <Save size={18} />
-          </button>
-          <button 
-            className="p-2 hover:bg-stone-700 rounded text-teal-400"
-            title="Clear map"
-            onClick={onClear}
-          >
-            <Trash2 size={18} />
-          </button>
-          <button 
-            className="p-2 hover:bg-stone-700 rounded text-teal-400"
-            title="Export as PNG"
-          >
-            <Download size={18} />
-          </button>
-          <button 
-            className="p-2 hover:bg-stone-700 rounded text-teal-400"
-            title="Import tileset"
-          >
-            <Upload size={18} />
-          </button>
-          <div className="h-6 border-r border-stone-700 mx-1"></div>
-          <button 
-            className="p-2 hover:bg-stone-700 rounded text-teal-400"
-            title="Export as ASCII"
-            onClick={onExportAscii}
-          >
-            <FileText size={18} />
-          </button>
-          <button 
-            className="p-2 hover:bg-stone-700 rounded text-teal-400"
-            title="Import from ASCII"
-            onClick={onImportAscii}
-          >
-            <Upload size={18} />
-          </button>
-        </div>
+        {mode === 'edit' ? (
+          /* File operations - Edit Mode */
+          <div className="flex space-x-1 items-center">
+            <button 
+              onClick={onSave}
+              className="p-2 hover:bg-stone-700 rounded text-teal-400"
+              title="Save map"
+            >
+              <Save size={18} />
+            </button>
+            <button 
+              className="p-2 hover:bg-stone-700 rounded text-teal-400"
+              title="Clear map"
+              onClick={onClear}
+            >
+              <Trash2 size={18} />
+            </button>
+            <button 
+              className="p-2 hover:bg-stone-700 rounded text-teal-400"
+              title="Export as PNG"
+            >
+              <Download size={18} />
+            </button>
+            <button 
+              className="p-2 hover:bg-stone-700 rounded text-teal-400"
+              title="Import tileset"
+            >
+              <Upload size={18} />
+            </button>
+            <div className="h-6 border-r border-stone-700 mx-1"></div>
+            <button 
+              className="p-2 hover:bg-stone-700 rounded text-teal-400"
+              title="Export as ASCII"
+              onClick={onExportAscii}
+            >
+              <FileText size={18} />
+            </button>
+            <button 
+              className="p-2 hover:bg-stone-700 rounded text-teal-400"
+              title="Import from ASCII"
+              onClick={onImportAscii}
+            >
+              <Upload size={18} />
+            </button>
+          </div>
+        ) : (
+          /* Game info - Game Mode */
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-mono text-teal-100">
+              {gameTitle || 'Game View'}
+            </span>
+            {gameSubtitle && (
+              <span className="text-xs text-stone-400">
+                {gameSubtitle}
+              </span>
+            )}
+            {isDM && (
+              <span className="text-xs bg-amber-800 text-amber-200 px-2 py-1 rounded">
+                DM
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Empty space in the middle to maintain layout */}
         <div className="flex-1"></div>
@@ -150,18 +174,20 @@ const MapToolbar = ({
           >
             <Home size={18} />
           </button>
-          <button 
-            className={`p-2 hover:bg-stone-700 rounded ${showProperties ? 'bg-stone-700 text-teal-300' : 'text-teal-400'}`}
-            title="Map Properties"
-            onClick={toggleProperties}
-          >
-            <Settings size={18} />
-          </button>
+          {mode === 'edit' && (
+            <button 
+              className={`p-2 hover:bg-stone-700 rounded ${showProperties ? 'bg-stone-700 text-teal-300' : 'text-teal-400'}`}
+              title="Map Properties"
+              onClick={toggleProperties}
+            >
+              <Settings size={18} />
+            </button>
+          )}
         </div>
       </div>
       
-      {/* Properties Panel - Expandable */}
-      {showProperties && (
+      {/* Properties Panel - Expandable - Edit Mode Only */}
+      {mode === 'edit' && showProperties && (
         <div className="bg-stone-800 border-b border-stone-700 p-2 grid grid-cols-5 gap-2 items-center text-sm">
           {error && (
             <div className="col-span-5 bg-red-900/30 text-red-400 p-2 rounded mb-2 text-xs">

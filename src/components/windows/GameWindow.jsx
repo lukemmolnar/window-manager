@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Grid, Home, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import MapCanvas from './mapeditor/MapCanvas';
+import MapToolbar from './mapeditor/MapToolbar';
 import API_CONFIG from '../../config/api';
 
 const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
@@ -129,42 +130,16 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
 
   return (
     <div className="h-full w-full flex flex-col bg-stone-900 text-teal-400">
-      {/* Header with party info and controls */}
-      <div className="flex-shrink-0 p-2 border-b border-stone-700 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Users size={16} />
-          <span className="text-sm font-mono">
-            {partyInfo ? `${partyInfo.name} - Game View` : 'Game View'}
-          </span>
-          {partyInfo && user && partyInfo.creator_id === user.id && (
-            <span className="text-xs bg-amber-800 text-amber-200 px-2 py-1 rounded">DM</span>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleGrid}
-            className={`p-1 rounded flex items-center gap-1 text-xs ${
-              showGrid 
-                ? 'bg-teal-700 text-teal-100' 
-                : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-            }`}
-            title="Toggle Grid"
-          >
-            <Grid size={14} />
-            Grid
-          </button>
-          
-          <button
-            onClick={resetView}
-            className="p-1 rounded flex items-center gap-1 text-xs bg-stone-700 text-stone-300 hover:bg-stone-600"
-            title="Reset View to Origin"
-          >
-            <Home size={14} />
-            Home
-          </button>
-        </div>
-      </div>
+      {/* MapToolbar in Game Mode */}
+      <MapToolbar
+        mode="game"
+        onToggleGrid={toggleGrid}
+        onResetView={resetView}
+        showGrid={showGrid}
+        gameTitle={partyInfo ? partyInfo.name : 'Game View'}
+        gameSubtitle="Game View"
+        isDM={partyInfo && user && partyInfo.creator_id === user.id}
+      />
 
       {/* Map Canvas */}
       {mapData ? (
