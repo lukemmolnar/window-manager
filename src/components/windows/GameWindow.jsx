@@ -130,15 +130,25 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
 
   return (
     <div className="h-full w-full flex flex-col bg-stone-900 text-teal-400">
-      {/* MapToolbar in Game Mode */}
+      {/* Original Header with party info and window title */}
+      <div className="flex-shrink-0 p-2 border-b border-stone-700 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users size={16} />
+          <span className="text-sm font-mono">
+            {partyInfo ? `${partyInfo.name} - Game View` : 'Game View'}
+          </span>
+          {partyInfo && user && partyInfo.creator_id === user.id && (
+            <span className="text-xs bg-amber-800 text-amber-200 px-2 py-1 rounded">DM</span>
+          )}
+        </div>
+      </div>
+
+      {/* MapToolbar in Game Mode - simplified */}
       <MapToolbar
         mode="game"
         onToggleGrid={toggleGrid}
         onResetView={resetView}
         showGrid={showGrid}
-        gameTitle={partyInfo ? partyInfo.name : 'Game View'}
-        gameSubtitle="Game View"
-        isDM={partyInfo && user && partyInfo.creator_id === user.id}
       />
 
       {/* Map Canvas */}

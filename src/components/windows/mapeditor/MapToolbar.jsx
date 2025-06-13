@@ -135,22 +135,8 @@ const MapToolbar = ({
             </button>
           </div>
         ) : (
-          /* Game info - Game Mode */
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-mono text-teal-100">
-              {gameTitle || 'Game View'}
-            </span>
-            {gameSubtitle && (
-              <span className="text-xs text-stone-400">
-                {gameSubtitle}
-              </span>
-            )}
-            {isDM && (
-              <span className="text-xs bg-amber-800 text-amber-200 px-2 py-1 rounded">
-                DM
-              </span>
-            )}
-          </div>
+          /* Empty space in Game Mode - party info is in header above */
+          <div></div>
         )}
 
         {/* Empty space in the middle to maintain layout */}
