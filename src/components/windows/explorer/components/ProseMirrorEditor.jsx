@@ -204,12 +204,12 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
   };
   
   const ToolbarButton = ({ onClick, active, disabled: buttonDisabled, title, children, variant = 'default' }) => {
-    const baseClasses = "p-1.5 rounded text-sm transition-colors flex items-center justify-center min-w-[32px] h-8";
+    const baseClasses = "p-2 rounded flex items-center justify-center";
     const variantClasses = {
       default: active 
         ? "bg-teal-600 text-white" 
-        : "bg-stone-700 hover:bg-stone-600 text-stone-300 hover:text-white",
-      dropdown: "bg-stone-700 hover:bg-stone-600 text-stone-300 hover:text-white px-2"
+        : "hover:bg-stone-700 text-teal-400",
+      dropdown: "hover:bg-stone-700 text-teal-400 px-2"
     };
     
     return (
@@ -237,10 +237,10 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
     <div className="border-b border-stone-700 bg-stone-800 p-2 flex items-center gap-1 flex-wrap">
       {/* Undo/Redo */}
       <ToolbarButton onClick={() => runCommand(undo)} title="Undo (Ctrl+Z)">
-        <Undo2 size={16} />
+        <Undo2 size={18} />
       </ToolbarButton>
       <ToolbarButton onClick={() => runCommand(redo)} title="Redo (Ctrl+Y)">
-        <Redo2 size={16} />
+        <Redo2 size={18} />
       </ToolbarButton>
       
       <ToolbarDivider />
@@ -259,7 +259,7 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
             setBlockTypeCommand(mySchema.nodes.code_block);
           }
         }}
-        className="bg-stone-700 text-stone-300 text-sm rounded px-2 py-1 border border-stone-600 focus:border-teal-500 focus:outline-none min-w-[100px]"
+        className="bg-stone-900 border border-stone-700 rounded px-2 py-1 text-sm text-teal-100 focus:outline-none focus:border-teal-600 min-w-[100px]"
         disabled={disabled}
       >
         <option value="paragraph">Paragraph</option>
@@ -280,21 +280,21 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
         active={activeMarks.has('strong')}
         title="Bold (Ctrl+B)"
       >
-        <Bold size={16} />
+        <Bold size={18} />
       </ToolbarButton>
       <ToolbarButton 
         onClick={() => toggleMarkCommand(mySchema.marks.em)}
         active={activeMarks.has('em')}
         title="Italic (Ctrl+I)"
       >
-        <Italic size={16} />
+        <Italic size={18} />
       </ToolbarButton>
       <ToolbarButton 
         onClick={() => toggleMarkCommand(mySchema.marks.code)}
         active={activeMarks.has('code')}
         title="Code (Ctrl+`)"
       >
-        <Code size={16} />
+        <Code size={18} />
       </ToolbarButton>
       
       <ToolbarDivider />
@@ -305,14 +305,14 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
         active={currentBlockType === 'bullet_list'}
         title="Bullet List"
       >
-        <List size={16} />
+        <List size={18} />
       </ToolbarButton>
       <ToolbarButton 
         onClick={() => runCommand(wrapInList(mySchema.nodes.ordered_list))}
         active={currentBlockType === 'ordered_list'}
         title="Numbered List"
       >
-        <ListOrdered size={16} />
+        <ListOrdered size={18} />
       </ToolbarButton>
       
       <ToolbarDivider />
@@ -323,14 +323,14 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
         active={currentBlockType === 'blockquote'}
         title="Blockquote"
       >
-        <Quote size={16} />
+        <Quote size={18} />
       </ToolbarButton>
       
       <ToolbarDivider />
       
       {/* Table */}
       <ToolbarButton onClick={insertTable} title="Insert Table">
-        <Table size={16} />
+        <Table size={18} />
       </ToolbarButton>
       
       {/* Table Management (only show when in table) */}
@@ -340,26 +340,26 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
             onClick={() => runCommand(deleteTable)}
             title="Delete Table"
           >
-            <Trash2 size={16} />
+            <Trash2 size={18} />
           </ToolbarButton>
           <ToolbarButton 
             onClick={() => runCommand(addRowAfter)}
             title="Add Row After"
           >
-            <Plus size={16} />
+            <Plus size={18} />
           </ToolbarButton>
           <ToolbarButton 
             onClick={() => runCommand(deleteRow)}
             title="Delete Row"
           >
-            <Minus size={16} />
+            <Minus size={18} />
           </ToolbarButton>
           <ToolbarButton 
             onClick={() => runCommand(addColumnAfter)}
             title="Add Column After"
           >
             <div className="flex items-center">
-              <Plus size={12} />
+              <Plus size={14} />
               <div className="w-px h-3 bg-current ml-1" />
             </div>
           </ToolbarButton>
@@ -368,7 +368,7 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
             title="Delete Column"
           >
             <div className="flex items-center">
-              <Minus size={12} />
+              <Minus size={14} />
               <div className="w-px h-3 bg-current ml-1" />
             </div>
           </ToolbarButton>
@@ -399,7 +399,7 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
         }}
         title="Clear Formatting"
       >
-        <RotateCcw size={16} />
+        <RotateCcw size={18} />
       </ToolbarButton>
     </div>
   );
