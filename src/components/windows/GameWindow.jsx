@@ -164,6 +164,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
           showGrid={showGrid}
           resetViewRef={resetViewRef}
           brushSize={1}
+          hideEditorUI={true} // Hide editor UI elements for streamlined game view
         />
       ) : (
         <div className="flex items-center justify-center h-full">

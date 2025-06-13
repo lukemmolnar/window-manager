@@ -20,7 +20,9 @@ const MapCanvas = ({
   resetViewRef,
   brushSize = 1,
   // Add the onViewportChange prop to save viewport changes
-  onViewportChange = null
+  onViewportChange = null,
+  // Add prop to hide editor UI elements for game mode
+  hideEditorUI = false
 }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -532,32 +534,34 @@ const MapCanvas = ({
       }
     }
     
-    // Draw a clear boundary around the map area
-    const mapWidthPx = mapData.width * gridSize;
-    const mapHeightPx = mapData.height * gridSize;
-    const mapStartX = offsetX;
-    const mapStartY = offsetY;
-    
-    // Draw boundary with more visible color
-    ctx.strokeStyle = '#5eead4'; // Orange-500
-    ctx.lineWidth = 2;
-    ctx.strokeRect(mapStartX, mapStartY, mapWidthPx, mapHeightPx);
-    
-    // Add small corner markers for extra visibility
-    const cornerSize = 8;
-    ctx.fillStyle = '#5eead4'; // Orange-500
-    
-    // Top-left corner
-    ctx.fillRect(mapStartX - 1, mapStartY - 1, cornerSize, cornerSize);
-    
-    // Top-right corner
-    ctx.fillRect(mapStartX + mapWidthPx - cornerSize + 1, mapStartY - 1, cornerSize, cornerSize);
-    
-    // Bottom-left corner
-    ctx.fillRect(mapStartX - 1, mapStartY + mapHeightPx - cornerSize + 1, cornerSize, cornerSize);
-    
-    // Bottom-right corner
-    ctx.fillRect(mapStartX + mapWidthPx - cornerSize + 1, mapStartY + mapHeightPx - cornerSize + 1, cornerSize, cornerSize);
+    // Draw a clear boundary around the map area (hidden in game mode)
+    if (!hideEditorUI) {
+      const mapWidthPx = mapData.width * gridSize;
+      const mapHeightPx = mapData.height * gridSize;
+      const mapStartX = offsetX;
+      const mapStartY = offsetY;
+      
+      // Draw boundary with more visible color
+      ctx.strokeStyle = '#5eead4'; // Orange-500
+      ctx.lineWidth = 2;
+      ctx.strokeRect(mapStartX, mapStartY, mapWidthPx, mapHeightPx);
+      
+      // Add small corner markers for extra visibility
+      const cornerSize = 8;
+      ctx.fillStyle = '#5eead4'; // Orange-500
+      
+      // Top-left corner
+      ctx.fillRect(mapStartX - 1, mapStartY - 1, cornerSize, cornerSize);
+      
+      // Top-right corner
+      ctx.fillRect(mapStartX + mapWidthPx - cornerSize + 1, mapStartY - 1, cornerSize, cornerSize);
+      
+      // Bottom-left corner
+      ctx.fillRect(mapStartX - 1, mapStartY + mapHeightPx - cornerSize + 1, cornerSize, cornerSize);
+      
+      // Bottom-right corner
+      ctx.fillRect(mapStartX + mapWidthPx - cornerSize + 1, mapStartY + mapHeightPx - cornerSize + 1, cornerSize, cornerSize);
+    }
     
     // Draw map data (cells from each layer)
     if (mapData && mapData.layers && mapData.layers.length > 0) {
@@ -631,8 +635,8 @@ const MapCanvas = ({
       }
     }
     
-    // Draw hover highlight
-    if (hoverCell) {
+    // Draw hover highlight (hidden in game mode)
+    if (hoverCell && !hideEditorUI) {
       // For brush size of 1, just highlight the single cell
       if (brushSize === 1) {
         const screenX = Math.floor(hoverCell.x * gridSize + offsetX);
@@ -701,6 +705,7 @@ const MapCanvas = ({
     tilesetImages,
     tilesetColumns,
     isRegistryInitialized,
+    hideEditorUI, // Add hideEditorUI to trigger re-render when UI mode changes
     // selectedRotation, // Removed: Toolbar rotation shouldn't trigger full canvas redraw
     brushSize  // Add brushSize as a dependency too for completeness
   ]);
@@ -840,17 +845,20 @@ const MapCanvas = ({
       ref={containerRef}
       className="flex-1 relative flex overflow-hidden bg-stone-900"
     >
-      <div className="absolute top-2 left-2 bg-stone-800 p-2 rounded text-xs text-teal-400 flex items-center z-10">
-        <Grid size={14} className="mr-1" />
-        <span>Grid Size: {gridSize}px</span>
-        {!showGrid && <span className="ml-2">(Grid Hidden)</span>}
-      </div>
+      {/* Grid size info box - hidden in game mode */}
+      {!hideEditorUI && (
+        <div className="absolute top-2 left-2 bg-stone-800 p-2 rounded text-xs text-teal-400 flex items-center z-10">
+          <Grid size={14} className="mr-1" />
+          <span>Grid Size: {gridSize}px</span>
+          {!showGrid && <span className="ml-2">(Grid Hidden)</span>}
+        </div>
+      )}
       
       <canvas 
         ref={canvasRef}
         width={canvasSize.width}
         height={canvasSize.height}
-        className="w-full h-full border border-stone-700"
+        className={`w-full h-full ${hideEditorUI ? '' : 'border border-stone-700'}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -858,10 +866,14 @@ const MapCanvas = ({
         onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()} // Prevent context menu on right click
       />
-      <div className="absolute bottom-2 right-2 bg-stone-800 p-2 rounded text-xs text-teal-400 z-10">
-        {currentTool && <span>Tool: {activeMouseButton === 2 ? 'erase' : currentTool}</span>}
-        {hoverCell && <span className="ml-2">Position: ({hoverCell.x}, {hoverCell.y})</span>}
-      </div>
+      
+      {/* Tool and position info - hidden in game mode */}
+      {!hideEditorUI && (
+        <div className="absolute bottom-2 right-2 bg-stone-800 p-2 rounded text-xs text-teal-400 z-10">
+          {currentTool && <span>Tool: {activeMouseButton === 2 ? 'erase' : currentTool}</span>}
+          {hoverCell && <span className="ml-2">Position: ({hoverCell.x}, {hoverCell.y})</span>}
+        </div>
+      )}
     </div>
   );
 };
