@@ -22,7 +22,10 @@ const MapCanvas = ({
   // Add the onViewportChange prop to save viewport changes
   onViewportChange = null,
   // Add prop to hide editor UI elements for game mode
-  hideEditorUI = false
+  hideEditorUI = false,
+  // Player positions for game mode
+  playerPositions = [],
+  currentUserId = null
 }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -311,6 +314,58 @@ const MapCanvas = ({
       ctx.strokeStyle = '#44403c'; // Stone-700
       ctx.strokeRect(x, y, size, size);
     }
+  };
+
+  /**
+   * Draw a player token on the canvas
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {number} x - X position on canvas
+   * @param {number} y - Y position on canvas
+   * @param {number} size - Size of the tile
+   * @param {Object} player - Player data including userId, username
+   * @param {boolean} isCurrentUser - Whether this is the current user's token
+   */
+  const drawPlayerToken = (ctx, x, y, size, player, isCurrentUser) => {
+    const { userId, username } = player;
+    
+    // Calculate token size and position (centered in the grid cell)
+    const tokenSize = size * 0.6; // Token is 60% of grid size
+    const tokenX = x + (size - tokenSize) / 2;
+    const tokenY = y + (size - tokenSize) / 2;
+    
+    // Choose colors based on whether it's the current user
+    const tokenColor = isCurrentUser ? '#10b981' : '#3b82f6'; // Green for current user, blue for others
+    const borderColor = isCurrentUser ? '#059669' : '#1d4ed8';
+    const textColor = '#ffffff';
+    
+    // Draw token circle
+    ctx.beginPath();
+    ctx.arc(tokenX + tokenSize/2, tokenY + tokenSize/2, tokenSize/2, 0, 2 * Math.PI);
+    ctx.fillStyle = tokenColor;
+    ctx.fill();
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw username above the token
+    ctx.fillStyle = textColor;
+    ctx.font = `${Math.max(10, size * 0.25)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    
+    // Add text shadow for better visibility
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    
+    ctx.fillText(username, x + size/2, tokenY - 5);
+    
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
   };
 
   /**
@@ -699,6 +754,24 @@ const MapCanvas = ({
         }
       }
     }
+
+    // Draw player tokens on top of everything (only in game mode)
+    if (hideEditorUI && playerPositions && playerPositions.length > 0) {
+      playerPositions.forEach(player => {
+        const { x, y } = player;
+        
+        // Calculate screen position for this player
+        const screenX = Math.floor(x * gridSize + offsetX);
+        const screenY = Math.floor(y * gridSize + offsetY);
+        
+        // Only draw if visible on screen
+        if (screenX > -gridSize && screenX < width && 
+            screenY > -gridSize && screenY < height) {
+          const isCurrentUser = currentUserId && player.user_id === currentUserId;
+          drawPlayerToken(ctx, screenX, screenY, gridSize, player, isCurrentUser);
+        }
+      });
+    }
   }, [
     gridSize, 
     viewportOffset, 
@@ -712,6 +785,8 @@ const MapCanvas = ({
     tilesetColumns,
     isRegistryInitialized,
     hideEditorUI, // Add hideEditorUI to trigger re-render when UI mode changes
+    playerPositions, // Add player positions for game mode
+    currentUserId, // Add current user ID to distinguish own token
     // selectedRotation, // Removed: Toolbar rotation shouldn't trigger full canvas redraw
     brushSize  // Add brushSize as a dependency too for completeness
   ]);
