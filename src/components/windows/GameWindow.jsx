@@ -200,17 +200,17 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       let newX = x;
       let newY = y;
 
-      switch (e.key.toLowerCase()) {
-        case 'w':
+      switch (e.key) {
+        case 'ArrowUp':
           newY = Math.max(0, y - 1);
           break;
-        case 'a':
+        case 'ArrowLeft':
           newX = Math.max(0, x - 1);
           break;
-        case 's':
+        case 'ArrowDown':
           newY = Math.min(mapData.height - 1, y + 1);
           break;
-        case 'd':
+        case 'ArrowRight':
           newX = Math.min(mapData.width - 1, x + 1);
           break;
         default:
@@ -292,7 +292,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
           )}
         </div>
         <div className="text-xs text-stone-400">
-          Use WASD to move
+          Use arrow keys to move
         </div>
       </div>
 
