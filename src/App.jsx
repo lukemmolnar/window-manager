@@ -7,6 +7,7 @@ import { useWindowManager } from './hooks/useWindowManager';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAuth } from './context/AuthContext';
 import { ActiveUsersProvider } from './context/ActiveUsersContext';
+import { SocketProvider } from './context/SocketContext';
 import { WINDOW_CONTENT, WINDOW_TYPES } from './utils/windowTypes';
 
 /**
@@ -119,23 +120,25 @@ function App() {
   };
 
   return (
-    <ActiveUsersProvider>
-      <div className="w-full h-screen flex flex-col">
-        {/* Global command bar with user info */}
-        <CommandBar 
-          onCommand={handleCommand}
-          currentWorkspaceIndex={currentWorkspaceIndex}
-          switchWorkspace={switchWorkspace}
-          user={user}
-          onLogout={logout}
-        />
-        
-        {/* Main content area */}
-        <div className="flex-1 relative">
-          {renderContent()}
+    <SocketProvider>
+      <ActiveUsersProvider>
+        <div className="w-full h-screen flex flex-col">
+          {/* Global command bar with user info */}
+          <CommandBar 
+            onCommand={handleCommand}
+            currentWorkspaceIndex={currentWorkspaceIndex}
+            switchWorkspace={switchWorkspace}
+            user={user}
+            onLogout={logout}
+          />
+          
+          {/* Main content area */}
+          <div className="flex-1 relative">
+            {renderContent()}
+          </div>
         </div>
-      </div>
-    </ActiveUsersProvider>
+      </ActiveUsersProvider>
+    </SocketProvider>
   );
 }
 
