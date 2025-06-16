@@ -17,9 +17,10 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
   const [playerPositions, setPlayerPositions] = useState([]);
   const [currentPlayerPosition, setCurrentPlayerPosition] = useState({ x: 0, y: 0 });
   const [mapLoadNotification, setMapLoadNotification] = useState(null);
+  const [currentMapPath, setCurrentMapPath] = useState(null);
   const resetViewRef = useRef();
 
-  // Load player positions for the party
+  // Load player positions for the party (legacy - all maps)
   const loadPlayerPositions = async (partyId) => {
     try {
       const token = localStorage.getItem('auth_token');
@@ -44,6 +45,38 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       }
     } catch (error) {
       console.error('Error loading player positions:', error);
+    }
+  };
+
+  // Load player positions for a specific map
+  const loadPlayerPositionsOnMap = async (partyId, mapPath) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const encodedMapPath = encodeURIComponent(mapPath);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/parties/${partyId}/maps/${encodedMapPath}/players`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const positions = await response.json();
+        setPlayerPositions(positions);
+        
+        // Find current user's position on this map
+        const userPosition = positions.find(p => p.user_id === user.id);
+        if (userPosition) {
+          setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
+        } else {
+          // User is not placed on this map
+          setCurrentPlayerPosition({ x: 0, y: 0 });
+        }
+
+        console.log(`Loaded player positions for map ${mapPath}:`, positions);
+      }
+    } catch (error) {
+      console.error('Error loading player positions on map:', error);
     }
   };
 
@@ -99,9 +132,10 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       
       if (mapInfo.mapData) {
         setMapData(mapInfo.mapData);
+        setCurrentMapPath(mapInfo.mapFilePath);
         
-        // Load player positions after map is loaded
-        loadPlayerPositions(party.id);
+        // Load player positions for this specific map
+        loadPlayerPositionsOnMap(party.id, mapInfo.mapFilePath);
       } else {
         setError('No map is currently loaded for this party.');
       }
@@ -154,14 +188,20 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
 
   // Socket event listeners for real-time player updates
   useEffect(() => {
-    if (!socket || !partyInfo) return;
+    if (!socket || !partyInfo || !currentMapPath) return;
 
-    // Request current player positions when joining
-    socket.emit('request_player_positions', partyInfo.id);
+    // Request current player positions for this specific map
+    socket.emit('request_player_positions', {
+      partyId: partyInfo.id,
+      mapPath: currentMapPath
+    });
 
     // Listen for player position updates
     const handlePlayerPositionUpdate = (data) => {
-      const { userId, username, x, y } = data;
+      const { userId, username, mapPath, x, y } = data;
+      
+      // Only process updates for the current map
+      if (mapPath !== currentMapPath) return;
       
       setPlayerPositions(prev => {
         const updated = prev.filter(p => p.user_id !== userId);
@@ -173,20 +213,28 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
         setCurrentPlayerPosition({ x, y });
       }
 
-      console.log(`Player ${username} moved to (${x}, ${y})`);
+      console.log(`Player ${username} moved to (${x}, ${y}) on map ${mapPath}`);
     };
 
     // Listen for initial position sync
-    const handlePlayerPositionsSync = (positions) => {
-      setPlayerPositions(positions);
+    const handlePlayerPositionsSync = (data) => {
+      const { mapPath, players } = data;
+      
+      // Only process sync for the current map
+      if (mapPath !== currentMapPath) return;
+      
+      setPlayerPositions(players);
       
       // Find current user's position
-      const userPosition = positions.find(p => p.user_id === user.id);
+      const userPosition = players.find(p => p.user_id === user.id);
       if (userPosition) {
         setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
+      } else {
+        // User is not placed on this map
+        setCurrentPlayerPosition({ x: 0, y: 0 });
       }
 
-      console.log('Synced player positions:', positions);
+      console.log(`Synced player positions for map ${mapPath}:`, players);
     };
 
     socket.on('player_position_update', handlePlayerPositionUpdate);
@@ -196,11 +244,18 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       socket.off('player_position_update', handlePlayerPositionUpdate);
       socket.off('player_positions_sync', handlePlayerPositionsSync);
     };
-  }, [socket, partyInfo, user]);
+  }, [socket, partyInfo, user, currentMapPath]);
 
   // Move player to new position
   const movePlayer = (newX, newY) => {
-    if (!partyInfo || !mapData) return;
+    if (!partyInfo || !mapData || !currentMapPath) return;
+
+    // Check if user is placed on this map (has a position in playerPositions)
+    const userPosition = playerPositions.find(p => p.user_id === user.id);
+    if (!userPosition) {
+      console.log('Movement blocked: You are not placed on this map by the DM');
+      return;
+    }
 
     // Validate movement within map boundaries
     if (newX < 0 || newX >= mapData.width || newY < 0 || newY >= mapData.height) {
@@ -211,14 +266,15 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     // Update local position immediately for responsiveness
     setCurrentPlayerPosition({ x: newX, y: newY });
 
-    // Send movement to server via socket
+    // Send movement to server via socket with mapPath
     socket.emit('player_move', {
       partyId: partyInfo.id,
+      mapPath: currentMapPath,
       x: newX,
       y: newY
     });
 
-    console.log(`Moving to (${newX}, ${newY})`);
+    console.log(`Moving to (${newX}, ${newY}) on map ${currentMapPath}`);
   };
 
   // Arrow key movement handler
