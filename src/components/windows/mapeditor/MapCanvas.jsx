@@ -514,10 +514,15 @@ const MapCanvas = ({
     // Only set hover cell if it's within map boundaries
     if (gridCoords.x >= 0 && gridCoords.x < mapData.width && 
         gridCoords.y >= 0 && gridCoords.y < mapData.height) {
-      setHoverCell(gridCoords);
+      // Only update if the coordinates have actually changed
+      if (!hoverCell || hoverCell.x !== gridCoords.x || hoverCell.y !== gridCoords.y) {
+        setHoverCell(gridCoords);
+      }
     } else {
       // Clear hover cell when outside map boundaries
-      setHoverCell(null);
+      if (hoverCell !== null) {
+        setHoverCell(null);
+      }
     }
   };
 
