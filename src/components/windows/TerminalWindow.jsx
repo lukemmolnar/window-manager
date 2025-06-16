@@ -11,6 +11,8 @@ import { parseDiceExpression, rollDice, formatRollResult, isValidDiceType } from
 import DebugLogger from '../../utils/debugLogger';
 import { executeCommand } from '../../utils/terminal/executor';
 import { registerCommands } from '../../utils/terminal/commandLoader';
+import { registry } from '../../utils/terminal/registry';
+import { parse } from '../../utils/terminal/parser/parser';
 
 // Initialize the command system
 registerCommands();
@@ -263,6 +265,25 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     return partyMode;
   };
 
+  // Helper function to check if a command should be broadcasted
+  const shouldBroadcastCommand = (commandString) => {
+    try {
+      // Parse the command to get the command name
+      const parsedCommand = parse(commandString);
+      if (!parsedCommand.command) return false;
+      
+      // Find the command in the registry
+      const command = registry.findCommand(parsedCommand.command);
+      if (!command) return false;
+      
+      // Only broadcast commands in the "VTT Actions" category
+      return command.category === 'VTT Actions';
+    } catch (error) {
+      console.error('Error checking if command should be broadcasted:', error);
+      return false;
+    }
+  };
+
   const handleTerminalClick = () => {
     focusRef.current?.focus();
   };
@@ -362,8 +383,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
             result: response.content // Store the result with the GIF
           }]);
           
-          // If in party mode and in a party, broadcast the dice roll result
-          if (partyMode && currentParty && socket) {
+          // If in party mode and in a party, broadcast the dice roll result (only for VTT Actions)
+          if (partyMode && currentParty && socket && shouldBroadcastCommand(command)) {
             socket.emit('broadcast_party_command', {
               partyId: currentParty.id,
               command,
@@ -376,8 +397,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           // Handle regular text responses
           setHistory(prev => [...prev, response]);
           
-          // If in party mode and in a party, broadcast the command result
-          if (partyMode && currentParty && socket && response !== null && response !== undefined) {
+          // If in party mode and in a party, broadcast the command result (only for VTT Actions)
+          if (partyMode && currentParty && socket && response !== null && response !== undefined && shouldBroadcastCommand(command)) {
             socket.emit('broadcast_party_command', {
               partyId: currentParty.id,
               command,
