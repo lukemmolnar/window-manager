@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Users, UserCheck, UserX, Loader, Move } from 'lucide-react';
+import { X, Users, UserCheck, UserX, Loader } from 'lucide-react';
 import API_CONFIG from '../../../config/api';
 
 const PlayerManagementDialog = ({ 
@@ -16,55 +16,23 @@ const PlayerManagementDialog = ({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   
-  // Floating window state
-  const [position, setPosition] = useState({ x: 20, y: 80 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const windowRef = useRef(null);
+  const dialogRef = useRef(null);
 
-  // Mouse event handlers for dragging
-  const handleMouseDown = (e) => {
-    if (windowRef.current) {
-      const rect = windowRef.current.getBoundingClientRect();
-      setIsDragging(true);
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      });
-    }
-  };
-
-  const handleMouseMove = (e) => {
-    if (isDragging) {
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
-      
-      // Keep window within viewport bounds
-      const maxX = window.innerWidth - 400; // Assuming window width of ~400px
-      const maxY = window.innerHeight - 200; // Minimum space from bottom
-      
-      setPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY))
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Attach global mouse events for dragging
+  // Handle clicking outside to close
   useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+    const handleClickOutside = (event) => {
+      if (dialogRef.current && !dialogRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mousedown', handleClickOutside);
       };
     }
-  }, [isDragging, dragOffset]);
+  }, [isOpen, onClose]);
 
   // Load party members and current players on map
   useEffect(() => {
@@ -205,33 +173,27 @@ const PlayerManagementDialog = ({
 
   return (
     <div
-      ref={windowRef}
-      className="fixed bg-stone-800 border border-stone-700 rounded-lg shadow-xl w-96 max-h-[80vh] overflow-hidden z-50"
+      ref={dialogRef}
+      className="fixed bg-stone-800 border border-stone-700 rounded-lg shadow-xl w-80 max-h-[70vh] overflow-hidden z-50"
       style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        cursor: isDragging ? 'grabbing' : 'default'
+        left: '8px',
+        top: '100px', // Position below the toolbar area
       }}
     >
-      {/* Header - Draggable */}
-      <div 
-        className="flex items-center justify-between p-4 border-b border-stone-700 cursor-grab active:cursor-grabbing select-none"
-        onMouseDown={handleMouseDown}
-      >
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 border-b border-stone-700 bg-stone-750">
         <div className="flex items-center gap-2">
-          <Move size={16} className="text-stone-500" />
-          <Users size={20} className="text-teal-400" />
+          <Users size={18} className="text-teal-400" />
           <div>
-            <h3 className="text-lg font-medium text-teal-400">Manage Players</h3>
+            <h3 className="text-base font-medium text-teal-400">Manage Players</h3>
             <p className="text-xs text-stone-400">{mapFileName}</p>
           </div>
         </div>
         <button
           onClick={handleCancel}
           className="text-stone-400 hover:text-stone-200 transition-colors"
-          onMouseDown={(e) => e.stopPropagation()} // Prevent dragging when clicking close
         >
-          <X size={20} />
+          <X size={18} />
         </button>
       </div>
 
