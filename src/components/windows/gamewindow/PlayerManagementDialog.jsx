@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Users, UserCheck, UserX, Loader } from 'lucide-react';
+import { Users, UserCheck, UserX, Loader } from 'lucide-react';
 import API_CONFIG from '../../../config/api';
 
 const PlayerManagementDialog = ({ 
@@ -159,12 +159,6 @@ const PlayerManagementDialog = ({
     }
   };
 
-  const handleCancel = () => {
-    // Reset to original state
-    const currentPlayerIds = playersOnMap.map(p => p.user_id);
-    setSelectedPlayerIds(currentPlayerIds);
-    onClose();
-  };
 
   if (!isOpen) return null;
 
@@ -177,24 +171,16 @@ const PlayerManagementDialog = ({
       className="fixed bg-stone-800 border border-stone-700 rounded-lg shadow-xl w-80 max-h-[70vh] overflow-hidden z-50"
       style={{
         left: '8px',
-        top: '100px', // Position below the toolbar area
+        top: '130px', // Position below the toolbar area
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-stone-700 bg-stone-750">
-        <div className="flex items-center gap-2">
-          <Users size={18} className="text-teal-400" />
-          <div>
-            <h3 className="text-base font-medium text-teal-400">Manage Players</h3>
-            <p className="text-xs text-stone-400">{mapFileName}</p>
-          </div>
+      <div className="flex items-center gap-2 p-3 border-b border-stone-700 bg-stone-750">
+        <Users size={18} className="text-teal-400" />
+        <div>
+          <h3 className="text-base font-medium text-teal-400">Manage Players</h3>
+          <p className="text-xs text-stone-400">{mapFileName}</p>
         </div>
-        <button
-          onClick={handleCancel}
-          className="text-stone-400 hover:text-stone-200 transition-colors"
-        >
-          <X size={18} />
-        </button>
       </div>
 
         {/* Content */}
@@ -273,14 +259,7 @@ const PlayerManagementDialog = ({
         </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-end gap-2 p-4 border-t border-stone-700 bg-stone-750">
-        <button
-          onClick={handleCancel}
-          disabled={isSaving}
-          className="px-4 py-2 text-stone-400 hover:text-stone-200 transition-colors disabled:opacity-50"
-        >
-          Cancel
-        </button>
+      <div className="flex items-center justify-end p-4 border-t border-stone-700 bg-stone-750">
         <button
           onClick={handleSave}
           disabled={isSaving || isLoading}

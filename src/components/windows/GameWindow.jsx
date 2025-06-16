@@ -380,9 +380,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     // Do nothing - game window is read-only
   };
 
-  // Handle opening player management dialog (DM only)
+  // Handle toggling player management dialog (DM only)
   const handleManagePlayers = () => {
-    setShowPlayerManagement(true);
+    setShowPlayerManagement(!showPlayerManagement);
   };
 
   // Handle closing player management dialog
@@ -466,6 +466,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
         showGrid={showGrid}
         isDM={isDM}
         onManagePlayers={handleManagePlayers}
+        isPlayerManagementOpen={showPlayerManagement}
       />
 
       {/* Map Canvas */}

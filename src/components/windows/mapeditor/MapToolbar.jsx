@@ -27,7 +27,8 @@ const MapToolbar = ({
   gameTitle,
   gameSubtitle,
   isDM = false,
-  onManagePlayers
+  onManagePlayers,
+  isPlayerManagementOpen = false
 }) => {
   const [showProperties, setShowProperties] = useState(false);
   const [mapName, setMapName] = useState(mapData?.name || 'New Map');
@@ -141,7 +142,11 @@ const MapToolbar = ({
             {isDM && onManagePlayers && (
               <button
                 onClick={onManagePlayers}
-                className="p-2 hover:bg-stone-700 rounded text-teal-400 flex items-center gap-1"
+                className={`p-2 hover:bg-stone-700 rounded flex items-center gap-1 ${
+                  isPlayerManagementOpen 
+                    ? 'bg-stone-700 text-teal-300' 
+                    : 'text-teal-400'
+                }`}
                 title="Manage player placement on this map"
               >
                 <Users size={18} />
