@@ -102,7 +102,7 @@ const FileContent = ({
       });
 
       if (response.ok) {
-        alert(`Map "${convertServerFileNameToUser(selectedFile.name)}" loaded successfully for party "${currentParty.name}"`);
+        console.log("map loaded");
       } else {
         const errorData = await response.json();
         alert(`Error loading map: ${errorData.message}`);

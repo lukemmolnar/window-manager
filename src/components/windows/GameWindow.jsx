@@ -16,6 +16,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
   const [partyInfo, setPartyInfo] = useState(null);
   const [playerPositions, setPlayerPositions] = useState([]);
   const [currentPlayerPosition, setCurrentPlayerPosition] = useState({ x: 0, y: 0 });
+  const [mapLoadNotification, setMapLoadNotification] = useState(null);
   const resetViewRef = useRef();
 
   // Load player positions for the party
@@ -46,78 +47,110 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     }
   };
 
-  // Load current party and map data
-  useEffect(() => {
-    const loadGameData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  // Load current party and map data - extracted as reusable function
+  const loadGameData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        // Get JWT token from localStorage
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-          setError('Authentication required. Please log in.');
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setError('Authentication required. Please log in.');
+        return;
+      }
+
+      // First, get user's current party
+      const partyResponse = await fetch(`${API_CONFIG.BASE_URL}/auth/current-party`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!partyResponse.ok) {
+        if (partyResponse.status === 404) {
+          setError('You are not currently in a party. Join a party to view the game.');
           return;
         }
-
-        // First, get user's current party
-        const partyResponse = await fetch(`${API_CONFIG.BASE_URL}/auth/current-party`, {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!partyResponse.ok) {
-          if (partyResponse.status === 404) {
-            setError('You are not currently in a party. Join a party to view the game.');
-            return;
-          }
-          throw new Error('Failed to fetch party information');
-        }
-
-        const party = await partyResponse.json();
-        setPartyInfo(party);
-
-        // Then get the party's current map
-        const mapResponse = await fetch(`${API_CONFIG.BASE_URL}/parties/${party.id}/current-map`, {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!mapResponse.ok) {
-          if (mapResponse.status === 404) {
-            setError('No map is currently loaded for this party. The DM needs to load a map from the explorer.');
-            return;
-          }
-          throw new Error('Failed to fetch current map');
-        }
-
-        const mapInfo = await mapResponse.json();
-        
-        if (mapInfo.mapData) {
-          setMapData(mapInfo.mapData);
-          
-          // Load player positions after map is loaded
-          loadPlayerPositions(party.id);
-        } else {
-          setError('No map is currently loaded for this party.');
-        }
-
-      } catch (err) {
-        console.error('Error loading game data:', err);
-        setError(err.message || 'Failed to load game data');
-      } finally {
-        setIsLoading(false);
+        throw new Error('Failed to fetch party information');
       }
-    };
 
+      const party = await partyResponse.json();
+      setPartyInfo(party);
+
+      // Then get the party's current map
+      const mapResponse = await fetch(`${API_CONFIG.BASE_URL}/parties/${party.id}/current-map`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!mapResponse.ok) {
+        if (mapResponse.status === 404) {
+          setError('No map is currently loaded for this party. The DM needs to load a map from the explorer.');
+          return;
+        }
+        throw new Error('Failed to fetch current map');
+      }
+
+      const mapInfo = await mapResponse.json();
+      
+      if (mapInfo.mapData) {
+        setMapData(mapInfo.mapData);
+        
+        // Load player positions after map is loaded
+        loadPlayerPositions(party.id);
+      } else {
+        setError('No map is currently loaded for this party.');
+      }
+
+    } catch (err) {
+      console.error('Error loading game data:', err);
+      setError(err.message || 'Failed to load game data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load initial game data
+  useEffect(() => {
     if (user) {
       loadGameData();
     }
   }, [user]);
+
+  // Socket event listeners for map loading and real-time updates
+  useEffect(() => {
+    if (!socket || !partyInfo) return;
+
+    // Listen for new map being loaded by DM
+    const handleMapLoaded = (data) => {
+      const { mapFilePath, loadedBy } = data;
+      
+      // Extract filename from path for display
+      const filename = mapFilePath.split('/').pop() || mapFilePath;
+      
+      // Show notification
+      setMapLoadNotification(`${loadedBy} loaded new map: ${filename}`);
+      
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => {
+        setMapLoadNotification(null);
+      }, 5000);
+      
+      // Reload the game data to get the new map
+      console.log(`New map loaded by ${loadedBy}: ${filename} - reloading game data`);
+      loadGameData();
+    };
+
+    socket.on('party_map_loaded', handleMapLoaded);
+
+    return () => {
+      socket.off('party_map_loaded', handleMapLoaded);
+    };
+  }, [socket, partyInfo]);
 
   // Socket event listeners for real-time player updates
   useEffect(() => {
@@ -188,12 +221,12 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     console.log(`Moving to (${newX}, ${newY})`);
   };
 
-  // WASD movement handler
+  // Arrow key movement handler
   useEffect(() => {
     if (!isActive || !mapData || !partyInfo) return;
 
     const handleKeyDown = (e) => {
-      // Only handle WASD if this window is active and focused
+      // Only handle arrow keys if this window is active and focused
       if (!isActive) return;
 
       const { x, y } = currentPlayerPosition;
@@ -280,6 +313,13 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
 
   return (
     <div className="h-full w-full flex flex-col bg-stone-900 text-teal-400">
+      {/* Map Load Notification */}
+      {mapLoadNotification && (
+        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-teal-600 text-white px-4 py-2 rounded shadow-lg z-50">
+          <div className="text-sm font-medium">{mapLoadNotification}</div>
+        </div>
+      )}
+
       {/* Header with party info and window title */}
       <div className="flex-shrink-0 p-2 border-b border-stone-700 flex items-center justify-between">
         <div className="flex items-center gap-2">
