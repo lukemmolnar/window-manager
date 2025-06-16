@@ -70,10 +70,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
         const userPosition = positions.find(p => p.user_id === user.id);
         if (userPosition) {
           setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
-        } else {
-          // User is not placed on this map
-          setCurrentPlayerPosition({ x: 0, y: 0 });
         }
+        // Note: Don't reset position when user is not currently placed - preserve last known position
+        // This is important for position memory when players are toggled off/on
 
         console.log(`Loaded player positions for map ${mapPath}:`, positions);
       }
@@ -231,10 +230,8 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       const userPosition = players.find(p => p.user_id === user.id);
       if (userPosition) {
         setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
-      } else {
-        // User is not placed on this map
-        setCurrentPlayerPosition({ x: 0, y: 0 });
       }
+      // Note: Don't reset position when user is not currently placed - preserve last known position
 
       console.log(`Synced player positions for map ${mapPath}:`, players);
     };
