@@ -250,8 +250,11 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       });
       
       // Only process placement updates for the current map and party
-      if (mapPath !== currentMapPath || partyId !== partyInfo.id) {
+      // Convert IDs to strings to handle type mismatches (DB returns numbers, socket sends strings)
+      if (mapPath !== currentMapPath || String(partyId) !== String(partyInfo.id)) {
         console.log(`[CLIENT] Ignoring player placement update - map/party mismatch`);
+        console.log(`[CLIENT] mapPath: "${mapPath}" vs currentMapPath: "${currentMapPath}"`);
+        console.log(`[CLIENT] partyId: "${partyId}" (${typeof partyId}) vs partyInfo.id: "${partyInfo.id}" (${typeof partyInfo.id})`);
         return;
       }
       
