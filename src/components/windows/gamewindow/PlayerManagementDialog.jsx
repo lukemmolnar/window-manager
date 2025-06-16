@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Users, UserCheck, UserX, Loader } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Users, UserCheck, UserX, Loader, Move } from 'lucide-react';
 import API_CONFIG from '../../../config/api';
 
 const PlayerManagementDialog = ({ 
@@ -15,6 +15,56 @@ const PlayerManagementDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Floating window state
+  const [position, setPosition] = useState({ x: 20, y: 80 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const windowRef = useRef(null);
+
+  // Mouse event handlers for dragging
+  const handleMouseDown = (e) => {
+    if (windowRef.current) {
+      const rect = windowRef.current.getBoundingClientRect();
+      setIsDragging(true);
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      // Keep window within viewport bounds
+      const maxX = window.innerWidth - 400; // Assuming window width of ~400px
+      const maxY = window.innerHeight - 200; // Minimum space from bottom
+      
+      setPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Attach global mouse events for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragOffset]);
 
   // Load party members and current players on map
   useEffect(() => {
@@ -154,24 +204,36 @@ const PlayerManagementDialog = ({
   const mapFileName = currentMapPath ? currentMapPath.split('/').pop() || currentMapPath : 'Current Map';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-stone-800 border border-stone-700 rounded-lg shadow-xl w-96 max-h-[80vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-stone-700">
-          <div className="flex items-center gap-2">
-            <Users size={20} className="text-teal-400" />
-            <div>
-              <h3 className="text-lg font-medium text-teal-400">Manage Players</h3>
-              <p className="text-xs text-stone-400">{mapFileName}</p>
-            </div>
+    <div
+      ref={windowRef}
+      className="fixed bg-stone-800 border border-stone-700 rounded-lg shadow-xl w-96 max-h-[80vh] overflow-hidden z-50"
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        cursor: isDragging ? 'grabbing' : 'default'
+      }}
+    >
+      {/* Header - Draggable */}
+      <div 
+        className="flex items-center justify-between p-4 border-b border-stone-700 cursor-grab active:cursor-grabbing select-none"
+        onMouseDown={handleMouseDown}
+      >
+        <div className="flex items-center gap-2">
+          <Move size={16} className="text-stone-500" />
+          <Users size={20} className="text-teal-400" />
+          <div>
+            <h3 className="text-lg font-medium text-teal-400">Manage Players</h3>
+            <p className="text-xs text-stone-400">{mapFileName}</p>
           </div>
-          <button
-            onClick={handleCancel}
-            className="text-stone-400 hover:text-stone-200 transition-colors"
-          >
-            <X size={20} />
-          </button>
         </div>
+        <button
+          onClick={handleCancel}
+          className="text-stone-400 hover:text-stone-200 transition-colors"
+          onMouseDown={(e) => e.stopPropagation()} // Prevent dragging when clicking close
+        >
+          <X size={20} />
+        </button>
+      </div>
 
         {/* Content */}
         <div className="p-4">
@@ -248,24 +310,23 @@ const PlayerManagementDialog = ({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-stone-700 bg-stone-750">
-          <button
-            onClick={handleCancel}
-            disabled={isSaving}
-            className="px-4 py-2 text-stone-400 hover:text-stone-200 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || isLoading}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {isSaving && <Loader size={16} className="animate-spin" />}
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
+      {/* Footer */}
+      <div className="flex items-center justify-end gap-2 p-4 border-t border-stone-700 bg-stone-750">
+        <button
+          onClick={handleCancel}
+          disabled={isSaving}
+          className="px-4 py-2 text-stone-400 hover:text-stone-200 transition-colors disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={isSaving || isLoading}
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          {isSaving && <Loader size={16} className="animate-spin" />}
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
     </div>
   );
