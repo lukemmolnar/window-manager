@@ -22,7 +22,11 @@ const PlayerManagementDialog = ({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dialogRef.current && !dialogRef.current.contains(event.target)) {
-        onClose();
+        // Check if the click is on the "Manage Players" button (which should handle its own toggle)
+        const managePlayersButton = event.target.closest('button[title="Manage player placement on this map"]');
+        if (!managePlayersButton) {
+          onClose();
+        }
       }
     };
 
