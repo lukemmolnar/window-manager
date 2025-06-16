@@ -28,7 +28,8 @@ export class PartyCommand extends Command {
       leave: this.leaveParty,
       list: this.listParties,
       info: this.partyInfo,
-      delete: this.deleteParty
+      delete: this.deleteParty,
+      broadcast: this.toggleBroadcast
     };
   }
 
@@ -38,7 +39,7 @@ export class PartyCommand extends Command {
     
     // Check if the subcommand exists
     if (!Object.keys(this.subcommands).includes(subcommand)) {
-      return 'Unknown party subcommand. Available subcommands: create, join, leave, list, info, delete';
+      return 'Unknown party subcommand. Available subcommands: create, join, leave, list, info, delete, broadcast';
     }
     
     // Execute the appropriate subcommand
@@ -248,6 +249,35 @@ export class PartyCommand extends Command {
     } catch (error) {
       console.error('Error deleting party:', error);
       return `${deletingMessage}\nError deleting party. Please try again.`;
+    }
+  }
+
+  async toggleBroadcast(args, context) {
+    // Check if user is in a party
+    if (!context.currentParty) {
+      return 'Cannot enable broadcast mode: You are not currently in a party. Use "party join <id>" to join a party first.';
+    }
+
+    // Check if we have the necessary broadcast functions in context
+    if (!context.enableBroadcastMode || !context.disableBroadcastMode || !context.isBroadcastMode) {
+      return 'Cannot toggle broadcast mode: Missing broadcast context';
+    }
+
+    try {
+      const currentlyBroadcasting = context.isBroadcastMode();
+      
+      if (currentlyBroadcasting) {
+        // Disable broadcast mode
+        context.disableBroadcastMode();
+        return `Party broadcast mode disabled.\nYour commands will no longer be shared with party members.`;
+      } else {
+        // Enable broadcast mode
+        context.enableBroadcastMode();
+        return `Party broadcast mode enabled for "${context.currentParty.name}".\nYour command results will now be shared with party members.\nType "exit" to disable broadcast mode.`;
+      }
+    } catch (error) {
+      console.error('Error toggling broadcast mode:', error);
+      return 'Error toggling broadcast mode. Please try again.';
     }
   }
 }

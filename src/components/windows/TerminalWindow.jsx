@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAnnouncement } from '../../context/AnnouncementContext';
 import { useWindowState } from '../../context/WindowStateContext';
 import { useParty } from '../../context/PartyContext';
+import { useSocket } from '../../context/SocketContext';
 import { saveTerminalState, getTerminalState } from '../../services/indexedDBService';
 import { parseDiceExpression, rollDice, formatRollResult, isValidDiceType } from '../../utils/diceUtils';
 import DebugLogger from '../../utils/debugLogger';
@@ -33,6 +34,9 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     deleteParty
   } = useParty();
   
+  // Get socket context for party broadcasting
+  const { socket } = useSocket();
+  
   // Ref for managing scrolling
   const terminalRef = useRef(null);
   // Ref to track if state has been loaded from IndexedDB
@@ -47,6 +51,9 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   const [commandHistory, setCommandHistory] = useState(windowState?.commandHistory || []);
   const [currentInput, setCurrentInput] = useState(windowState?.currentInput || '');
   const [historyIndex, setHistoryIndex] = useState(windowState?.historyIndex || -1);
+  
+  // Broadcast mode state
+  const [broadcastMode, setBroadcastMode] = useState(windowState?.broadcastMode || false);
 
   // Load terminal state from IndexedDB on mount if not already in windowState
   useEffect(() => {
@@ -194,7 +201,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         history,
         commandHistory,
         currentInput,
-        historyIndex
+        historyIndex,
+        broadcastMode
       };
       
       // Update window state in context
@@ -210,13 +218,63 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         });
       }
     }
-  }, [history, commandHistory, currentInput, historyIndex, updateWindowState, nodeId]);
+  }, [history, commandHistory, currentInput, historyIndex, broadcastMode, updateWindowState, nodeId]);
+
+  // Socket event listeners for party broadcast
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePartyCommandBroadcast = (data) => {
+      const { username, command, result, userId } = data;
+      
+      // Don't show our own broadcasts (we already see them locally)
+      if (userId === user?.id) return;
+      
+      // Only show broadcasts if we're in broadcast mode
+      if (!broadcastMode) return;
+      
+      // Add the broadcast to history with special formatting
+      setHistory(prev => [...prev, {
+        type: 'party-broadcast',
+        username,
+        command,
+        result,
+        timestamp: Date.now()
+      }]);
+    };
+
+    socket.on('party_command_broadcast', handlePartyCommandBroadcast);
+
+    return () => {
+      socket.off('party_command_broadcast', handlePartyCommandBroadcast);
+    };
+  }, [socket, user?.id, broadcastMode]);
+
+  // Broadcast mode functions
+  const enableBroadcastMode = () => {
+    setBroadcastMode(true);
+  };
+
+  const disableBroadcastMode = () => {
+    setBroadcastMode(false);
+  };
+
+  const isBroadcastMode = () => {
+    return broadcastMode;
+  };
 
   const handleTerminalClick = () => {
     focusRef.current?.focus();
   };
 
   const processCommand = async (command) => {
+    // Handle "exit" command in broadcast mode
+    if (broadcastMode && command.toLowerCase().trim() === 'exit') {
+      disableBroadcastMode();
+      setHistory(prev => [...prev, `$ ${command}`, 'Party broadcast mode disabled.']);
+      return;
+    }
+
     setHistory(prev => [...prev, `$ ${command}`]);
     setCommandHistory(prev => [...prev, command]);
     
@@ -261,6 +319,11 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       refreshParties,
       deleteParty,
       
+      // Broadcast mode functions
+      enableBroadcastMode,
+      disableBroadcastMode,
+      isBroadcastMode,
+      
       // Dice utilities
       parseDiceExpression,
       rollDice,
@@ -298,9 +361,31 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
             displayDuration: 2000, // Display for 2 seconds
             result: response.content // Store the result with the GIF
           }]);
+          
+          // If in broadcast mode and in a party, broadcast the dice roll result
+          if (broadcastMode && currentParty && socket) {
+            socket.emit('broadcast_party_command', {
+              partyId: currentParty.id,
+              command,
+              result: response.content,
+              username: user?.username,
+              userId: user?.id
+            });
+          }
         } else {
           // Handle regular text responses
           setHistory(prev => [...prev, response]);
+          
+          // If in broadcast mode and in a party, broadcast the command result
+          if (broadcastMode && currentParty && socket && response !== null && response !== undefined) {
+            socket.emit('broadcast_party_command', {
+              partyId: currentParty.id,
+              command,
+              result: response,
+              username: user?.username,
+              userId: user?.id
+            });
+          }
         }
       }
     } catch (error) {
@@ -359,6 +444,15 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         );
       }
     }
+    // Handle party broadcast items
+    else if (typeof item === 'object' && item.type === 'party-broadcast') {
+      return (
+        <div key={i} className="mb-2 text-yellow-400 bg-yellow-900/20 p-2 rounded border-l-4 border-yellow-400">
+          <span className="text-yellow-300 font-bold">[{item.username}]</span> {item.command}
+          <div className="text-yellow-100 ml-4">{item.result}</div>
+        </div>
+      );
+    }
     // Keep backward compatibility with any 'gif' type items
     else if (typeof item === 'object' && item.type === 'gif') {
       return (
@@ -376,15 +470,22 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   })}
 </div>
 
-      <div className="p-2 flex items-center gap-2 border-t border-stone-700">
-        <span className="mr-2">$</span>
+      <div className={`p-2 flex items-center gap-2 border-t ${broadcastMode ? 'border-yellow-400 bg-yellow-900/10' : 'border-stone-700'}`}>
+        {broadcastMode && (
+          <span className="text-yellow-400 text-xs bg-yellow-900/30 px-1 rounded">BROADCAST</span>
+        )}
+        <span className={`mr-2 ${broadcastMode ? 'text-yellow-400' : ''}`}>$</span>
         <input
           ref={focusRef}
           type="text"
           value={currentInput}
           onChange={(e) => setCurrentInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-stone-800 text-teal-400 px-2 py-1 rounded font-mono text-sm focus:outline-none"
+          className={`flex-1 px-2 py-1 rounded font-mono text-sm focus:outline-none ${
+            broadcastMode 
+              ? 'bg-yellow-900/20 text-yellow-100 border border-yellow-400/50' 
+              : 'bg-stone-800 text-teal-400'
+          }`}
           autoFocus
         />
       </div>
