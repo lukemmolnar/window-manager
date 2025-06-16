@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import MapCanvas from './mapeditor/MapCanvas';
 import MapToolbar from './mapeditor/MapToolbar';
+import PlayerManagementDialog from './gamewindow/PlayerManagementDialog';
 import API_CONFIG from '../../config/api';
 
 const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
@@ -18,6 +19,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
   const [currentPlayerPosition, setCurrentPlayerPosition] = useState({ x: 0, y: 0 });
   const [mapLoadNotification, setMapLoadNotification] = useState(null);
   const [currentMapPath, setCurrentMapPath] = useState(null);
+  const [showPlayerManagement, setShowPlayerManagement] = useState(false);
   const resetViewRef = useRef();
 
   // Load player positions for the party (legacy - all maps)
@@ -237,12 +239,35 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       console.log(`Synced player positions for map ${mapPath}:`, players);
     };
 
+    // Listen for player placement updates from DM
+    const handlePlayersPlacedOnMap = (data) => {
+      const { partyId, mapPath, players } = data;
+      
+      // Only process placement updates for the current map and party
+      if (mapPath !== currentMapPath || partyId !== partyInfo.id) return;
+      
+      setPlayerPositions(players);
+      
+      // Update current user position if they're in the updated list
+      const userPosition = players.find(p => p.user_id === user.id);
+      if (userPosition) {
+        setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
+      } else {
+        // User was removed from the map
+        setCurrentPlayerPosition({ x: 0, y: 0 });
+      }
+
+      console.log(`Player placement updated on map ${mapPath}:`, players);
+    };
+
     socket.on('player_position_update', handlePlayerPositionUpdate);
     socket.on('player_positions_sync', handlePlayerPositionsSync);
+    socket.on('players_placed_on_map', handlePlayersPlacedOnMap);
 
     return () => {
       socket.off('player_position_update', handlePlayerPositionUpdate);
       socket.off('player_positions_sync', handlePlayerPositionsSync);
+      socket.off('players_placed_on_map', handlePlayersPlacedOnMap);
     };
   }, [socket, partyInfo, user, currentMapPath]);
 
@@ -340,6 +365,33 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     // Do nothing - game window is read-only
   };
 
+  // Handle opening player management dialog (DM only)
+  const handleManagePlayers = () => {
+    setShowPlayerManagement(true);
+  };
+
+  // Handle closing player management dialog
+  const handleClosePlayerManagement = () => {
+    setShowPlayerManagement(false);
+  };
+
+  // Handle when players are updated via the management dialog
+  const handlePlayersUpdated = (updatedPlayers) => {
+    setPlayerPositions(updatedPlayers);
+    
+    // Update current user position if they're in the updated list
+    const userPosition = updatedPlayers.find(p => p.user_id === user.id);
+    if (userPosition) {
+      setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
+    } else {
+      // User was removed from the map
+      setCurrentPlayerPosition({ x: 0, y: 0 });
+    }
+  };
+
+  // Check if current user is DM
+  const isDM = partyInfo && user && partyInfo.creator_id === user.id;
+
   if (isLoading) {
     return (
       <div className="h-full w-full flex flex-col bg-stone-900 text-teal-400">
@@ -398,6 +450,8 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
         onToggleGrid={toggleGrid}
         onResetView={resetView}
         showGrid={showGrid}
+        isDM={isDM}
+        onManagePlayers={handleManagePlayers}
       />
 
       {/* Map Canvas */}
@@ -427,6 +481,17 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
             </p>
           </div>
         </div>
+      )}
+
+      {/* Player Management Dialog - DM Only */}
+      {isDM && (
+        <PlayerManagementDialog
+          isOpen={showPlayerManagement}
+          onClose={handleClosePlayerManagement}
+          partyInfo={partyInfo}
+          currentMapPath={currentMapPath}
+          onPlayersUpdated={handlePlayersUpdated}
+        />
       )}
     </div>
   );

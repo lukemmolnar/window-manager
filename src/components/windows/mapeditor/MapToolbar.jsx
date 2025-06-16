@@ -3,7 +3,7 @@ import {
   Save, Undo, Redo, Trash2, Copy, Square, Circle, 
   Grid, ZoomIn, ZoomOut, Download, Upload, Plus, Minus,
   Layers, MousePointer, Hammer, Wand2, FileText, Settings,
-  Home
+  Home, Users
 } from 'lucide-react';
 
 /**
@@ -26,7 +26,8 @@ const MapToolbar = ({
   // Game mode specific props
   gameTitle,
   gameSubtitle,
-  isDM = false
+  isDM = false,
+  onManagePlayers
 }) => {
   const [showProperties, setShowProperties] = useState(false);
   const [mapName, setMapName] = useState(mapData?.name || 'New Map');
@@ -135,8 +136,19 @@ const MapToolbar = ({
             </button>
           </div>
         ) : (
-          /* Empty space in Game Mode - party info is in header above */
-          <div></div>
+          /* DM controls in Game Mode */
+          <div className="flex space-x-1 items-center">
+            {isDM && onManagePlayers && (
+              <button
+                onClick={onManagePlayers}
+                className="p-2 hover:bg-stone-700 rounded text-teal-400 flex items-center gap-1"
+                title="Manage player placement on this map"
+              >
+                <Users size={18} />
+                <span className="text-sm hidden sm:inline">Manage Players</span>
+              </button>
+            )}
+          </div>
         )}
 
         {/* Empty space in the middle to maintain layout */}
