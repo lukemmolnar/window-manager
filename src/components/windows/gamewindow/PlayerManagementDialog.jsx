@@ -18,7 +18,7 @@ const PlayerManagementDialog = ({
 
   // Load party members and current players on map
   useEffect(() => {
-    if (!isOpen || !partyInfo || !currentMapPath) return;
+    if (!isOpen || !partyInfo) return;
 
     loadData();
   }, [isOpen, partyInfo, currentMapPath]);
@@ -45,25 +45,33 @@ const PlayerManagementDialog = ({
       const members = await membersResponse.json();
       setAllMembers(members);
 
-      // Load players currently on this map
-      const encodedMapPath = encodeURIComponent(currentMapPath);
-      const playersResponse = await fetch(`${API_CONFIG.BASE_URL}/parties/${partyInfo.id}/maps/${encodedMapPath}/players`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      // Load players currently on this map (only if currentMapPath is defined)
+      if (currentMapPath) {
+        const encodedMapPath = encodeURIComponent(currentMapPath);
+        const playersResponse = await fetch(`${API_CONFIG.BASE_URL}/parties/${partyInfo.id}/maps/${encodedMapPath}/players`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (playersResponse.ok) {
+          const currentPlayers = await playersResponse.json();
+          setPlayersOnMap(currentPlayers);
+
+          // Set initial selection to current players on map
+          const currentPlayerIds = currentPlayers.map(p => p.user_id);
+          setSelectedPlayerIds(currentPlayerIds);
+        } else {
+          // If map players request fails, just clear the selection
+          setPlayersOnMap([]);
+          setSelectedPlayerIds([]);
         }
-      });
-
-      if (!playersResponse.ok) {
-        throw new Error('Failed to load players on map');
+      } else {
+        // No map loaded, so no players can be on the map
+        setPlayersOnMap([]);
+        setSelectedPlayerIds([]);
       }
-
-      const currentPlayers = await playersResponse.json();
-      setPlayersOnMap(currentPlayers);
-
-      // Set initial selection to current players on map
-      const currentPlayerIds = currentPlayers.map(p => p.user_id);
-      setSelectedPlayerIds(currentPlayerIds);
 
     } catch (err) {
       console.error('Error loading player management data:', err);
@@ -84,6 +92,11 @@ const PlayerManagementDialog = ({
   };
 
   const handleSave = async () => {
+    if (!currentMapPath) {
+      setError('No map is currently loaded. Please load a map first.');
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
