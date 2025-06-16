@@ -252,10 +252,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       const userPosition = players.find(p => p.user_id === user.id);
       if (userPosition) {
         setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
-      } else {
-        // User was removed from the map
-        setCurrentPlayerPosition({ x: 0, y: 0 });
       }
+      // Note: Don't reset position to (0,0) when removed - preserve last known position
+      // The server will send the correct position when the player is re-added
 
       console.log(`Player placement updated on map ${mapPath}:`, players);
     };
@@ -383,10 +382,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     const userPosition = updatedPlayers.find(p => p.user_id === user.id);
     if (userPosition) {
       setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
-    } else {
-      // User was removed from the map
-      setCurrentPlayerPosition({ x: 0, y: 0 });
     }
+    // Note: Don't reset position to (0,0) when removed - preserve last known position
+    // The server will send the correct position when the player is re-added
   };
 
   // Check if current user is DM
