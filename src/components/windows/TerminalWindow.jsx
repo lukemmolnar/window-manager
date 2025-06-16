@@ -52,8 +52,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   const [currentInput, setCurrentInput] = useState(windowState?.currentInput || '');
   const [historyIndex, setHistoryIndex] = useState(windowState?.historyIndex || -1);
   
-  // Broadcast mode state
-  const [broadcastMode, setBroadcastMode] = useState(windowState?.broadcastMode || false);
+  // Party mode state
+  const [partyMode, setPartyMode] = useState(windowState?.partyMode || false);
 
   // Load terminal state from IndexedDB on mount if not already in windowState
   useEffect(() => {
@@ -202,7 +202,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         commandHistory,
         currentInput,
         historyIndex,
-        broadcastMode
+        partyMode
       };
       
       // Update window state in context
@@ -218,7 +218,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
         });
       }
     }
-  }, [history, commandHistory, currentInput, historyIndex, broadcastMode, updateWindowState, nodeId]);
+  }, [history, commandHistory, currentInput, historyIndex, partyMode, updateWindowState, nodeId]);
 
   // Socket event listeners for party broadcast
   useEffect(() => {
@@ -230,8 +230,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       // Don't show our own broadcasts (we already see them locally)
       if (userId === user?.id) return;
       
-      // Only show broadcasts if we're in broadcast mode
-      if (!broadcastMode) return;
+      // Only show broadcasts if we're in party mode
+      if (!partyMode) return;
       
       // Add the broadcast to history with special formatting
       setHistory(prev => [...prev, {
@@ -248,19 +248,19 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     return () => {
       socket.off('party_command_broadcast', handlePartyCommandBroadcast);
     };
-  }, [socket, user?.id, broadcastMode]);
+  }, [socket, user?.id, partyMode]);
 
-  // Broadcast mode functions
-  const enableBroadcastMode = () => {
-    setBroadcastMode(true);
+  // Party mode functions
+  const enablePartyMode = () => {
+    setPartyMode(true);
   };
 
-  const disableBroadcastMode = () => {
-    setBroadcastMode(false);
+  const disablePartyMode = () => {
+    setPartyMode(false);
   };
 
-  const isBroadcastMode = () => {
-    return broadcastMode;
+  const isPartyMode = () => {
+    return partyMode;
   };
 
   const handleTerminalClick = () => {
@@ -268,10 +268,10 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   };
 
   const processCommand = async (command) => {
-    // Handle "exit" command in broadcast mode
-    if (broadcastMode && command.toLowerCase().trim() === 'exit') {
-      disableBroadcastMode();
-      setHistory(prev => [...prev, `$ ${command}`, 'Party broadcast mode disabled.']);
+    // Handle "exit" command in party mode
+    if (partyMode && command.toLowerCase().trim() === 'exit') {
+      disablePartyMode();
+      setHistory(prev => [...prev, `$ ${command}`, 'Party mode disabled.']);
       return;
     }
 
@@ -319,10 +319,10 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       refreshParties,
       deleteParty,
       
-      // Broadcast mode functions
-      enableBroadcastMode,
-      disableBroadcastMode,
-      isBroadcastMode,
+      // Party mode functions
+      enablePartyMode,
+      disablePartyMode,
+      isPartyMode,
       
       // Dice utilities
       parseDiceExpression,
@@ -362,8 +362,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
             result: response.content // Store the result with the GIF
           }]);
           
-          // If in broadcast mode and in a party, broadcast the dice roll result
-          if (broadcastMode && currentParty && socket) {
+          // If in party mode and in a party, broadcast the dice roll result
+          if (partyMode && currentParty && socket) {
             socket.emit('broadcast_party_command', {
               partyId: currentParty.id,
               command,
@@ -376,8 +376,8 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           // Handle regular text responses
           setHistory(prev => [...prev, response]);
           
-          // If in broadcast mode and in a party, broadcast the command result
-          if (broadcastMode && currentParty && socket && response !== null && response !== undefined) {
+          // If in party mode and in a party, broadcast the command result
+          if (partyMode && currentParty && socket && response !== null && response !== undefined) {
             socket.emit('broadcast_party_command', {
               partyId: currentParty.id,
               command,
@@ -470,11 +470,11 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   })}
 </div>
 
-      <div className={`p-2 flex items-center gap-2 border-t ${broadcastMode ? 'border-yellow-400 bg-yellow-900/10' : 'border-stone-700'}`}>
-        {broadcastMode && (
-          <span className="text-yellow-400 text-xs bg-yellow-900/30 px-1 rounded">BROADCAST</span>
+      <div className={`p-2 flex items-center gap-2 border-t ${partyMode ? 'border-yellow-400 bg-yellow-900/10' : 'border-stone-700'}`}>
+        {partyMode && (
+          <span className="text-yellow-400 text-xs bg-yellow-900/30 px-1 rounded">PARTY MODE</span>
         )}
-        <span className={`mr-2 ${broadcastMode ? 'text-yellow-400' : ''}`}>$</span>
+        <span className={`mr-2 ${partyMode ? 'text-yellow-400' : ''}`}>$</span>
         <input
           ref={focusRef}
           type="text"
@@ -482,7 +482,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           onChange={(e) => setCurrentInput(e.target.value)}
           onKeyDown={handleKeyDown}
           className={`flex-1 px-2 py-1 rounded font-mono text-sm focus:outline-none ${
-            broadcastMode 
+            partyMode 
               ? 'bg-yellow-900/20 text-yellow-100 border border-yellow-400/50' 
               : 'bg-stone-800 text-teal-400'
           }`}
