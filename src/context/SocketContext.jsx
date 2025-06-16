@@ -55,10 +55,11 @@ export const SocketProvider = ({ children }) => {
       // Authenticate the socket connection
       const token = localStorage.getItem('auth_token');
       if (token) {
-        console.log('Authenticating socket connection');
+        console.log('[SOCKET] Authenticating socket connection for user:', user?.username);
         socket.emit('authenticate', token);
         
         // Also emit auth_user for backward compatibility
+        console.log('[SOCKET] Emitting auth_user for party room joining:', user);
         socket.emit('auth_user', user);
       }
     });

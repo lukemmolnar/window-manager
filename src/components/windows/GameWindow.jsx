@@ -238,17 +238,33 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
 
     // Listen for player placement updates from DM
     const handlePlayersPlacedOnMap = (data) => {
-      const { partyId, mapPath, players } = data;
+      const { partyId, mapPath, players, updatedBy } = data;
+      
+      console.log(`[CLIENT] Received players_placed_on_map event:`, {
+        partyId,
+        mapPath,
+        players,
+        updatedBy,
+        currentMapPath,
+        currentPartyId: partyInfo?.id
+      });
       
       // Only process placement updates for the current map and party
-      if (mapPath !== currentMapPath || partyId !== partyInfo.id) return;
+      if (mapPath !== currentMapPath || partyId !== partyInfo.id) {
+        console.log(`[CLIENT] Ignoring player placement update - map/party mismatch`);
+        return;
+      }
       
+      console.log(`[CLIENT] Processing player placement update - updating ${players.length} players`);
       setPlayerPositions(players);
       
       // Update current user position if they're in the updated list
       const userPosition = players.find(p => p.user_id === user.id);
       if (userPosition) {
+        console.log(`[CLIENT] Updating current user position to (${userPosition.x}, ${userPosition.y})`);
         setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
+      } else {
+        console.log(`[CLIENT] Current user not found in updated player list - preserving position`);
       }
       // Note: Don't reset position to (0,0) when removed - preserve last known position
       // The server will send the correct position when the player is re-added
