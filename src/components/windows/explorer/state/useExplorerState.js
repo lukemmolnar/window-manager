@@ -48,7 +48,7 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
   const [expandedFolders, setExpandedFolders] = useState(windowState?.expandedFolders || {});
   const [isTreeLoading, setIsTreeLoading] = useState(true);
   const [isContentLoading, setIsContentLoading] = useState(false);
-  const [fileContent, setFileContent] = useState(windowState?.fileContent || '');
+  const [fileContent, setFileContent] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showPreview, setShowPreview] = useState(windowState?.showPreview || false);
   const [activeTab, setActiveTab] = useState(windowState?.activeTab || 'public'); // 'public' or 'private'
@@ -387,14 +387,13 @@ const useExplorerState = (nodeId, windowState, updateWindowState) => {
         currentPath,
         selectedFile,
         expandedFolders,
-        fileContent,
         showPreview,
         editMode,
         saveStatus,
         activeTab
       });
     }
-  }, [currentPath, selectedFile, expandedFolders, fileContent, showPreview, editMode, saveStatus, activeTab, updateWindowState]);
+  }, [currentPath, selectedFile, expandedFolders, showPreview, editMode, saveStatus, activeTab, updateWindowState]);
   
   // Fetch public directory contents
   const handleFetchPublicDirectoryContents = async (publicPath = '/', refreshAll = false) => {
