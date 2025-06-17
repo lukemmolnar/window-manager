@@ -267,7 +267,7 @@ const PlayerManagementDialog = ({
         <button
           onClick={handleSave}
           disabled={isSaving || isLoading}
-          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded transition-colors disabled:opacity-50 flex items-center gap-2"
+          className="px-4 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded transition-colors disabled:opacity-50 flex items-center gap-2"
         >
           {isSaving && <Loader size={16} className="animate-spin" />}
           {isSaving ? 'Saving...' : 'Save Changes'}
