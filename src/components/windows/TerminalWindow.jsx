@@ -73,33 +73,44 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     }
   }, [windowState?.partyMode, partyMode, nodeId]);
 
-  // Load terminal state from IndexedDB on mount if not already in windowState
+  // Load terminal state from IndexedDB to fill in any missing windowState fields
   useEffect(() => {
     const loadTerminalState = async () => {
-      // Skip if we already have state from the WindowStateContext
-      if (windowState?.history && windowState?.commandHistory) {
-        stateLoadedRef.current = true;
-        return;
-      }
-      
       try {
-        // Try to load terminal state from IndexedDB
+        // Always try to load terminal state from IndexedDB to check for missing fields
         const savedState = await getTerminalState(nodeId);
         
         if (savedState && savedState.content && !stateLoadedRef.current) {
-          console.log(`Loaded terminal state for window ${nodeId} from IndexedDB:`, savedState.content);
+          console.log(`[PARTY DEBUG] Checking IndexedDB state for window ${nodeId}:`, {
+            hasHistory: !!savedState.content.history,
+            hasCommandHistory: !!savedState.content.commandHistory,
+            hasPartyMode: savedState.content.partyMode !== undefined,
+            partyModeValue: savedState.content.partyMode,
+            windowStateHistory: !!windowState?.history,
+            windowStateCommandHistory: !!windowState?.commandHistory,
+            windowStatePartyMode: windowState?.partyMode
+          });
           
-          // Update state with saved values
-          if (savedState.content.history) {
+          // Update state with saved values only if not in windowState
+          if (savedState.content.history && !windowState?.history) {
+            console.log(`[PARTY DEBUG] Restoring history from IndexedDB`);
             setHistory(savedState.content.history);
           }
           
-          if (savedState.content.commandHistory) {
+          if (savedState.content.commandHistory && !windowState?.commandHistory) {
+            console.log(`[PARTY DEBUG] Restoring commandHistory from IndexedDB`);
             setCommandHistory(savedState.content.commandHistory);
           }
           
-          if (savedState.content.historyIndex !== undefined) {
+          if (savedState.content.historyIndex !== undefined && windowState?.historyIndex === undefined) {
+            console.log(`[PARTY DEBUG] Restoring historyIndex from IndexedDB`);
             setHistoryIndex(savedState.content.historyIndex);
+          }
+          
+          // Always restore partyMode from IndexedDB if it's missing from windowState but present in IndexedDB
+          if (savedState.content.partyMode !== undefined && windowState?.partyMode === undefined) {
+            console.log(`[PARTY DEBUG] Restoring partyMode from IndexedDB: ${savedState.content.partyMode}`);
+            setPartyMode(savedState.content.partyMode);
           }
           
           // Mark as loaded

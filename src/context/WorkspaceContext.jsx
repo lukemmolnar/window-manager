@@ -14,6 +14,122 @@ const initialWorkspaces = [
 ];
 
 /**
+ * Enhanced data migration function to backfill missing partyMode from IndexedDB
+ * This fixes the issue where party mode was saved to IndexedDB but not WorkspaceContext
+ * Now also finds "orphaned" terminals that exist in IndexedDB but not in workspace
+ */
+const migrateTerminalStates = async (workspaces) => {
+  console.log('[PARTY DEBUG] Starting enhanced terminal states migration...');
+  
+  try {
+    // Import IndexedDB functions
+    const { getTerminalState, getAllTerminalStates } = await import('../services/indexedDBService');
+    
+    // Clone workspaces to avoid mutations
+    const migratedWorkspaces = JSON.parse(JSON.stringify(workspaces));
+    
+    let migrationCount = 0;
+    let orphanedCount = 0;
+    
+    // Step 1: Process existing terminals in workspaces
+    for (const workspace of migratedWorkspaces) {
+      if (!workspace.terminalStates) continue;
+      
+      // Process each terminal in the workspace
+      for (const [terminalId, terminalState] of Object.entries(workspace.terminalStates)) {
+        // Check if partyMode is missing or undefined
+        if (terminalState.partyMode === undefined) {
+          console.log(`[PARTY DEBUG] Terminal ${terminalId} missing partyMode, checking IndexedDB...`);
+          
+          try {
+            // Try to load the full state from IndexedDB
+            const indexedDBState = await getTerminalState(terminalId);
+            
+            if (indexedDBState && indexedDBState.content && indexedDBState.content.partyMode !== undefined) {
+              console.log(`[PARTY DEBUG] Found partyMode in IndexedDB for terminal ${terminalId}:`, indexedDBState.content.partyMode);
+              
+              // Merge the missing partyMode into the workspace terminal state
+              terminalState.partyMode = indexedDBState.content.partyMode;
+              migrationCount++;
+              
+              console.log(`[PARTY DEBUG] Migrated partyMode for terminal ${terminalId}: ${indexedDBState.content.partyMode}`);
+            } else {
+              console.log(`[PARTY DEBUG] No partyMode found in IndexedDB for terminal ${terminalId}`);
+            }
+          } catch (error) {
+            console.warn(`[PARTY DEBUG] Failed to load IndexedDB state for terminal ${terminalId}:`, error);
+          }
+        } else {
+          console.log(`[PARTY DEBUG] Terminal ${terminalId} already has partyMode:`, terminalState.partyMode);
+        }
+      }
+    }
+    
+    // Step 2: Find orphaned terminals with party mode in IndexedDB
+    console.log('[PARTY DEBUG] Searching for orphaned terminals with party mode...');
+    
+    try {
+      // Get all terminal states from IndexedDB
+      const allTerminalStates = await getAllTerminalStates();
+      console.log(`[PARTY DEBUG] Found ${allTerminalStates.length} total terminals in IndexedDB`);
+      
+      // Find terminals with party mode that aren't in any workspace
+      for (const terminalData of allTerminalStates) {
+        const terminalId = terminalData.id;
+        const content = terminalData.content;
+        
+        // Check if this terminal has party mode enabled
+        if (content && content.partyMode === true) {
+          console.log(`[PARTY DEBUG] Found terminal ${terminalId} with partyMode: true in IndexedDB`);
+          
+          // Check if this terminal exists in any workspace
+          let foundInWorkspace = false;
+          for (const workspace of migratedWorkspaces) {
+            if (workspace.terminalStates && workspace.terminalStates[terminalId]) {
+              foundInWorkspace = true;
+              break;
+            }
+          }
+          
+          if (!foundInWorkspace) {
+            console.log(`[PARTY DEBUG] Orphaned terminal ${terminalId} found! Adding to workspace 0...`);
+            
+            // Add the orphaned terminal to the first workspace (index 0)
+            if (!migratedWorkspaces[0].terminalStates) {
+              migratedWorkspaces[0].terminalStates = {};
+            }
+            
+            // Create a basic terminal state with the content from IndexedDB
+            migratedWorkspaces[0].terminalStates[terminalId] = {
+              history: content.history || ['Terminal restored from IndexedDB'],
+              commandHistory: content.commandHistory || [],
+              currentInput: content.currentInput || '',
+              historyIndex: content.historyIndex || -1,
+              partyMode: content.partyMode
+            };
+            
+            orphanedCount++;
+            console.log(`[PARTY DEBUG] Restored orphaned terminal ${terminalId} with partyMode: ${content.partyMode}`);
+          } else {
+            console.log(`[PARTY DEBUG] Terminal ${terminalId} already exists in workspace`);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[PARTY DEBUG] Failed to search for orphaned terminals:', error);
+    }
+    
+    console.log(`[PARTY DEBUG] Migration complete. Migrated ${migrationCount} terminal states, restored ${orphanedCount} orphaned terminals.`);
+    return migratedWorkspaces;
+    
+  } catch (error) {
+    console.error('[PARTY DEBUG] Migration failed:', error);
+    // Return original workspaces if migration fails
+    return workspaces;
+  }
+};
+
+/**
  * WorkspaceProvider component for managing workspace state
  * This handles the persistence of window layouts across page refreshes
  */
@@ -46,9 +162,12 @@ export function WorkspaceProvider({ children }) {
       if (response.data && response.data.workspaces) {
         console.log('[PARTY DEBUG] Loaded workspaces from server:', response.data.workspaces);
         
-        // Check each workspace for terminal states with party mode
-        response.data.workspaces.forEach((workspace, index) => {
-          console.log(`[PARTY DEBUG] Workspace ${index} terminal states:`, workspace.terminalStates);
+        // Perform data migration to backfill missing partyMode from IndexedDB
+        const migratedWorkspaces = await migrateTerminalStates(response.data.workspaces);
+        
+        // Check each workspace for terminal states with party mode after migration
+        migratedWorkspaces.forEach((workspace, index) => {
+          console.log(`[PARTY DEBUG] Workspace ${index} terminal states (after migration):`, workspace.terminalStates);
           if (workspace.terminalStates) {
             Object.entries(workspace.terminalStates).forEach(([terminalId, state]) => {
               if (state.partyMode) {
@@ -58,7 +177,7 @@ export function WorkspaceProvider({ children }) {
           }
         });
         
-        setWorkspaces(response.data.workspaces);
+        setWorkspaces(migratedWorkspaces);
       } else {
         console.log('[PARTY DEBUG] No saved workspaces found, using initial workspaces');
       }
