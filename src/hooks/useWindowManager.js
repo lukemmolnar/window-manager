@@ -1135,7 +1135,10 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
         [terminalId]: newState
       }
     }));
-  }, [updateWorkspace, currentWorkspaceIndex]);
+    
+    // Also save to WindowStateContext for persistence consistency
+    setWindowState(terminalId, WINDOW_TYPES.TERMINAL, newState);
+  }, [updateWorkspace, currentWorkspaceIndex, setWindowState]);
 
   return {
     rootNode,
