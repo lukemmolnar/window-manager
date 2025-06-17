@@ -16,6 +16,9 @@ const originalConsole = {
 // Track debug state
 let debugEnabled = false;
 
+// LocalStorage key for debug state persistence
+const DEBUG_STORAGE_KEY = 'slumterm_debug_mode';
+
 const DebugLogger = {
   /**
    * Toggle debug mode on or off
@@ -29,6 +32,13 @@ const DebugLogger = {
       debugEnabled = !debugEnabled;
     }
 
+    // Save debug state to localStorage
+    try {
+      localStorage.setItem(DEBUG_STORAGE_KEY, debugEnabled.toString());
+    } catch (error) {
+      console.error('Failed to save debug state to localStorage:', error);
+    }
+
     if (debugEnabled) {
       // Restore original console methods
       console.log = originalConsole.log;
@@ -36,7 +46,7 @@ const DebugLogger = {
       console.error = originalConsole.error;
       console.info = originalConsole.info;
       console.debug = originalConsole.debug;
-      console.log('Debug mode enabled');
+      console.log('Debug mode enabled - logs will persist across refreshes');
     } else {
       // Replace console methods with empty functions
       console.log = function() {};
@@ -59,11 +69,24 @@ const DebugLogger = {
   },
 
   /**
-   * Initialize the debug logger (disables logging by default)
+   * Initialize the debug logger and restore saved state
    */
   init: () => {
-    // By default, disable logging when app starts
-    if (!debugEnabled) {
+    // Try to load debug state from localStorage
+    try {
+      const savedDebugState = localStorage.getItem(DEBUG_STORAGE_KEY);
+      if (savedDebugState !== null) {
+        // Restore saved debug state
+        const shouldEnable = savedDebugState === 'true';
+        DebugLogger.toggleDebug(shouldEnable);
+        console.log(`Debug mode restored from localStorage: ${shouldEnable ? 'enabled' : 'disabled'}`);
+      } else {
+        // No saved state, disable by default
+        DebugLogger.toggleDebug(false);
+      }
+    } catch (error) {
+      console.error('Failed to load debug state from localStorage:', error);
+      // Fallback to disabled state
       DebugLogger.toggleDebug(false);
     }
   }

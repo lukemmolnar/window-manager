@@ -1128,6 +1128,13 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
 
   // Function to update terminal state
   const updateTerminalState = useCallback((terminalId, newState) => {
+    console.log('[PARTY DEBUG] updateTerminalState called:', {
+      terminalId,
+      newState,
+      hasPartyMode: 'partyMode' in newState,
+      partyModeValue: newState.partyMode
+    });
+
     updateWorkspace(currentWorkspaceIndex, workspace => ({
       ...workspace,
       terminalStates: {
@@ -1137,6 +1144,11 @@ export const useWindowManager = ({ defaultLayout = null, onFlashBorder = null } 
     }));
     
     // Also save to WindowStateContext for persistence consistency
+    console.log('[PARTY DEBUG] Saving to WindowStateContext:', {
+      terminalId,
+      windowType: WINDOW_TYPES.TERMINAL,
+      stateContent: newState
+    });
     setWindowState(terminalId, WINDOW_TYPES.TERMINAL, newState);
   }, [updateWorkspace, currentWorkspaceIndex, setWindowState]);
 

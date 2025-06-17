@@ -30,10 +30,12 @@ export function WorkspaceProvider({ children }) {
       // Get auth token
       const token = localStorage.getItem('auth_token');
       if (!token) {
-        console.log('No auth token found, using initial workspaces');
+        console.log('[PARTY DEBUG] No auth token found, using initial workspaces');
         setIsLoading(false);
         return;
       }
+      
+      console.log('[PARTY DEBUG] Loading workspaces from server...');
       
       // Fetch workspaces from server
       const response = await axios.get(
@@ -42,13 +44,26 @@ export function WorkspaceProvider({ children }) {
       );
       
       if (response.data && response.data.workspaces) {
-        console.log('Loaded workspaces from server:', response.data.workspaces);
+        console.log('[PARTY DEBUG] Loaded workspaces from server:', response.data.workspaces);
+        
+        // Check each workspace for terminal states with party mode
+        response.data.workspaces.forEach((workspace, index) => {
+          console.log(`[PARTY DEBUG] Workspace ${index} terminal states:`, workspace.terminalStates);
+          if (workspace.terminalStates) {
+            Object.entries(workspace.terminalStates).forEach(([terminalId, state]) => {
+              if (state.partyMode) {
+                console.log(`[PARTY DEBUG] Found party mode in workspace ${index}, terminal ${terminalId}:`, state.partyMode);
+              }
+            });
+          }
+        });
+        
         setWorkspaces(response.data.workspaces);
       } else {
-        console.log('No saved workspaces found, using initial workspaces');
+        console.log('[PARTY DEBUG] No saved workspaces found, using initial workspaces');
       }
     } catch (error) {
-      console.error('Failed to load workspaces from server:', error);
+      console.error('[PARTY DEBUG] Failed to load workspaces from server:', error);
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +94,20 @@ export function WorkspaceProvider({ children }) {
           terminalStates: workspace.terminalStates || {}
         }));
         
-        console.log('Saving workspaces to server:', workspacesToSave);
+        console.log('[PARTY DEBUG] Saving workspaces to server...');
+        
+        // Check for party mode in terminal states before saving
+        workspacesToSave.forEach((workspace, index) => {
+          if (workspace.terminalStates) {
+            Object.entries(workspace.terminalStates).forEach(([terminalId, state]) => {
+              if (state.partyMode) {
+                console.log(`[PARTY DEBUG] Saving party mode in workspace ${index}, terminal ${terminalId}:`, state.partyMode);
+              }
+            });
+          }
+        });
+        
+        console.log('[PARTY DEBUG] Full workspaces data:', workspacesToSave);
         
         // Save workspaces to server
         await axios.post(

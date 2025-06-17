@@ -59,11 +59,19 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
 
   // Update partyMode when windowState changes (handles server state loading)
   useEffect(() => {
+    console.log('[PARTY DEBUG] windowState changed:', {
+      hasWindowState: !!windowState,
+      partyModeInState: windowState?.partyMode,
+      currentPartyMode: partyMode,
+      shouldUpdate: windowState?.partyMode !== undefined && windowState.partyMode !== partyMode,
+      nodeId
+    });
+
     if (windowState?.partyMode !== undefined && windowState.partyMode !== partyMode) {
+      console.log(`[PARTY DEBUG] Restoring party mode from server state: ${windowState.partyMode} (was: ${partyMode})`);
       setPartyMode(windowState.partyMode);
-      console.log(`Party mode restored from server state: ${windowState.partyMode}`);
     }
-  }, [windowState?.partyMode, partyMode]);
+  }, [windowState?.partyMode, partyMode, nodeId]);
 
   // Load terminal state from IndexedDB on mount if not already in windowState
   useEffect(() => {
