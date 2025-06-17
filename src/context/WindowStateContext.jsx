@@ -173,35 +173,38 @@ export function WindowStateProvider({ children }) {
   }, [saveTypeSpecificState]);
 
   // Save to API with debounce
-  const saveToAPI = useCallback(() => {
-    // Skip saving on initial load
-    if (isInitialMount.current) {
-      return;
+const saveToAPI = useCallback(() => {
+  // Skip saving on initial load
+  if (isInitialMount.current) {
+    return;
+  }
+  
+  // Clear any existing timeout
+  if (saveTimeoutRef.current) {
+    clearTimeout(saveTimeoutRef.current);
+  }
+  
+  // Set a new timeout to save the state after a delay
+  saveTimeoutRef.current = setTimeout(async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return; // No token, don't save to API
+      
+      // ADD THIS DEBUG LINE
+      console.log('[DEBUG] Sending to API:', stateRef.current.windowStates);
+      
+      await axios.post(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WINDOW_STATES}`, 
+        { windowStates: stateRef.current.windowStates },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      console.log('Saved window states to API');
+    } catch (error) {
+      console.error('Failed to save window states to API:', error);
     }
-    
-    // Clear any existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    // Set a new timeout to save the state after a delay
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return; // No token, don't save to API
-        
-        await axios.post(
-          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WINDOW_STATES}`, 
-          { windowStates: stateRef.current.windowStates },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        
-        console.log('Saved window states to API');
-      } catch (error) {
-        console.error('Failed to save window states to API:', error);
-      }
-    }, 500); // 500ms debounce
-  }, []);
+  }, 500); // 500ms debounce
+}, []);
 
   // Clear window states (used during logout)
   const clearWindowStates = useCallback(() => {

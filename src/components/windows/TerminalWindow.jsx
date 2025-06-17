@@ -59,12 +59,13 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
 
   // Update partyMode when windowState changes (handles server state loading)
   useEffect(() => {
-    console.log('[PARTY DEBUG] windowState changed:', {
+    console.log('[PARTY DEWDADWADWABUG] windowState changed:', {
       hasWindowState: !!windowState,
       partyModeInState: windowState?.partyMode,
       currentPartyMode: partyMode,
       shouldUpdate: windowState?.partyMode !== undefined && windowState.partyMode !== partyMode,
-      nodeId
+      nodeId,
+      dataSource: windowState?.partyMode !== undefined ? 'SERVER' : 'LOCAL/DEFAULT'
     });
 
     if (windowState?.partyMode !== undefined && windowState.partyMode !== partyMode) {
@@ -235,7 +236,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       };
       
       // Update window state in context
-      updateWindowState(newState);
+      updateWindowState(() => newState);
       
       // Also save directly to IndexedDB for redundancy
       if (stateLoadedRef.current) { // Only save after initial load to avoid overwriting with empty state
