@@ -90,7 +90,7 @@ const MapToolbar = ({
 
   return (
     <>
-      <div className="flex justify-between items-center p-2 bg-stone-800 border-b border-stone-700">
+      <div className="flex justify-between items-center p-1 bg-stone-800 border-b border-stone-700">
         {mode === 'edit' ? (
           /* File operations - Edit Mode */
           <div className="flex space-x-1 items-center">

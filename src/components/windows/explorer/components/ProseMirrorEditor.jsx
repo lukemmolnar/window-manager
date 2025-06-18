@@ -234,7 +234,7 @@ const EditorToolbar = ({ view, disabled, onStateUpdate }) => {
   );
   
   return (
-    <div className="border-b border-stone-700 bg-stone-800 p-2 flex items-center gap-1 flex-wrap">
+    <div className="border-b border-stone-700 bg-stone-800 p-1 flex items-center gap-1 flex-wrap">
       {/* Undo/Redo */}
       <ToolbarButton onClick={() => runCommand(undo)} title="Undo (Ctrl+Z)">
         <Undo2 size={18} />
