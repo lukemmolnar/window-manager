@@ -236,7 +236,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
       };
       
       // Update window state in context
-      updateWindowState(() => newState);
+      updateWindowState(newState);
       
       // Also save directly to IndexedDB for redundancy
       if (stateLoadedRef.current) { // Only save after initial load to avoid overwriting with empty state
