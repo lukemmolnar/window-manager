@@ -496,9 +496,9 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     // Handle party broadcast items
     else if (typeof item === 'object' && item.type === 'party-broadcast') {
       return (
-        <div key={i} className="mb-2 text-yellow-400 bg-yellow-900/20 p-2 rounded border-l-4 border-yellow-400">
-          <span className="text-yellow-300 font-bold">[{item.username}]</span> {item.command}
-          <div className="text-yellow-100 ml-4">{item.result}</div>
+        <div key={i} className="mb-2 text-teal-400 bg-teal-900/20 p-2 rounded border-l-4 border-teal-400">
+          <span className="text-teal-300 font-bold">[{item.username}]</span> {item.command}
+          <div className="text-teal-100 ml-4">{item.result}</div>
         </div>
       );
     }
@@ -519,11 +519,11 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   })}
 </div>
 
-      <div className={`p-2 flex items-center gap-2 border-t ${partyMode ? 'border-yellow-400 bg-yellow-900/10' : 'border-stone-700'}`}>
+      <div className={`p-2 flex items-center gap-2 border-t ${partyMode ? 'border-teal-400 bg-teal-900/10' : 'border-stone-700'}`}>
         {partyMode && (
-          <span className="text-yellow-400 text-xs bg-yellow-900/30 px-1 rounded">PARTY MODE</span>
+          <span className="text-teal-400 text-xs bg-teal-900/30 px-1 rounded">PARTY MODE</span>
         )}
-        <span className={`mr-2 ${partyMode ? 'text-yellow-400' : ''}`}>$</span>
+        <span className={`mr-2 ${partyMode ? 'text-teal-400' : ''}`}>$</span>
         <input
           ref={focusRef}
           type="text"
@@ -532,7 +532,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
           onKeyDown={handleKeyDown}
           className={`flex-1 px-2 py-1 rounded font-mono text-sm focus:outline-none ${
             partyMode 
-              ? 'bg-yellow-900/20 text-yellow-100 border border-yellow-400/50' 
+              ? 'bg-teal-900/20 text-teal-100 border border-teal-400/50' 
               : 'bg-stone-800 text-teal-400'
           }`}
           autoFocus
