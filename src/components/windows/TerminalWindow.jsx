@@ -411,15 +411,18 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
             result: response.content // Store the result with the GIF
           }]);
           
-          // If in party mode and in a party, broadcast the dice roll result (only for VTT Actions)
+          // If in party mode and in a party, broadcast the dice roll result with delay (only for VTT Actions)
           if (partyMode && currentParty && socket && shouldBroadcastCommand(command)) {
-            socket.emit('broadcast_party_command', {
-              partyId: currentParty.id,
-              command,
-              result: response.content,
-              username: user?.username,
-              userId: user?.id
-            });
+            // Delay the broadcast by 2.5 seconds so the original user sees their result first
+            setTimeout(() => {
+              socket.emit('broadcast_party_command', {
+                partyId: currentParty.id,
+                command,
+                result: response.content,
+                username: user?.username,
+                userId: user?.id
+              });
+            }, 2500); // 2 seconds for GIF + 0.5 second buffer
           }
         } else {
           // Handle regular text responses
