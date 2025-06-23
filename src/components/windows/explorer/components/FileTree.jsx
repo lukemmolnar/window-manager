@@ -4,7 +4,7 @@ import {
   BookOpen, FileText, Globe, Lock, FileEdit, Trash2, Music, Image, Figma,
   FolderPlus, Plus, Map
 } from 'lucide-react';
-import { getFileIconName, convertServerFileNameToUser } from '../utils/fileUtils';
+import { getFileIconName, convertServerFileNameToUser, convertServerPathToUser } from '../utils/fileUtils';
 import StorageStats from './StorageStats';
 import { CreateFileDialog, RenameDialog, DeleteDialog } from './dialogs/FileDialogs';
 
@@ -314,7 +314,7 @@ const FileTree = ({
       </div>
       
       <div className="p-2 border-t border-stone-700 text-xs">
-        {selectedFile ? selectedFile.path : currentPath}
+        {selectedFile ? convertServerPathToUser(selectedFile.path) : convertServerPathToUser(currentPath)}
       </div>
       
       {/* Storage statistics display */}

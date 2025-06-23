@@ -57,6 +57,29 @@ export const convertServerFileNameToUser = (serverFileName) => {
   return `${baseName}.${userExt}`;
 };
 
+// Convert a server file path to user-facing path
+export const convertServerPathToUser = (serverPath) => {
+  if (!serverPath || serverPath === '/' || serverPath.endsWith('/')) {
+    // Directory paths don't need conversion
+    return serverPath;
+  }
+  
+  const lastSlashIndex = serverPath.lastIndexOf('/');
+  if (lastSlashIndex === -1) {
+    // No directory separator, just convert the filename
+    return convertServerFileNameToUser(serverPath);
+  }
+  
+  // Split path into directory and filename parts
+  const directoryPath = serverPath.substring(0, lastSlashIndex + 1);
+  const fileName = serverPath.substring(lastSlashIndex + 1);
+  
+  // Convert only the filename part
+  const userFileName = convertServerFileNameToUser(fileName);
+  
+  return directoryPath + userFileName;
+};
+
 // Helper function to get parent directory path from a file path
 export const getParentDirectoryPath = (filePath) => {
   // Remove trailing slash if present
