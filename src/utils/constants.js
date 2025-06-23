@@ -10,5 +10,6 @@ export const WINDOW_TYPES = {
     DICE: 'dice', // Add dice window type
     MAP_EDITOR: 'map_editor', // Add map editor window type
     MARKETPLACE: 'marketplace', // Add marketplace window type
-    GAME: 'game' // Add game window type
+    GAME: 'game', // Add game window type
+    PARTY_STATS: 'party_stats' // Add party stats window type
   };

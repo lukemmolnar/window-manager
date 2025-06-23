@@ -4,6 +4,7 @@
  */
 import { Command } from '../../Command.js';
 import { extractQuotedText } from '../../parser/parser.js';
+import { WINDOW_TYPES } from '../../../constants.js';
 
 export class PartyCommand extends Command {
   constructor() {
@@ -29,7 +30,8 @@ export class PartyCommand extends Command {
       list: this.listParties,
       info: this.partyInfo,
       delete: this.deleteParty,
-      mode: this.togglePartyMode
+      mode: this.togglePartyMode,
+      stats: this.openPartyStats
     };
   }
 
@@ -39,7 +41,7 @@ export class PartyCommand extends Command {
     
     // Check if the subcommand exists
     if (!Object.keys(this.subcommands).includes(subcommand)) {
-      return 'Unknown party subcommand. Available subcommands: create, join, leave, list, info, delete, mode';
+      return 'Unknown party subcommand. Available subcommands: create, join, leave, list, info, delete, mode, stats';
     }
     
     // Execute the appropriate subcommand
@@ -278,6 +280,34 @@ export class PartyCommand extends Command {
     } catch (error) {
       console.error('Error toggling party mode:', error);
       return 'Error toggling party mode. Please try again.';
+    }
+  }
+
+  async openPartyStats(args, context) {
+    // Check if user is in a party
+    if (!context.currentParty) {
+      return 'Cannot open party stats: You are not currently in a party. Use "party join <id>" to join a party first.';
+    }
+
+    // Check if user is the DM (party creator)
+    if (context.currentParty.creator_id !== context.user?.id) {
+      return 'Access denied: Only the party DM can access party stats.';
+    }
+
+    // Check if we have the transform function in context
+    if (!context.transformWindow || !context.nodeId) {
+      return 'Cannot open party stats: Missing window transformation context';
+    }
+
+    try {
+      // Transform the current window to party stats
+      context.transformWindow(context.nodeId, WINDOW_TYPES.PARTY_STATS);
+      
+      // Return confirmation message
+      return `Opening party stats for "${context.currentParty.name}"...`;
+    } catch (error) {
+      console.error('Error opening party stats:', error);
+      return 'Error opening party stats. Please try again.';
     }
   }
 }

@@ -11,6 +11,7 @@ import {
   EnhancedMarketplaceWindow
 } from '../components/windows';
 import GameWindow from '../components/windows/GameWindow';
+import PartyStatsWindow from '../components/windows/PartyStatsWindow';
 
 export { WINDOW_TYPES };
 
@@ -44,5 +45,10 @@ export const WINDOW_CONTENT = {
     title: 'Game',
     icon: Users,
     component: GameWindow
+  },
+  [WINDOW_TYPES.PARTY_STATS]: {
+    title: 'Party Stats',
+    icon: Eye,
+    component: PartyStatsWindow
   }
 };
