@@ -44,7 +44,7 @@ const PartyStatsWindow = () => {
 
       // Fetch player stats for this party
       const statsResponse = await axios.get(
-        `${API_CONFIG.BASE_URL}/api/player-stats/${currentParty.id}`,
+        `${API_CONFIG.BASE_URL}/player-stats/${currentParty.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -97,7 +97,7 @@ const PartyStatsWindow = () => {
 
       const token = localStorage.getItem('auth_token');
       const response = await axios.put(
-        `${API_CONFIG.BASE_URL}/api/player-stats/${party.id}/${selectedPlayerId}`,
+        `${API_CONFIG.BASE_URL}/player-stats/${party.id}/${selectedPlayerId}`,
         { view_distance: viewDistance },
         { headers: { Authorization: `Bearer ${token}` } }
       );
