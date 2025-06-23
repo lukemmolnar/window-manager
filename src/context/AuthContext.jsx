@@ -50,6 +50,7 @@ export function AuthProvider({ children }) {
     }
   };
 
+
   // Login function
   const login = async (username, password) => {
     setLoading(true);

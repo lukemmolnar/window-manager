@@ -56,7 +56,10 @@ const API_CONFIG = {
     // Favorite tiles endpoints
     FAVORITE_TILES: '/favorite-tiles',
     FAVORITE_TILE_CHECK: '/favorite-tiles/check/:tileIndex/:tileType',
-    FAVORITE_TILE_DELETE: '/favorite-tiles/:tileIndex/:tileType'
+    FAVORITE_TILE_DELETE: '/favorite-tiles/:tileIndex/:tileType',
+    // Party mode endpoints
+    PARTY_MODE: '/party-mode',
+    PARTY_MODE_TOGGLE: '/party-mode/toggle'
   }
 };
 

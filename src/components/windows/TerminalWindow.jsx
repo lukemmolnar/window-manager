@@ -6,6 +6,7 @@ import { useAnnouncement } from '../../context/AnnouncementContext';
 import { useWindowState } from '../../context/WindowStateContext';
 import { useParty } from '../../context/PartyContext';
 import { useSocket } from '../../context/SocketContext';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import { saveTerminalState, getTerminalState } from '../../services/indexedDBService';
 import { parseDiceExpression, rollDice, formatRollResult, isValidDiceType } from '../../utils/diceUtils';
 import DebugLogger from '../../utils/debugLogger';
@@ -39,6 +40,9 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   // Get socket context for party broadcasting
   const { socket } = useSocket();
   
+  // Get workspace context for party mode persistence
+  const { currentWorkspace, updateWorkspace, currentWorkspaceIndex } = useWorkspace();
+  
   // Ref for managing scrolling
   const terminalRef = useRef(null);
   // Ref to track if state has been loaded from IndexedDB
@@ -54,25 +58,10 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
   const [currentInput, setCurrentInput] = useState(windowState?.currentInput || '');
   const [historyIndex, setHistoryIndex] = useState(windowState?.historyIndex || -1);
   
-  // Party mode state
-  const [partyMode, setPartyMode] = useState(windowState?.partyMode || false);
-
-  // Update partyMode when windowState changes (handles server state loading)
-  useEffect(() => {
-    console.log('[PARTY DEWDADWADWABUG] windowState changed:', {
-      hasWindowState: !!windowState,
-      partyModeInState: windowState?.partyMode,
-      currentPartyMode: partyMode,
-      shouldUpdate: windowState?.partyMode !== undefined && windowState.partyMode !== partyMode,
-      nodeId,
-      dataSource: windowState?.partyMode !== undefined ? 'SERVER' : 'LOCAL/DEFAULT'
-    });
-
-    if (windowState?.partyMode !== undefined && windowState.partyMode !== partyMode) {
-      console.log(`[PARTY DEBUG] Restoring party mode from server state: ${windowState.partyMode} (was: ${partyMode})`);
-      setPartyMode(windowState.partyMode);
-    }
-  }, [windowState?.partyMode, partyMode, nodeId]);
+  // Get party mode from workspace context (per-terminal)
+  const partyMode = currentWorkspace?.terminalStates?.[nodeId]?.partyMode || false;
+  
+  console.log(`[PARTY DEBUG] Terminal ${nodeId} party mode from workspace:`, partyMode);
 
   // Load terminal state from IndexedDB to fill in any missing windowState fields
   useEffect(() => {
@@ -108,10 +97,18 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
             setHistoryIndex(savedState.content.historyIndex);
           }
           
-          // Always restore partyMode from IndexedDB if it's missing from windowState but present in IndexedDB
-          if (savedState.content.partyMode !== undefined && windowState?.partyMode === undefined) {
-            console.log(`[PARTY DEBUG] Restoring partyMode from IndexedDB: ${savedState.content.partyMode}`);
-            setPartyMode(savedState.content.partyMode);
+          // Always restore partyMode from IndexedDB if it's missing from workspace but present in IndexedDB
+          if (savedState.content.partyMode !== undefined && !currentWorkspace?.terminalStates?.[nodeId]?.partyMode) {
+            console.log(`[PARTY DEBUG] Restoring partyMode from IndexedDB to workspace: ${savedState.content.partyMode}`);
+            updateWorkspace(currentWorkspaceIndex, (workspace) => ({
+              terminalStates: {
+                ...workspace.terminalStates,
+                [nodeId]: {
+                  ...workspace.terminalStates?.[nodeId],
+                  partyMode: savedState.content.partyMode
+                }
+              }
+            }));
           }
           
           // Mark as loaded
@@ -123,7 +120,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     };
     
     loadTerminalState();
-  }, [nodeId, windowState]);
+  }, [nodeId, windowState, currentWorkspace, updateWorkspace, currentWorkspaceIndex]);
 
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
@@ -224,7 +221,7 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     };
   }, [history]);
 
-  // Update window state when terminal state changes
+  // Update window state when terminal state changes (including party mode)
   useEffect(() => {
     if (updateWindowState) {
       const newState = {
@@ -280,13 +277,31 @@ const TerminalWindow = ({ onCommand, isActive, nodeId, transformWindow, windowSt
     };
   }, [socket, user?.id, partyMode]);
 
-  // Party mode functions
+  // Party mode functions using workspace context
   const enablePartyMode = () => {
-    setPartyMode(true);
+    console.log(`[PARTY DEBUG] Enabling party mode for terminal ${nodeId}`);
+    updateWorkspace(currentWorkspaceIndex, (workspace) => ({
+      terminalStates: {
+        ...workspace.terminalStates,
+        [nodeId]: {
+          ...workspace.terminalStates?.[nodeId],
+          partyMode: true
+        }
+      }
+    }));
   };
 
   const disablePartyMode = () => {
-    setPartyMode(false);
+    console.log(`[PARTY DEBUG] Disabling party mode for terminal ${nodeId}`);
+    updateWorkspace(currentWorkspaceIndex, (workspace) => ({
+      terminalStates: {
+        ...workspace.terminalStates,
+        [nodeId]: {
+          ...workspace.terminalStates?.[nodeId],
+          partyMode: false
+        }
+      }
+    }));
   };
 
   const isPartyMode = () => {

@@ -115,7 +115,7 @@ export function WindowStateProvider({ children }) {
   }, []); // Empty dependency array means this runs once on mount
 
   // Helper function to save state to type-specific IndexedDB stores
-  const saveTypeSpecificState = useCallback(async (windowId, windowType, content) => {
+const saveTypeSpecificState = useCallback(async (windowId, windowType, content) => {
     try {
       switch (windowType) {
         case WINDOW_TYPES.TERMINAL:
