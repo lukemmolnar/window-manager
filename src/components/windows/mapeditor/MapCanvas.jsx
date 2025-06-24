@@ -648,6 +648,11 @@ const MapCanvas = ({
     const getFogState = (x, y) => {
       if (!hideEditorUI || !fogOfWarData) return 'visible';
       
+      // Any coordinate outside map boundaries is always unexplored
+      if (x < 0 || x >= mapData.width || y < 0 || y >= mapData.height) {
+        return 'unexplored';
+      }
+      
       const tileKey = `${x},${y}`;
       if (visibleTiles.has(tileKey)) return 'visible';
       if (exploredTiles.has(tileKey)) return 'explored';
@@ -723,7 +728,7 @@ const MapCanvas = ({
 
     // Draw fog of war overlay for empty map areas (only in game mode)
     if (hideEditorUI && fogOfWarData) {
-      // Draw black overlay on unexplored empty areas
+      // Draw black overlay on unexplored empty areas within map boundaries
       for (let x = 0; x < mapData.width; x++) {
         for (let y = 0; y < mapData.height; y++) {
           const fogState = getFogState(x, y);
@@ -747,6 +752,52 @@ const MapCanvas = ({
                   screenY > -gridSize && screenY < height) {
                 ctx.fillStyle = '#000000';
                 ctx.fillRect(screenX, screenY, gridSize, gridSize);
+              }
+            }
+          }
+        }
+      }
+
+      // Draw fog of war overlay for entire canvas (including areas outside map boundaries)
+      // Calculate the full range of grid coordinates visible on canvas
+      const startGridX = Math.floor(-offsetX / gridSize) - 1;
+      const startGridY = Math.floor(-offsetY / gridSize) - 1;
+      const endGridX = Math.floor((width - offsetX) / gridSize) + 1;
+      const endGridY = Math.floor((height - offsetY) / gridSize) + 1;
+
+      // Draw black fog for all unexplored areas across the entire visible canvas
+      for (let gridX = startGridX; gridX <= endGridX; gridX++) {
+        for (let gridY = startGridY; gridY <= endGridY; gridY++) {
+          const fogState = getFogState(gridX, gridY);
+          
+          if (fogState === 'unexplored') {
+            // Calculate screen position for this grid cell
+            const screenX = Math.floor(gridX * gridSize + offsetX);
+            const screenY = Math.floor(gridY * gridSize + offsetY);
+            
+            // Only draw if visible on screen
+            if (screenX > -gridSize && screenX < width && 
+                screenY > -gridSize && screenY < height) {
+              
+              // For areas outside map boundaries, always draw black
+              if (gridX < 0 || gridX >= mapData.width || gridY < 0 || gridY >= mapData.height) {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(screenX, screenY, gridSize, gridSize);
+              }
+              // For areas within map boundaries, only draw black if no tile exists here
+              else {
+                let hasCell = false;
+                for (const layer of mapData.layers) {
+                  if (layer.visible && layer.cells.some(cell => cell.x === gridX && cell.y === gridY)) {
+                    hasCell = true;
+                    break;
+                  }
+                }
+                
+                if (!hasCell) {
+                  ctx.fillStyle = '#000000';
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize);
+                }
               }
             }
           }
