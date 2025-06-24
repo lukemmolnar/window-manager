@@ -646,7 +646,8 @@ const MapCanvas = ({
 
     // Helper function to get fog state for a tile
     const getFogState = (x, y) => {
-      if (!hideEditorUI || !fogOfWarData) return 'visible';
+      if (!hideEditorUI) return 'visible';     // Editor mode - show everything
+      if (!fogOfWarData) return 'unexplored';  // Game mode but no fog data - show nothing
       
       // Any coordinate outside map boundaries is always unexplored
       if (x < 0 || x >= mapData.width || y < 0 || y >= mapData.height) {
