@@ -25,7 +25,9 @@ const MapCanvas = ({
   hideEditorUI = false,
   // Player positions for game mode
   playerPositions = [],
-  currentUserId = null
+  currentUserId = null,
+  // Fog of war data for game mode
+  fogOfWarData = null
 }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -625,6 +627,33 @@ const MapCanvas = ({
       ctx.fillRect(mapStartX + mapWidthPx - cornerSize + 1, mapStartY + mapHeightPx - cornerSize + 1, cornerSize, cornerSize);
     }
     
+    // Create fog of war lookup sets for performance (only in game mode)
+    let visibleTiles = new Set();
+    let exploredTiles = new Set();
+    let unexploredTiles = new Set();
+    
+    if (hideEditorUI && fogOfWarData) {
+      fogOfWarData.visible?.forEach(tile => {
+        visibleTiles.add(`${tile.x},${tile.y}`);
+      });
+      fogOfWarData.explored?.forEach(tile => {
+        exploredTiles.add(`${tile.x},${tile.y}`);
+      });
+      fogOfWarData.unexplored?.forEach(tile => {
+        unexploredTiles.add(`${tile.x},${tile.y}`);
+      });
+    }
+
+    // Helper function to get fog state for a tile
+    const getFogState = (x, y) => {
+      if (!hideEditorUI || !fogOfWarData) return 'visible';
+      
+      const tileKey = `${x},${y}`;
+      if (visibleTiles.has(tileKey)) return 'visible';
+      if (exploredTiles.has(tileKey)) return 'explored';
+      return 'unexplored';
+    };
+
     // Draw map data (cells from each layer)
     if (mapData && mapData.layers && mapData.layers.length > 0) {
       // Render each visible layer from bottom to top
@@ -644,7 +673,28 @@ const MapCanvas = ({
           // Draw the tile if it's visible on screen
           if (screenX > -gridSize && screenX < width && 
               screenY > -gridSize && screenY < height) {
-            drawTile(ctx, screenX, screenY, gridSize, cell);
+            
+            // Get fog state for this tile
+            const fogState = getFogState(cell.x, cell.y);
+            
+            if (fogState === 'unexplored') {
+              // Draw black for unexplored tiles
+              ctx.fillStyle = '#000000';
+              ctx.fillRect(screenX, screenY, gridSize, gridSize);
+            } else {
+              // Draw the actual tile
+              if (fogState === 'explored') {
+                // Apply dimming for explored but not visible tiles
+                ctx.globalAlpha = layerOpacity * 0.5;
+              }
+              
+              drawTile(ctx, screenX, screenY, gridSize, cell);
+              
+              // Reset alpha if we dimmed it
+              if (fogState === 'explored') {
+                ctx.globalAlpha = layerOpacity;
+              }
+            }
           }
         });
         
@@ -669,6 +719,39 @@ const MapCanvas = ({
         // Reset global alpha to default (1.0) after drawing this layer
         ctx.globalAlpha = 1.0;
       });
+    }
+
+    // Draw fog of war overlay for empty map areas (only in game mode)
+    if (hideEditorUI && fogOfWarData) {
+      // Draw black overlay on unexplored empty areas
+      for (let x = 0; x < mapData.width; x++) {
+        for (let y = 0; y < mapData.height; y++) {
+          const fogState = getFogState(x, y);
+          
+          if (fogState === 'unexplored') {
+            // Check if this cell is empty (no tile data)
+            let hasCell = false;
+            for (const layer of mapData.layers) {
+              if (layer.visible && layer.cells.some(cell => cell.x === x && cell.y === y)) {
+                hasCell = true;
+                break;
+              }
+            }
+            
+            // If no cell exists here, draw black
+            if (!hasCell) {
+              const screenX = Math.floor(x * gridSize + offsetX);
+              const screenY = Math.floor(y * gridSize + offsetY);
+              
+              if (screenX > -gridSize && screenX < width && 
+                  screenY > -gridSize && screenY < height) {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(screenX, screenY, gridSize, gridSize);
+              }
+            }
+          }
+        }
+      }
     }
     
     // Draw grid on top (only if showGrid is true)
@@ -792,6 +875,7 @@ const MapCanvas = ({
     hideEditorUI, // Add hideEditorUI to trigger re-render when UI mode changes
     playerPositions, // Add player positions for game mode
     currentUserId, // Add current user ID to distinguish own token
+    fogOfWarData, // Add fog of war data to trigger re-renders
     // selectedRotation, // Removed: Toolbar rotation shouldn't trigger full canvas redraw
     brushSize  // Add brushSize as a dependency too for completeness
   ]);

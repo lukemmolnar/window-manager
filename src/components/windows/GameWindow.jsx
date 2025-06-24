@@ -20,6 +20,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
   const [mapLoadNotification, setMapLoadNotification] = useState(null);
   const [currentMapPath, setCurrentMapPath] = useState(null);
   const [showPlayerManagement, setShowPlayerManagement] = useState(false);
+  const [fogOfWarData, setFogOfWarData] = useState(null);
   const resetViewRef = useRef();
 
   // Load player positions for the party (legacy - all maps)
@@ -70,6 +71,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
         const userPosition = positions.find(p => p.user_id === user.id);
         if (userPosition) {
           setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
+          
+          // Load fog of war data for current user
+          loadFogOfWarData(partyId, mapPath, user.id);
         }
         // Note: Don't reset position when user is not currently placed - preserve last known position
         // This is important for position memory when players are toggled off/on
@@ -78,6 +82,32 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       }
     } catch (error) {
       console.error('Error loading player positions on map:', error);
+    }
+  };
+
+  // Load fog of war data for the current user
+  const loadFogOfWarData = async (partyId, mapPath, userId) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const encodedMapPath = encodeURIComponent(mapPath);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/fog-of-war/${partyId}/${encodedMapPath}/${userId}`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const fogData = await response.json();
+        setFogOfWarData(fogData.fogOfWar);
+        console.log(`Loaded fog of war data for user ${userId}:`, fogData.fogOfWar);
+      } else {
+        console.warn('Failed to load fog of war data:', response.status);
+        setFogOfWarData(null);
+      }
+    } catch (error) {
+      console.error('Error loading fog of war data:', error);
+      setFogOfWarData(null);
     }
   };
 
@@ -314,6 +344,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       y: newY
     });
 
+    // Reload fog of war data for new position
+    loadFogOfWarData(partyInfo.id, currentMapPath, user.id);
+
     console.log(`Moving to (${newX}, ${newY}) on map ${currentMapPath}`);
   };
 
@@ -485,6 +518,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
           hideEditorUI={true} // Hide editor UI elements for streamlined game view
           playerPositions={playerPositions} // Pass player positions for rendering
           currentUserId={user?.id} // Pass current user ID to distinguish own token
+          fogOfWarData={fogOfWarData} // Pass fog of war data for rendering
         />
       ) : (
         <div className="flex items-center justify-center h-full">
