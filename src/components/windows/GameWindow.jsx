@@ -74,6 +74,11 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
           
           // Load fog of war data for current user
           loadFogOfWarData(partyId, mapPath, user.id);
+        } else {
+          // User is not positioned on this map - clear fog of war data
+          // This ensures that no old fog of war data persists when switching maps
+          setFogOfWarData(null);
+          console.log(`User not positioned on map ${mapPath} - fog of war cleared`);
         }
         // Note: Don't reset position when user is not currently placed - preserve last known position
         // This is important for position memory when players are toggled off/on
@@ -116,6 +121,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     try {
       setIsLoading(true);
       setError(null);
+      
+      // Clear fog of war data when loading a new map to prevent old data from persisting
+      setFogOfWarData(null);
 
       // Get JWT token from localStorage
       const token = localStorage.getItem('auth_token');
@@ -296,8 +304,15 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       if (userPosition) {
         console.log(`[CLIENT] Updating current user position to (${userPosition.x}, ${userPosition.y})`);
         setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
+        
+        // Load fog of war data immediately when player is placed
+        // This ensures the view radius is visible right away
+        loadFogOfWarData(partyId, mapPath, user.id);
+        console.log(`[CLIENT] Loading fog of war data for newly placed player`);
       } else {
-        console.log(`[CLIENT] Current user not found in updated player list - preserving position`);
+        console.log(`[CLIENT] Current user not found in updated player list - clearing fog of war`);
+        // User was removed from the map - clear fog of war data
+        setFogOfWarData(null);
       }
       // Note: Don't reset position to (0,0) when removed - preserve last known position
       // The server will send the correct position when the player is re-added
@@ -431,6 +446,16 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     const userPosition = updatedPlayers.find(p => p.user_id === user.id);
     if (userPosition) {
       setCurrentPlayerPosition({ x: userPosition.x, y: userPosition.y });
+      
+      // Load fog of war data for the newly positioned player
+      if (partyInfo && currentMapPath) {
+        loadFogOfWarData(partyInfo.id, currentMapPath, user.id);
+        console.log(`Loading fog of war data after player management update`);
+      }
+    } else {
+      // User was removed from the map - clear fog of war data
+      setFogOfWarData(null);
+      console.log(`Clearing fog of war data after player was removed from map`);
     }
     // Note: Don't reset position to (0,0) when removed - preserve last known position
     // The server will send the correct position when the player is re-added
