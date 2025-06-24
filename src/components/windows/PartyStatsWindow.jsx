@@ -138,14 +138,14 @@ const PartyStatsWindow = () => {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-stone-900 text-teal-400">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center space-x-2">
-          <Users className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Party Stats</h2>
+      <div className="flex-shrink-0 p-2 border-b border-stone-700 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users size={16} />
+          <span className="text-sm font-mono">Party Stats</span>
           {party && (
-            <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+            <span className="text-xs bg-amber-800 text-amber-200 px-2 py-1 rounded">
               {party.name}
             </span>
           )}
@@ -153,7 +153,8 @@ const PartyStatsWindow = () => {
         <button
           onClick={fetchPartyStats}
           disabled={loading}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+          className="p-1 rounded hover:bg-stone-700 text-teal-400 hover:text-teal-300 transition-colors"
+          title="Refresh party stats"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
@@ -163,14 +164,14 @@ const PartyStatsWindow = () => {
       <div className="flex-1 overflow-auto p-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
-            <div className="flex items-center space-x-2 text-gray-600">
+            <div className="flex items-center space-x-2 text-stone-400">
               <RefreshCw className="w-4 h-4 animate-spin" />
               <span>Loading party stats...</span>
             </div>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2 text-red-800">
+          <div className="bg-red-900/20 border border-red-800 rounded-lg p-4">
+            <div className="flex items-center space-x-2 text-red-400">
               <span className="font-medium">Error:</span>
               <span>{error}</span>
             </div>
@@ -179,14 +180,14 @@ const PartyStatsWindow = () => {
           <div className="space-y-6">
             {/* Player Selection */}
             <div>
-              <label htmlFor="player-select" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="player-select" className="block text-sm font-medium text-teal-300 mb-2">
                 Select Player
               </label>
               <select
                 id="player-select"
                 value={selectedPlayerId || ''}
                 onChange={(e) => handlePlayerChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               >
                 <option value="" disabled>
                   {playerStats.length === 0 ? 'No players found' : 'Choose a player...'}
@@ -201,8 +202,8 @@ const PartyStatsWindow = () => {
 
             {/* Stats Display */}
             {selectedPlayerStats && (
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <div className="border border-stone-600 rounded-lg p-4 bg-stone-800">
+                <h3 className="text-lg font-medium text-teal-200 mb-4">
                   Stats for {selectedPlayerStats.username}
                 </h3>
                 
@@ -210,8 +211,8 @@ const PartyStatsWindow = () => {
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
-                      <Eye className="w-4 h-4 text-gray-600" />
-                      <label htmlFor="view-distance" className="text-sm font-medium text-gray-700">
+                      <Eye className="w-4 h-4 text-teal-300" />
+                      <label htmlFor="view-distance" className="text-sm font-medium text-teal-300">
                         View Distance
                       </label>
                     </div>
@@ -223,7 +224,7 @@ const PartyStatsWindow = () => {
                         max="20"
                         value={viewDistance}
                         onChange={(e) => setViewDistance(parseInt(e.target.value) || 1)}
-                        className="w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-20 px-3 py-2 bg-stone-700 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                       />
                       <input
                         type="range"
@@ -231,13 +232,13 @@ const PartyStatsWindow = () => {
                         max="20"
                         value={viewDistance}
                         onChange={(e) => setViewDistance(parseInt(e.target.value))}
-                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                        className="flex-1 h-2 bg-stone-600 rounded-lg appearance-none cursor-pointer slider"
                       />
-                      <span className="text-sm text-gray-600 w-16">
+                      <span className="text-sm text-stone-400 w-16">
                         {viewDistance} tile{viewDistance !== 1 ? 's' : ''}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-stone-400 mt-1">
                       How far the player can see on the map (1-20 tiles)
                     </p>
                   </div>
@@ -247,30 +248,30 @@ const PartyStatsWindow = () => {
                     <button
                       onClick={saveViewDistance}
                       disabled={saving || viewDistance === selectedPlayerStats.view_distance}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center space-x-2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-stone-800 disabled:bg-stone-600 disabled:cursor-not-allowed transition-colors"
                     >
                       <Save className="w-4 h-4" />
                       <span>{saving ? 'Saving...' : 'Save Changes'}</span>
                     </button>
                     {viewDistance !== selectedPlayerStats.view_distance && (
-                      <span className="text-sm text-amber-600 font-medium">
+                      <span className="text-sm text-amber-400 font-medium">
                         Unsaved changes
                       </span>
                     )}
-                    <span className="save-success text-sm text-green-600 font-medium opacity-0 transition-opacity duration-200">
+                    <span className="save-success text-sm text-green-400 font-medium opacity-0 transition-opacity duration-200">
                       Saved successfully!
                     </span>
                   </div>
                 </div>
 
                 {/* Player Info */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Player Information</h4>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <div>Username: <span className="font-medium">{selectedPlayerStats.username}</span></div>
-                    <div>User ID: <span className="font-medium">{selectedPlayerStats.user_id}</span></div>
+                <div className="mt-6 pt-4 border-t border-stone-600">
+                  <h4 className="text-sm font-medium text-teal-300 mb-2">Player Information</h4>
+                  <div className="text-sm text-stone-300 space-y-1">
+                    <div>Username: <span className="font-medium text-teal-200">{selectedPlayerStats.username}</span></div>
+                    <div>User ID: <span className="font-medium text-teal-200">{selectedPlayerStats.user_id}</span></div>
                     <div>
-                      Last Updated: <span className="font-medium">
+                      Last Updated: <span className="font-medium text-teal-200">
                         {selectedPlayerStats.updated_at 
                           ? new Date(selectedPlayerStats.updated_at).toLocaleString()
                           : 'Never'
@@ -285,9 +286,9 @@ const PartyStatsWindow = () => {
             {/* Empty State */}
             {playerStats.length === 0 && (
               <div className="text-center py-8">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Players Found</h3>
-                <p className="text-gray-600">
+                <Users className="w-12 h-12 text-stone-400 mx-auto mb-3" />
+                <h3 className="text-lg font-medium text-teal-200 mb-2">No Players Found</h3>
+                <p className="text-stone-400">
                   This party doesn't have any members yet. Add players to the party to manage their stats.
                 </p>
               </div>
