@@ -684,8 +684,8 @@ const MapCanvas = ({
             const fogState = getFogState(cell.x, cell.y);
             
             if (fogState === 'unexplored') {
-              // Draw black for unexplored tiles
-              ctx.fillStyle = '#000000';
+              // Draw stone-800 for unexplored tiles to match window backgrounds
+              ctx.fillStyle = '#1C1917';
               ctx.fillRect(screenX, screenY, gridSize, gridSize);
             } else {
               // Draw the actual tile
@@ -744,14 +744,14 @@ const MapCanvas = ({
               }
             }
             
-            // If no cell exists here, draw black
+            // If no cell exists here, draw stone-800 to match window backgrounds
             if (!hasCell) {
               const screenX = Math.floor(x * gridSize + offsetX);
               const screenY = Math.floor(y * gridSize + offsetY);
               
               if (screenX > -gridSize && screenX < width && 
                   screenY > -gridSize && screenY < height) {
-                ctx.fillStyle = '#000000';
+                ctx.fillStyle = '#1C1917';
                 ctx.fillRect(screenX, screenY, gridSize, gridSize);
               }
             }
@@ -780,9 +780,9 @@ const MapCanvas = ({
             if (screenX > -gridSize && screenX < width && 
                 screenY > -gridSize && screenY < height) {
               
-              // For areas outside map boundaries, always draw black
+              // For areas outside map boundaries, always draw stone-800 to match window backgrounds
               if (gridX < 0 || gridX >= mapData.width || gridY < 0 || gridY >= mapData.height) {
-                ctx.fillStyle = '#000000';
+                ctx.fillStyle = '#1C1917';
                 ctx.fillRect(screenX, screenY, gridSize, gridSize);
               }
               // For areas within map boundaries, only draw black if no tile exists here
@@ -796,7 +796,7 @@ const MapCanvas = ({
                 }
                 
                 if (!hasCell) {
-                  ctx.fillStyle = '#000000';
+                  ctx.fillStyle = '#1C1917';
                   ctx.fillRect(screenX, screenY, gridSize, gridSize);
                 }
               }
