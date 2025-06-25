@@ -253,7 +253,7 @@ const PartyStatsWindow = () => {
                   type="button"
                   onClick={toggleDropdown}
                   onKeyDown={handleKeyDown}
-                  className="px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 flex items-center justify-between"
+                  className="px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm flex items-center justify-between"
                   aria-haspopup="listbox"
                   aria-expanded={isDropdownOpen}
                 >
