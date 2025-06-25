@@ -304,7 +304,7 @@ const PartyStatsWindow = () => {
 
             {/* Stats Display */}
             {selectedPlayerStats && (
-              <div className="border border-stone-600 rounded-lg p-4 bg-stone-800">
+              <div className="border-t border-stone-600 p-4">
                 <h3 className="text-lg font-medium text-teal-200 mb-4">
                   Stats for {selectedPlayerStats.username}
                 </h3>
@@ -326,7 +326,7 @@ const PartyStatsWindow = () => {
                         max="20"
                         value={viewDistance}
                         onChange={(e) => setViewDistance(parseInt(e.target.value) || 1)}
-                        className="w-15 px-3 py-2 bg-stone-700 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-15 px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                       />
                       {/* <input
                         type="range"
@@ -350,10 +350,9 @@ const PartyStatsWindow = () => {
                     <button
                       onClick={saveViewDistance}
                       disabled={saving || viewDistance === selectedPlayerStats.view_distance}
-                      className="flex items-center space-x-2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-stone-800 disabled:bg-stone-600 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center justify-center w-8 h-8 text-teal-400 hover:text-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-stone-800 disabled:text-stone-600 disabled:cursor-not-allowed transition-colors"
                     >
                       <Save className="w-4 h-4" />
-                      <span>{saving ? 'Saving...' : 'Save Changes'}</span>
                     </button>
                     {viewDistance !== selectedPlayerStats.view_distance && (
                       <span className="text-sm text-amber-400 font-medium">
