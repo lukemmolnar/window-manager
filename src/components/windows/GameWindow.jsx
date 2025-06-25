@@ -336,14 +336,27 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       console.log(`Player placement updated on map ${mapPath}:`, players);
     };
 
+    // Listen for fog of war updates from server (after movement)
+    const handleFogOfWarUpdate = (data) => {
+      const { userId, mapPath, fogOfWar, playerPosition } = data;
+      
+      // Only process fog of war updates for current user and current map
+      if (userId !== user.id || mapPath !== currentMapPath) return;
+      
+      console.log(`Received fog of war update for user ${userId} at (${playerPosition.x}, ${playerPosition.y}) on map ${mapPath}`);
+      setFogOfWarData(fogOfWar);
+    };
+
     socket.on('player_position_update', handlePlayerPositionUpdate);
     socket.on('player_positions_sync', handlePlayerPositionsSync);
     socket.on('players_placed_on_map', handlePlayersPlacedOnMap);
+    socket.on('fog_of_war_update', handleFogOfWarUpdate);
 
     return () => {
       socket.off('player_position_update', handlePlayerPositionUpdate);
       socket.off('player_positions_sync', handlePlayerPositionsSync);
       socket.off('players_placed_on_map', handlePlayersPlacedOnMap);
+      socket.off('fog_of_war_update', handleFogOfWarUpdate);
     };
   }, [socket, partyInfo, user, currentMapPath]);
 
@@ -368,15 +381,13 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     setCurrentPlayerPosition({ x: newX, y: newY });
 
     // Send movement to server via socket with mapPath
+    // Server will calculate and send back updated fog of war data
     socket.emit('player_move', {
       partyId: partyInfo.id,
       mapPath: currentMapPath,
       x: newX,
       y: newY
     });
-
-    // Reload fog of war data for new position
-    loadFogOfWarData(partyInfo.id, currentMapPath, user.id);
 
     console.log(`Moving to (${newX}, ${newY}) on map ${currentMapPath}`);
   };
