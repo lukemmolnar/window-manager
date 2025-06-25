@@ -210,6 +210,18 @@ export function validateMovementRange(range) {
 }
 
 /**
+ * Convert movement range Set to array of coordinate objects
+ * @param {Set} movementRange - Set of coordinate strings
+ * @returns {Array} Array of {x, y} objects
+ */
+export function movementRangeToArray(movementRange) {
+  return Array.from(movementRange).map(coordStr => {
+    const [x, y] = coordStr.split(',').map(Number);
+    return { x, y };
+  });
+}
+
+/**
  * Get default movement range for a player (can be extended for different character classes)
  * @param {Object} player - Player object
  * @returns {number} Movement range in tiles

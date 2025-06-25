@@ -138,18 +138,6 @@ export function isPositionInRange(pos, movementRange) {
 }
 
 /**
- * Convert movement range Set to array of coordinate objects
- * @param {Set} movementRange - Set of coordinate strings
- * @returns {Array} Array of {x, y} objects
- */
-export function movementRangeToArray(movementRange) {
-  return Array.from(movementRange).map(coordStr => {
-    const [x, y] = coordStr.split(',').map(Number);
-    return { x, y };
-  });
-}
-
-/**
  * Get movement cost between two adjacent tiles
  * Can be extended later for different terrain types
  */
