@@ -3,6 +3,12 @@ import { Grid } from 'lucide-react';
 import { screenToGridCoordinates, gridToScreenCoordinates } from './utils/mapUtils';
 import dynamicTileRegistry from './utils/dynamicTileRegistry';
 import API_CONFIG from '../../../config/api';
+import { 
+  MOVEMENT_MODES, 
+  movementRangeToArray, 
+  generatePathPreview, 
+  drawPathWithArrows 
+} from '../../../utils/movement/movementUtils';
 
 /**
  * The main canvas component for the Grid Map Editor
@@ -27,7 +33,16 @@ const MapCanvas = ({
   playerPositions = [],
   currentUserId = null,
   // Fog of war data for game mode
-  fogOfWarData = null
+  fogOfWarData = null,
+  // Tactical movement props
+  movementMode = 'tactical',
+  selectedPlayerId = null,
+  movementRange = new Set(),
+  pathPreview = [],
+  hoveredDestination = null,
+  onPlayerSelect = () => {},
+  onTacticalMove = () => {},
+  onHoverDestination = () => {}
 }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -895,6 +910,33 @@ const MapCanvas = ({
       }
     }
 
+    // Draw tactical movement elements (only in game mode with tactical movement)
+    if (hideEditorUI && movementMode === MOVEMENT_MODES.TACTICAL) {
+      // Draw movement range highlight
+      if (movementRange && movementRange.size > 0) {
+        const rangeArray = movementRangeToArray(movementRange);
+        rangeArray.forEach(coord => {
+          const screenX = Math.floor(coord.x * gridSize + offsetX);
+          const screenY = Math.floor(coord.y * gridSize + offsetY);
+          
+          // Only draw if visible on screen
+          if (screenX > -gridSize && screenX < width && 
+              screenY > -gridSize && screenY < height) {
+            ctx.fillStyle = 'rgba(20, 184, 166, 0.3)'; // Teal with transparency
+            ctx.fillRect(screenX, screenY, gridSize, gridSize);
+          }
+        });
+      }
+
+      // Draw path preview
+      if (pathPreview && pathPreview.length > 0) {
+        const pathPoints = generatePathPreview(pathPreview, gridSize, viewportOffset);
+        if (pathPoints.length > 0) {
+          drawPathWithArrows(ctx, pathPoints, '#14b8a6', 3);
+        }
+      }
+    }
+
     // Draw player tokens on top of everything (only in game mode)
     if (hideEditorUI && playerPositions && playerPositions.length > 0) {
       playerPositions.forEach(player => {
@@ -908,6 +950,15 @@ const MapCanvas = ({
         if (screenX > -gridSize && screenX < width && 
             screenY > -gridSize && screenY < height) {
           const isCurrentUser = currentUserId && player.user_id === currentUserId;
+          const isSelected = selectedPlayerId && player.user_id === selectedPlayerId;
+          
+          // Draw selection highlight for selected player
+          if (isSelected && movementMode === MOVEMENT_MODES.TACTICAL) {
+            ctx.strokeStyle = '#14b8a6'; // Teal border
+            ctx.lineWidth = 3;
+            ctx.strokeRect(screenX, screenY, gridSize, gridSize);
+          }
+          
           drawPlayerToken(ctx, screenX, screenY, gridSize, player, isCurrentUser);
         }
       });
@@ -963,6 +1014,37 @@ const MapCanvas = ({
     
     setActiveMouseButton(e.button);
     
+    // Handle tactical movement clicks in game mode
+    if (hideEditorUI && e.button === 0 && !isSpacePressed) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const gridCoords = screenToGridCoordinates(mouseX, mouseY, gridSize, viewportOffset);
+      
+      // Check if click is within map boundaries
+      if (gridCoords.x >= 0 && gridCoords.x < mapData.width && 
+          gridCoords.y >= 0 && gridCoords.y < mapData.height) {
+        
+        if (movementMode === MOVEMENT_MODES.TACTICAL) {
+          // Check if clicking on a player token for selection
+          const clickedPlayer = playerPositions.find(p => p.x === gridCoords.x && p.y === gridCoords.y);
+          
+          if (clickedPlayer) {
+            // Player selection
+            onPlayerSelect(clickedPlayer.user_id);
+          } else if (selectedPlayerId) {
+            // Movement destination selection
+            onTacticalMove(gridCoords.x, gridCoords.y);
+          }
+          return; // Don't handle as regular edit
+        } else {
+          // Free move mode - handle as direct movement
+          onTacticalMove(gridCoords.x, gridCoords.y);
+          return;
+        }
+      }
+    }
+    
     // Middle mouse button (1) for panning
     if (e.button === 1) {
       setIsDragging(true);
@@ -987,6 +1069,22 @@ const MapCanvas = ({
   const handleMouseMove = (e) => {
     // Always update hover cell
     updateHoverCell(e);
+    
+    // Handle tactical movement hover in game mode
+    if (hideEditorUI && movementMode === MOVEMENT_MODES.TACTICAL && selectedPlayerId && !isDragging) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const gridCoords = screenToGridCoordinates(mouseX, mouseY, gridSize, viewportOffset);
+      
+      // Check if hover is within map boundaries
+      if (gridCoords.x >= 0 && gridCoords.x < mapData.width && 
+          gridCoords.y >= 0 && gridCoords.y < mapData.height) {
+        onHoverDestination(gridCoords.x, gridCoords.y);
+      } else {
+        onHoverDestination(null, null);
+      }
+    }
     
     // Handle dragging for pan with middle mouse button (1),
     // or spacebar + any mouse button

@@ -3,7 +3,7 @@ import {
   Save, Undo, Redo, Trash2, Copy, Square, Circle, 
   Grid, ZoomIn, ZoomOut, Download, Upload, Plus, Minus,
   Layers, MousePointer, Hammer, Wand2, FileText, Settings,
-  Home, Users
+  Home, Users, Navigation
 } from 'lucide-react';
 
 /**
@@ -28,7 +28,10 @@ const MapToolbar = ({
   gameSubtitle,
   isDM = false,
   onManagePlayers,
-  isPlayerManagementOpen = false
+  isPlayerManagementOpen = false,
+  // Movement mode props (game mode only)
+  movementMode = 'tactical',
+  onToggleMovementMode
 }) => {
   const [showProperties, setShowProperties] = useState(false);
   const [mapName, setMapName] = useState(mapData?.name || 'New Map');
@@ -152,6 +155,25 @@ const MapToolbar = ({
                 <Users size={18} />
                 <span className="text-sm hidden sm:inline">Manage Players</span>
               </button>
+            )}
+            {isDM && onToggleMovementMode && (
+              <>
+                <div className="h-6 border-r border-stone-700 mx-1"></div>
+                <button
+                  onClick={onToggleMovementMode}
+                  className={`p-2 hover:bg-stone-700 rounded flex items-center gap-1 ${
+                    movementMode === 'tactical' 
+                      ? 'bg-stone-700 text-teal-300' 
+                      : 'text-teal-400'
+                  }`}
+                  title={`Switch to ${movementMode === 'tactical' ? 'Free Move' : 'Tactical'} mode`}
+                >
+                  <Navigation size={18} />
+                  <span className="text-sm hidden sm:inline">
+                    {movementMode === 'tactical' ? 'Tactical' : 'Free Move'}
+                  </span>
+                </button>
+              </>
             )}
           </div>
         )}

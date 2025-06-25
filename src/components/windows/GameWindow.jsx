@@ -6,6 +6,15 @@ import MapCanvas from './mapeditor/MapCanvas';
 import MapToolbar from './mapeditor/MapToolbar';
 import PlayerManagementDialog from './gamewindow/PlayerManagementDialog';
 import API_CONFIG from '../../config/api';
+import { 
+  MOVEMENT_MODES, 
+  MOVEMENT_CONFIG, 
+  canSelectPlayer, 
+  getPlayerAtPosition,
+  getPlayerMovementRange 
+} from '../../utils/movement/movementUtils';
+import { calculateMovementRange, isPositionInRange } from '../../utils/movement/movementRange';
+import { findPath } from '../../utils/movement/pathfinding';
 
 const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState, updateWindowState, focusRef }) => {
   const { user } = useAuth();
@@ -22,6 +31,13 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
   const [showPlayerManagement, setShowPlayerManagement] = useState(false);
   const [fogOfWarData, setFogOfWarData] = useState(null);
   const resetViewRef = useRef();
+
+  // Tactical movement state
+  const [movementMode, setMovementMode] = useState(MOVEMENT_CONFIG.DEFAULT_MODE);
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
+  const [movementRange, setMovementRange] = useState(new Set());
+  const [pathPreview, setPathPreview] = useState([]);
+  const [hoveredDestination, setHoveredDestination] = useState(null);
 
   // Load player positions for the party (legacy - all maps)
   const loadPlayerPositions = async (partyId) => {
@@ -373,6 +389,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
       // Only handle arrow keys if this window is active and focused
       if (!isActive) return;
 
+      // Only allow keyboard movement in freemove mode
+      if (movementMode !== MOVEMENT_MODES.FREEMOVE) return;
+
       const { x, y } = currentPlayerPosition;
       let newX = x;
       let newY = y;
@@ -409,7 +428,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isActive, mapData, partyInfo, currentPlayerPosition, socket]);
+  }, [isActive, mapData, partyInfo, currentPlayerPosition, socket, movementMode]);
 
   // Handle grid toggle
   const toggleGrid = () => {
@@ -461,6 +480,135 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
     }
     // Note: Don't reset position to (0,0) when removed - preserve last known position
     // The server will send the correct position when the player is re-added
+  };
+
+  // Tactical movement functions
+  const handlePlayerSelect = (playerId) => {
+    if (movementMode !== MOVEMENT_MODES.TACTICAL) return;
+    
+    // Find the player being selected
+    const player = playerPositions.find(p => p.user_id === playerId);
+    if (!player) return;
+    
+    // Check if this player can be selected
+    if (!canSelectPlayer(player, user.id, isDM)) {
+      console.log('Cannot select this player');
+      return;
+    }
+    
+    // If already selected, deselect
+    if (selectedPlayerId === playerId) {
+      setSelectedPlayerId(null);
+      setMovementRange(new Set());
+      setPathPreview([]);
+      setHoveredDestination(null);
+      return;
+    }
+    
+    // Select the player and calculate movement range
+    setSelectedPlayerId(playerId);
+    
+    const playerMovementRange = getPlayerMovementRange(player);
+    const validMoves = calculateMovementRange(
+      { x: player.x, y: player.y },
+      playerMovementRange,
+      mapData,
+      playerPositions,
+      playerId
+    );
+    
+    setMovementRange(validMoves);
+    setPathPreview([]);
+    setHoveredDestination(null);
+    
+    console.log(`Selected player ${player.username}, movement range: ${validMoves.size} tiles`);
+  };
+
+  const handleTacticalMove = (targetX, targetY) => {
+    if (movementMode !== MOVEMENT_MODES.TACTICAL || !selectedPlayerId) return;
+    
+    // Check if target position is within movement range
+    if (!isPositionInRange({ x: targetX, y: targetY }, movementRange)) {
+      console.log('Target position is outside movement range');
+      return;
+    }
+    
+    const selectedPlayer = playerPositions.find(p => p.user_id === selectedPlayerId);
+    if (!selectedPlayer) return;
+    
+    // Find path to target
+    const path = findPath(
+      { x: selectedPlayer.x, y: selectedPlayer.y },
+      { x: targetX, y: targetY },
+      mapData
+    );
+    
+    if (path.length === 0 && (selectedPlayer.x !== targetX || selectedPlayer.y !== targetY)) {
+      console.log('No valid path to target position');
+      return;
+    }
+    
+    // Execute the move
+    movePlayer(targetX, targetY);
+    
+    // Clear selection after move
+    setSelectedPlayerId(null);
+    setMovementRange(new Set());
+    setPathPreview([]);
+    setHoveredDestination(null);
+  };
+
+  const handleHoverDestination = (targetX, targetY) => {
+    if (movementMode !== MOVEMENT_MODES.TACTICAL || !selectedPlayerId) {
+      setPathPreview([]);
+      setHoveredDestination(null);
+      return;
+    }
+    
+    // Check if target is within movement range
+    if (!isPositionInRange({ x: targetX, y: targetY }, movementRange)) {
+      setPathPreview([]);
+      setHoveredDestination(null);
+      return;
+    }
+    
+    const selectedPlayer = playerPositions.find(p => p.user_id === selectedPlayerId);
+    if (!selectedPlayer) return;
+    
+    // Calculate path preview
+    const path = findPath(
+      { x: selectedPlayer.x, y: selectedPlayer.y },
+      { x: targetX, y: targetY },
+      mapData
+    );
+    
+    setPathPreview(path);
+    setHoveredDestination({ x: targetX, y: targetY });
+  };
+
+  const handleToggleMovementMode = () => {
+    const newMode = movementMode === MOVEMENT_MODES.TACTICAL 
+      ? MOVEMENT_MODES.FREEMOVE 
+      : MOVEMENT_MODES.TACTICAL;
+    
+    setMovementMode(newMode);
+    
+    // Clear tactical movement state when switching modes
+    setSelectedPlayerId(null);
+    setMovementRange(new Set());
+    setPathPreview([]);
+    setHoveredDestination(null);
+    
+    console.log(`Movement mode changed to: ${newMode}`);
+  };
+
+  // Updated movePlayer function to handle both movement modes
+  const movePlayerWithMode = (newX, newY) => {
+    if (movementMode === MOVEMENT_MODES.TACTICAL) {
+      handleTacticalMove(newX, newY);
+    } else {
+      movePlayer(newX, newY);
+    }
   };
 
   // Check if current user is DM
@@ -527,6 +675,8 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
         isDM={isDM}
         onManagePlayers={handleManagePlayers}
         isPlayerManagementOpen={showPlayerManagement}
+        movementMode={movementMode}
+        onToggleMovementMode={handleToggleMovementMode}
       />
 
       {/* Map Canvas */}
@@ -546,6 +696,15 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
           playerPositions={playerPositions} // Pass player positions for rendering
           currentUserId={user?.id} // Pass current user ID to distinguish own token
           fogOfWarData={fogOfWarData} // Pass fog of war data for rendering
+          // Tactical movement props
+          movementMode={movementMode}
+          selectedPlayerId={selectedPlayerId}
+          movementRange={movementRange}
+          pathPreview={pathPreview}
+          hoveredDestination={hoveredDestination}
+          onPlayerSelect={handlePlayerSelect}
+          onTacticalMove={movePlayerWithMode}
+          onHoverDestination={handleHoverDestination}
         />
       ) : (
         <div className="flex items-center justify-center h-full">
