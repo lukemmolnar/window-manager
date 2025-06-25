@@ -326,7 +326,7 @@ const PartyStatsWindow = () => {
                         max="20"
                         value={viewDistance}
                         onChange={(e) => setViewDistance(parseInt(e.target.value) || 1)}
-                        className="w-15 px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-15 px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none"
                       />
                       {/* <input
                         type="range"
