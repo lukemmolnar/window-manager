@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Eye, Save, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Users, Eye, Save, RefreshCw, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import API_CONFIG from '../../config/api';
 import axios from 'axios';
@@ -14,6 +14,9 @@ const PartyStatsWindow = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState(-1);
+  const dropdownRef = useRef(null);
 
   // Fetch party stats data
   const fetchPartyStats = async () => {
@@ -132,6 +135,68 @@ const PartyStatsWindow = () => {
     }
   };
 
+  // Custom dropdown handlers
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+    setHoveredIndex(-1);
+  };
+
+  const selectPlayer = (player) => {
+    handlePlayerChange(player.user_id);
+    setIsDropdownOpen(false);
+    setHoveredIndex(-1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!isDropdownOpen) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleDropdown();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'Escape':
+        setIsDropdownOpen(false);
+        setHoveredIndex(-1);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setHoveredIndex(prev => 
+          prev < playerStats.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHoveredIndex(prev => 
+          prev > 0 ? prev - 1 : playerStats.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (hoveredIndex >= 0 && hoveredIndex < playerStats.length) {
+          selectPlayer(playerStats[hoveredIndex]);
+        }
+        break;
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+        setHoveredIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Load data on component mount
   useEffect(() => {
     fetchPartyStats();
@@ -180,24 +245,61 @@ const PartyStatsWindow = () => {
           <div className="space-y-6">
             {/* Player Selection */}
             <div>
-              <label htmlFor="player-select" className="block text-sm font-medium text-teal-300 mb-2">
+              <label className="block text-sm font-medium text-teal-300 mb-2">
                 Select Party Member
               </label>
-              <select
-                id="player-select"
-                value={selectedPlayerId || ''}
-                onChange={(e) => handlePlayerChange(e.target.value)}
-                className="px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-              >
-                <option value="" disabled>
-                  {playerStats.length === 0 ? 'No players found' : 'Choose a player...'}
-                </option>
-                {playerStats.map((player) => (
-                  <option key={player.user_id} value={player.user_id}>
-                    {player.username}
-                  </option>
-                ))}
-              </select>
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={toggleDropdown}
+                  onKeyDown={handleKeyDown}
+                  className="px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 flex items-center justify-between"
+                  aria-haspopup="listbox"
+                  aria-expanded={isDropdownOpen}
+                >
+                  <span className="block truncate">
+                    {selectedPlayerStats 
+                      ? selectedPlayerStats.username 
+                      : playerStats.length === 0 
+                        ? 'No players found' 
+                        : 'Choose a player...'
+                    }
+                  </span>
+                  <ChevronDown 
+                    className={`w-4 h-4 text-stone-400 ${
+                      isDropdownOpen ? 'rotate-180' : ''
+                    }`} 
+                  />
+                </button>
+
+                {isDropdownOpen && playerStats.length > 0 && (
+                  <div className="absolute z-10 mt-1 bg-stone-800 border border-stone-600 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <ul className="py-1" role="listbox">
+                      {playerStats.map((player, index) => (
+                        <li
+                          key={player.user_id}
+                          className={`px-3 py-2 cursor-pointer ${
+                            hoveredIndex === index 
+                              ? 'bg-stone-600 text-white' 
+                              : 'text-teal-100 hover:bg-stone-600 hover:text-white'
+                          } ${
+                            selectedPlayerId === player.user_id 
+                              ? 'bg-stone-700 text-white' 
+                              : ''
+                          }`}
+                          onClick={() => selectPlayer(player)}
+                          onMouseEnter={() => setHoveredIndex(index)}
+                          onMouseLeave={() => setHoveredIndex(-1)}
+                          role="option"
+                          aria-selected={selectedPlayerId === player.user_id}
+                        >
+                          {player.username}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Stats Display */}
