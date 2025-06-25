@@ -97,3 +97,7 @@ html, body, #root {
   padding-right: 50px; /* Add space between end and beginning when looping */
   white-space: nowrap;
 }
+
+#player-select option:hover {
+  background-color: rgb(15 118 110); /* teal-700 */
+}

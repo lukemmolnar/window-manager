@@ -181,13 +181,13 @@ const PartyStatsWindow = () => {
             {/* Player Selection */}
             <div>
               <label htmlFor="player-select" className="block text-sm font-medium text-teal-300 mb-2">
-                Select Player
+                Select Party Member
               </label>
               <select
                 id="player-select"
                 value={selectedPlayerId || ''}
                 onChange={(e) => handlePlayerChange(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="px-3 py-2 bg-stone-800 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               >
                 <option value="" disabled>
                   {playerStats.length === 0 ? 'No players found' : 'Choose a player...'}
@@ -224,19 +224,19 @@ const PartyStatsWindow = () => {
                         max="20"
                         value={viewDistance}
                         onChange={(e) => setViewDistance(parseInt(e.target.value) || 1)}
-                        className="w-20 px-3 py-2 bg-stone-700 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-15 px-3 py-2 bg-stone-700 border border-stone-600 text-teal-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                       />
-                      <input
+                      {/* <input
                         type="range"
                         min="1"
                         max="20"
                         value={viewDistance}
                         onChange={(e) => setViewDistance(parseInt(e.target.value))}
                         className="flex-1 h-2 bg-stone-600 rounded-lg appearance-none cursor-pointer slider"
-                      />
-                      <span className="text-sm text-stone-400 w-16">
+                      /> */}
+                      {/* <span className="text-sm text-stone-400 w-16">
                         {viewDistance} tile{viewDistance !== 1 ? 's' : ''}
-                      </span>
+                      </span> */}
                     </div>
                     <p className="text-xs text-stone-400 mt-1">
                       How far the player can see on the map (1-20 tiles)

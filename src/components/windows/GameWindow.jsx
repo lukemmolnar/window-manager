@@ -11,7 +11,7 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
   const { user } = useAuth();
   const { socket } = useSocket();
   const [mapData, setMapData] = useState(null);
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(windowState?.showGrid ?? false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [partyInfo, setPartyInfo] = useState(null);
@@ -413,7 +413,9 @@ const GameWindow = ({ isActive, nodeId, onCommand, transformWindow, windowState,
 
   // Handle grid toggle
   const toggleGrid = () => {
-    setShowGrid(!showGrid);
+    const newShowGrid = !showGrid;
+    setShowGrid(newShowGrid);
+    updateWindowState({ ...windowState, showGrid: newShowGrid });
   };
 
   // Handle reset view to origin
